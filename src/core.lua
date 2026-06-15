@@ -1,16 +1,16 @@
--- core.lua — balatro-access entry point (Lovely-only Balatro screen-reader mod).
+-- core.lua — Blindfold entry point (Lovely-only Balatro screen-reader mod).
 --
 -- Registered as a Lovely module and required once from Game:start_up, right
 -- after the Controller is created. The top-level chunk runs once and installs
 -- the hooks. Everything is pcall-guarded so a failure logs instead of crashing
 -- the game.
 
-local speech = require("balatro_access_speech")
+local speech = require("blindfold_speech")
 
 local BA = { _installed = false, kb_active = false, lock_focus_mode = true }
-_G.BalatroAccess = BA   -- expose for the in-game console / debugging
+_G.Blindfold = BA   -- expose for the in-game console / debugging
 
-local MOD_DIR = love.filesystem.getSaveDirectory() .. "/Mods/balatro-access"
+local MOD_DIR = love.filesystem.getSaveDirectory() .. "/Mods/Blindfold"
 
 -- ---------------------------------------------------------------------------
 -- Module loader — Balatro's `require` is sandboxed to the game's own files, so
@@ -20,7 +20,7 @@ local MOD_DIR = love.filesystem.getSaveDirectory() .. "/Mods/balatro-access"
 -- ---------------------------------------------------------------------------
 local _loaded = {}
 local function read_mod_file(rel)
-    local contents = love.filesystem.read("Mods/balatro-access/" .. rel)
+    local contents = love.filesystem.read("Mods/Blindfold/" .. rel)
     if contents then return contents end
     local f = io.open(MOD_DIR .. "/" .. rel, "rb")
     if f then local d = f:read("*a"); f:close(); return d end
@@ -31,7 +31,7 @@ local function ba_require(name)
     local rel = name:gsub("%.", "/") .. ".lua"
     local code = read_mod_file(rel)
     if not code then error("ba_require: cannot read " .. rel, 2) end
-    local chunk, lerr = load(code, "@balatro-access/" .. rel)
+    local chunk, lerr = load(code, "@blindfold/" .. rel)
     if not chunk then error("ba_require: load error in " .. rel .. ": " .. tostring(lerr), 2) end
     _loaded[name] = true                 -- break require cycles
     _loaded[name] = chunk(ba_require) or true
@@ -214,11 +214,11 @@ end
 local ok, err = pcall(function()
     speech.init(MOD_DIR)
     BA.install()
-    speech.say("Balatro Access loaded.")
+    speech.say("Blindfold loaded.")
 end)
 if not ok then
     pcall(function()
-        love.filesystem.append("balatro-access.log", "FATAL during boot: " .. tostring(err) .. "\n")
+        love.filesystem.append("blindfold.log", "FATAL during boot: " .. tostring(err) .. "\n")
     end)
 end
 

@@ -1,4 +1,4 @@
-# balatro-access — Lovely patch manifest.
+# Blindfold — Lovely patch manifest.
 # Registers the mod's Lua as requireable modules, then boots it once the
 # Controller exists. No Steamodded dependency — Lovely only.
 
@@ -13,13 +13,13 @@ priority = 0
 [patches.module]
 source = "speech.lua"
 before = "main.lua"
-name = "balatro_access_speech"
+name = "blindfold_speech"
 
 [[patches]]
 [patches.module]
 source = "core.lua"
 before = "main.lua"
-name = "balatro_access"
+name = "blindfold"
 
 # --- Boot once, immediately after the Controller is created in Game:start_up.
 #     At this point G, Card, localize, etc. all exist.
@@ -28,6 +28,6 @@ name = "balatro_access"
 target = "game.lua"
 pattern = "self.CONTROLLER = Controller()"
 position = "after"
-payload = "require('balatro_access')"
+payload = "require('blindfold')"
 match_indent = true
 times = 1

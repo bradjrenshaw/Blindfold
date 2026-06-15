@@ -16,5 +16,5 @@ These DLLs are intentionally gitignored (`src/lib/*.dll`) — they are
 third-party binaries and don't belong in the repo.
 
 If this folder has no `Tolk.dll`, the mod still runs and writes every
-announcement to `%APPDATA%/Balatro/balatro-access.log` so you can verify
+announcement to `%APPDATA%/Balatro/blindfold.log` so you can verify
 behavior without speech.

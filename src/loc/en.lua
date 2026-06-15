@@ -9,7 +9,7 @@ return {
         BUTTON   = "button",
         SLIDER   = "slider",
         -- Balatro's option cycles are value adjusters; announce them as sliders
-        -- to match what players expect (see [[balatro-access-project]]).
+        -- to match what players expect.
         CYCLE    = "slider",
         CHECKBOX = "checkbox",
         TAB      = "tab",

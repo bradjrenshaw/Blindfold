@@ -1,8 +1,8 @@
--- speech.lua — screen-reader output for balatro-access.
+-- speech.lua — screen-reader output for Blindfold.
 --
 -- Primary backend is Tolk (NVDA/JAWS/SAPI bridge) loaded via LuaJIT FFI. A log
 -- fallback always runs too, so the mod is testable BEFORE Tolk.dll is dropped
--- in (focus changes show up in %APPDATA%/Balatro/balatro-access.log).
+-- in (focus changes show up in %APPDATA%/Balatro/blindfold.log).
 --
 -- Tolk takes UTF-16 (wchar_t*), so we convert UTF-8 -> UTF-16 via the Win32
 -- MultiByteToWideChar. Balatro is 64-bit, so Tolk.dll and its screen-reader
@@ -38,9 +38,9 @@ local function to_wide(s)
 end
 
 local function log(text)
-    -- Lands at %APPDATA%/Balatro/balatro-access.log
+    -- Lands at %APPDATA%/Balatro/blindfold.log
     pcall(function()
-        love.filesystem.append("balatro-access.log", os.date("%H:%M:%S ") .. text .. "\n")
+        love.filesystem.append("blindfold.log", os.date("%H:%M:%S ") .. text .. "\n")
     end)
 end
 M.log = log

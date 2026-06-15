@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $src  = (Resolve-Path (Join-Path $PSScriptRoot '..\src')).Path
 $mods = Join-Path $env:APPDATA 'Balatro\Mods'
-$link = Join-Path $mods 'balatro-access'
+$link = Join-Path $mods 'Blindfold'
 
 New-Item -ItemType Directory -Force -Path $mods | Out-Null
 

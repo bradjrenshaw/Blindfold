@@ -1,24 +1,34 @@
-# balatro-access
+# Blindfold
 
 A screen-reader accessibility mod for **Balatro**, built on the
 [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector) only (no
 Steamodded). It re-enables keyboard-driven focus navigation (which the release
 build disables) and speaks the focused element via a screen reader.
 
-Status: **skeleton** — proves the stack end to end (Lovely boot → Tolk speech →
-keyboard-driven focus navigation → focus announcements). Real text extraction
-and the non-focusable HUD readouts come next.
+What works today:
+- **Keyboard navigation** of the game's native focus system, with mouse-mode
+  lockout so focus stays put.
+- **Speech via Tolk** (LuaJIT FFI), with a log fallback when Tolk isn't present.
+- **Menus**: buttons, sliders, cycles, checkboxes, tabs — with their current
+  value spoken, and announced again when you change it. Control tooltips and
+  inline option-info are read too.
+- **Cards**: playing cards (rank + suit, plus enhancement / edition / seal /
+  debuff) and jokers / consumables (name + kind + edition, then the full ability
+  description).
+- **Localization** layer with game-language detection and English fallback.
 
 ## Layout
 
 ```
 src/            the mod itself (this folder is what gets linked into Mods/)
   lovely.toml   Lovely patches: register modules + boot after the Controller exists
-  core.lua      entry point: installs the focus + keyboard hooks
+  core.lua      entry point: keyboard + focus hooks, the per-frame focus tick
   speech.lua    Tolk (FFI) speech with a log fallback
+  loc/          localization manager + per-language string tables (en.lua)
+  ui/           proxy elements + announcement system (ported from SayTheSpire2)
   lib/          drop the x64 Tolk DLLs here (gitignored) — see lib/README.md
 scripts/
-  deploy.ps1    junctions src/ into %APPDATA%/Balatro/Mods/balatro-access
+  deploy.ps1    junctions src/ into %APPDATA%/Balatro/Mods/Blindfold
 game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
 ```
 
@@ -32,24 +42,25 @@ game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
    in `src/lib/` — see `src/lib/README.md`. Skip this and the mod still logs
    every announcement.
 3. **Deploy:** run `scripts/deploy.ps1` (junctions `src/` into the Mods folder).
-4. **Launch Balatro.** You should hear / see "Balatro Access loaded."
+4. **Launch Balatro.** You should hear / see "Blindfold loaded."
 
-## Controls (skeleton)
+## Controls
 
 | Key | Action |
 | --- | --- |
-| Arrow keys | Move focus (drives the game's native focus navigation) |
+| Arrow keys | Move focus / adjust the focused slider, cycle, or tab |
 | Enter | Select / activate focused element |
 | Backspace | Cancel / deselect |
 | Escape | (unchanged — game's pause / back) |
+| F8 | Debug: dump the focused control's UI tree to the log |
 
 ## Verifying without a screen reader
 
-Every announcement is appended to `%APPDATA%/Balatro/balatro-access.log`. Tail
-it while navigating the main menu to confirm focus changes are firing:
+Every announcement is appended to `%APPDATA%/Balatro/blindfold.log`. Tail it
+while navigating to confirm announcements are firing:
 
 ```powershell
-Get-Content "$env:APPDATA\Balatro\balatro-access.log" -Wait -Tail 20
+Get-Content "$env:APPDATA\Balatro\blindfold.log" -Wait -Tail 20
 ```
 
 ## Re-extracting game source
