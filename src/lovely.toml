@@ -1,0 +1,33 @@
+# balatro-access — Lovely patch manifest.
+# Registers the mod's Lua as requireable modules, then boots it once the
+# Controller exists. No Steamodded dependency — Lovely only.
+
+[manifest]
+version = "1.0.0"
+priority = 0
+
+# --- Register mod Lua as requireable modules. Lovely does NOT add the mod
+#     folder to the require path, so every file we `require` needs a module
+#     patch with an explicit name.
+[[patches]]
+[patches.module]
+source = "speech.lua"
+before = "main.lua"
+name = "balatro_access_speech"
+
+[[patches]]
+[patches.module]
+source = "core.lua"
+before = "main.lua"
+name = "balatro_access"
+
+# --- Boot once, immediately after the Controller is created in Game:start_up.
+#     At this point G, Card, localize, etc. all exist.
+[[patches]]
+[patches.pattern]
+target = "game.lua"
+pattern = "self.CONTROLLER = Controller()"
+position = "after"
+payload = "require('balatro_access')"
+match_indent = true
+times = 1

@@ -1,0 +1,20 @@
+# Extracted Balatro game source — copyrighted by the developer, kept as a
+# LOCAL reference only. Never commit game code.
+game_src/
+
+# Packaged mod build output
+*.zip
+
+# Third-party native libraries (Tolk + screen-reader clients) — drop locally,
+# don't commit binaries.
+src/lib/*.dll
+
+# Runtime log
+*.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+.vscode/
