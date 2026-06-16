@@ -8,12 +8,22 @@ local require = ...
 local Factory = require("ui.factory")
 local Message = require("ui.message")
 
-local M = { say = nil, _last_hand = nil, _last_score = nil, _cur_chips = nil, _cur_mult = nil }
+local M = { say = nil, settings = nil, _last_hand = nil, _last_score = nil, _cur_chips = nil, _cur_mult = nil }
 
 local function speak(text)
     if M.say and type(text) == "string" and text ~= "" then M.say(text) end
 end
 local function loc(key, vars) return Message.localized(key, vars):resolve() end
+
+-- Read a mod setting (or the default when the settings layer isn't loaded).
+local function setting(key, default)
+    local s = M.settings
+    if s and s.value then
+        local v = s.value(key)
+        if v ~= nil then return v end
+    end
+    return default
+end
 
 -- The card/joker a status text floats over, named via its focus proxy. Fully
 -- guarded: a failure here must never drop the announcement (it only drops the
@@ -42,6 +52,10 @@ end
 -- One scoring contribution (mirrors card_eval_status_text's own dispatch).
 function M.on_status(card, eval_type, amt, extra)
     if not card then return end
+    if not setting("scoring.enabled", true) then return end
+    local detail = setting("scoring.detail", "full")
+    if detail == "summary" then return end                          -- summary: no per-event detail
+    if detail == "jokers" and eval_type == "chips" then return end  -- jokers only: skip per-card chips
     local nonzero = (amt or 0) ~= 0
     local phrase
     if eval_type == "chips" then
@@ -80,6 +94,7 @@ end
 -- The hand name + base chips/mult on the play, and the final score.
 function M.on_hand_text(config, vals)
     if not vals then return end
+    if not setting("scoring.enabled", true) then return end
     -- The play call (config.immediate) carries the poker hand plus its base
     -- chips and mult; the lighter preview call while selecting carries just the
     -- name (so you hear the hand forming as you highlight cards).
@@ -90,7 +105,7 @@ function M.on_hand_text(config, vals)
         speak(loc("SCORING.HAND", { name = vals.handname, chips = vals.chips, mult = vals.mult }))
     elseif type(vals.handname) == "string" and vals.handname ~= "" and vals.handname ~= M._last_hand then
         M._last_hand = vals.handname
-        speak(vals.handname)
+        if setting("scoring.hand_preview", true) then speak(vals.handname) end
     end
     if vals.chip_total ~= nil and vals.chip_total ~= M._last_score then
         -- Final score. The same call resets chips/mult to 0, so report the

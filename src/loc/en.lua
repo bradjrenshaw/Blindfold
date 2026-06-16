@@ -82,4 +82,14 @@ return {
         TOTAL   = "{chips} chips times {mult} mult equals {score}",
         SCORE   = "{score}",
     },
+
+    -- Settings (the Blindfold tab in the game's Options screen).
+    SET = {
+        SCORING_ENABLED = "Announce scoring",
+        HAND_PREVIEW    = "Announce hand while selecting",
+        SCORING_DETAIL  = "Scoring detail",
+        DETAIL_FULL     = "Full",
+        DETAIL_JOKERS   = "Jokers only",
+        DETAIL_SUMMARY  = "Summary",
+    },
 }

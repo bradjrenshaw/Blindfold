@@ -77,6 +77,27 @@ do
         Scoring = ba_require("events.scoring")
         Scoring.say = speech.say
         BA.scoring = Scoring
+
+        -- Settings: registry + the native "Blindfold" tab in the Options screen.
+        local Settings = ba_require("settings.registry")
+        Settings.register{ key = "scoring.enabled",      type = "bool",   label_key = "SET.SCORING_ENABLED", default = true }
+        Settings.register{ key = "scoring.hand_preview", type = "bool",   label_key = "SET.HAND_PREVIEW",    default = true }
+        Settings.register{ key = "scoring.detail",       type = "choice", label_key = "SET.SCORING_DETAIL",  default = "full",
+            options = { "full", "jokers", "summary" },
+            labels  = { "SET.DETAIL_FULL", "SET.DETAIL_JOKERS", "SET.DETAIL_SUMMARY" } }
+        Settings.load()
+        BA.settings = Settings
+        Scoring.settings = Settings
+
+        local Menu = ba_require("settings.menu")
+        BA.settings_tab = Menu.settings_tab   -- referenced by the Options-tab patch
+
+        -- Choice (cycle) controls route their callback through here.
+        G.FUNCS.blindfold_cycle = function(a)
+            local key = a and a.cycle_config and a.cycle_config.blindfold_key
+            local s = key and Settings.by_key[key]
+            if s and a.to_key and s.options then Settings.on_change(key, s.options[a.to_key]) end
+        end
     end)
     if not ok then speech.log("Mod modules failed to load: " .. tostring(lerr)) end
 end

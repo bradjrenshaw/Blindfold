@@ -31,3 +31,13 @@ position = "after"
 payload = "require('blindfold')"
 match_indent = true
 times = 1
+
+# --- Inject a "Blindfold" tab into the game's Options screen.
+[[patches]]
+[patches.pattern]
+target = "functions/UI_definitions.lua"
+pattern = "local t = create_UIBox_generic_options({back_func = 'options',contents = {create_tabs("
+position = "before"
+payload = "if _G.Blindfold and _G.Blindfold.settings_tab then tabs[#tabs+1] = {label = 'Blindfold', tab_definition_function = function() return _G.Blindfold.settings_tab() end} end"
+match_indent = true
+times = 1
