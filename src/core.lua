@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input
+local Factory, Input, Scoring
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -73,6 +73,10 @@ do
             handler = function() Buffers.next_buffer() end, bindings = { kb.new("right", true) } }
         Input.register{ key = "buffer_prev", label_key = "INPUT.BUFFER_PREV",
             handler = function() Buffers.prev_buffer() end, bindings = { kb.new("left", true) } }
+
+        Scoring = ba_require("events.scoring")
+        Scoring.say = speech.say
+        BA.scoring = Scoring
     end)
     if not ok then speech.log("Mod modules failed to load: " .. tostring(lerr)) end
 end
@@ -197,6 +201,26 @@ function BA.install()
             orig_set_language(self)
             if BA.loc then
                 pcall(function() BA.loc.set_language(G.SETTINGS and G.SETTINGS.language) end)
+            end
+        end
+    end
+
+    -- 5) Announce the hand-scoring sequence (and other floating chips / mult /
+    --    joker feedback) by wrapping the two functions that produce it. These
+    --    fire as timed events, so the spoken sequence follows the animation.
+    if Scoring then
+        if card_eval_status_text then
+            local orig_status = card_eval_status_text
+            function card_eval_status_text(card, eval_type, amt, percent, dir, extra)
+                orig_status(card, eval_type, amt, percent, dir, extra)
+                pcall(Scoring.on_status, card, eval_type, amt, extra)
+            end
+        end
+        if update_hand_text then
+            local orig_hand = update_hand_text
+            function update_hand_text(config, vals)
+                orig_hand(config, vals)
+                pcall(Scoring.on_hand_text, config, vals)
             end
         end
     end

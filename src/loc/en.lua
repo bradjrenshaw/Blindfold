@@ -69,4 +69,17 @@ return {
         ANTE     = "Ante, {ante} of 8",
         ROUND    = "Round, {round}",
     },
+
+    -- Spoken hand-scoring sequence.
+    SCORING = {
+        HAND    = "{name}, {chips} chips, {mult} mult",
+        CHIPS   = "{amt} chips",
+        MULT    = "plus {amt} mult",
+        XMULT   = "times {amt} mult",
+        DOLLARS = "{amt} dollars",
+        DEBUFF  = "{source} debuffed",
+        SOURCE  = "{source}, {effect}",
+        TOTAL   = "{chips} chips times {mult} mult equals {score}",
+        SCORE   = "{score}",
+    },
 }
