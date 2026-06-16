@@ -8,6 +8,7 @@
 -- it's a stub that returns defaults, leaving the seam for a settings UI later.
 local require = ...
 local Message = require("ui.message")
+local Settings = require("settings.registry")
 
 local function msg(v) return type(v) == "string" and Message.raw(v) or v end
 
@@ -29,12 +30,17 @@ function A.description(v)  return { key = "description", suffix = "",  render = 
 -- Secondary help/info text on a control (e.g. an option's explanatory line).
 function A.extras(v)       return { key = "extras",      suffix = ",", render = function() return msg(v) end } end
 
--- Settings cascade stub. Everything is "enabled" with suffixes included until a
--- settings system exists; the seam keeps the composer/proxies unchanged then.
+-- Per-announcement settings: reads announce.<ann>.<setting> from the registry
+-- (e.g. announce.type.enabled). Unregistered keys fall back to the default, so
+-- announcements without a toggle stay on.
 local Context = {}
 Context.__index = Context
 function Context.new(element) return setmetatable({ element = element }, Context) end
-function Context:resolve_bool(_ann_key, _setting_key, default) return default end
+function Context:resolve_bool(ann_key, setting_key, default)
+    local v = Settings.value("announce." .. ann_key .. "." .. setting_key)
+    if v ~= nil then return v end
+    return default
+end
 
 local Composer = {}
 function Composer.compose(element, announcements)

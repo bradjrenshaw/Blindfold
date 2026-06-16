@@ -9,6 +9,7 @@ local class = require("ui.class")
 local Element = require("ui.element")
 local Message = require("ui.message")
 local A = require("ui.announce").A
+local Settings = require("settings.registry")
 
 -- ===================== Proxy base + text extraction =====================
 local Proxy = class(Element)
@@ -236,6 +237,14 @@ function Proxy:get_extras() return nil end
 -- game only populates one frame after focus.
 function Proxy:get_deferred() return nil end
 
+-- Whether an announcement type is enabled (announce.<key>.enabled in settings),
+-- defaulting on. Used for announcements that don't pass through the composer.
+function Proxy.announce_enabled(key)
+    local v = Settings.value("announce." .. key .. ".enabled")
+    if v ~= nil then return v end
+    return true
+end
+
 -- Default focus message: label, type, status, extras, tooltip (ordered by the
 -- element's announcement_order). Silent when there's no meaningful label.
 function Proxy:get_focus_announcements()
@@ -397,7 +406,10 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.facing == "back" then anns[#anns + 1] = A.status(Message.localized("CARD.FACE_DOWN")) end
     return anns
 end
-function ProxyPlayingCard:get_deferred() return Message.maybe_raw(Proxy.card_description(self.node)) end
+function ProxyPlayingCard:get_deferred()
+    if not Proxy.announce_enabled("description") then return nil end
+    return Message.maybe_raw(Proxy.card_description(self.node))
+end
 -- Selecting/deselecting (highlighting) a card re-announces just the new state.
 function ProxyPlayingCard:poll_value() return self.node.highlighted and true or false end
 function ProxyPlayingCard:get_value_message()
@@ -434,7 +446,10 @@ function ProxyJoker:get_focus_announcements()
     if node.debuff then anns[#anns + 1] = A.debuff() end
     return anns
 end
-function ProxyJoker:get_deferred() return Message.maybe_raw(Proxy.card_description(self.node)) end
+function ProxyJoker:get_deferred()
+    if not Proxy.announce_enabled("description") then return nil end
+    return Message.maybe_raw(Proxy.card_description(self.node))
+end
 function ProxyJoker:poll_value() return self.node.highlighted and true or false end
 function ProxyJoker:get_value_message()
     return Message.localized(self.node.highlighted and "CARD.SELECTED" or "CARD.DESELECTED")

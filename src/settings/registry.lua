@@ -13,6 +13,7 @@ function M.register(opts)
     local s = {
         key = opts.key, type = opts.type, label_key = opts.label_key,
         default = opts.default, options = opts.options, labels = opts.labels,
+        category = opts.category,
     }
     M.list[#M.list + 1] = s
     M.by_key[s.key] = s

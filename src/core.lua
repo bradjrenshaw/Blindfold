@@ -80,11 +80,17 @@ do
 
         -- Settings: registry + the native "Blindfold" tab in the Options screen.
         local Settings = ba_require("settings.registry")
-        Settings.register{ key = "scoring.enabled",      type = "bool",   label_key = "SET.SCORING_ENABLED", default = true }
-        Settings.register{ key = "scoring.hand_preview", type = "bool",   label_key = "SET.HAND_PREVIEW",    default = true }
-        Settings.register{ key = "scoring.detail",       type = "choice", label_key = "SET.SCORING_DETAIL",  default = "full",
+        Settings.register{ key = "scoring.enabled",      type = "bool",   label_key = "SET.SCORING_ENABLED", default = true,   category = "scoring" }
+        Settings.register{ key = "scoring.hand_preview", type = "bool",   label_key = "SET.HAND_PREVIEW",    default = true,   category = "scoring" }
+        Settings.register{ key = "scoring.detail",       type = "choice", label_key = "SET.SCORING_DETAIL",  default = "full", category = "scoring",
             options = { "full", "jokers", "summary" },
             labels  = { "SET.DETAIL_FULL", "SET.DETAIL_JOKERS", "SET.DETAIL_SUMMARY" } }
+        -- Per-announcement toggles (read by announce.Context / proxy descriptions).
+        Settings.register{ key = "announce.type.enabled",        type = "bool", label_key = "SET.ANN_TYPE",        default = true, category = "announce" }
+        Settings.register{ key = "announce.selected.enabled",    type = "bool", label_key = "SET.ANN_SELECTED",    default = true, category = "announce" }
+        Settings.register{ key = "announce.description.enabled", type = "bool", label_key = "SET.ANN_DESCRIPTION", default = true, category = "announce" }
+        Settings.register{ key = "announce.tooltip.enabled",     type = "bool", label_key = "SET.ANN_TOOLTIP",     default = true, category = "announce" }
+        Settings.register{ key = "announce.extras.enabled",      type = "bool", label_key = "SET.ANN_EXTRAS",      default = true, category = "announce" }
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings
@@ -102,6 +108,9 @@ do
         -- Keybindings sub-screen + rebind capture.
         G.FUNCS.blindfold_keybinds = function()
             G.FUNCS.overlay_menu{ definition = Menu.keybinds_uibox() }
+        end
+        G.FUNCS.blindfold_announcements = function()
+            G.FUNCS.overlay_menu{ definition = Menu.announcements_uibox() }
         end
         G.FUNCS.blindfold_rebind = function(e)
             local key = e and e.config and e.config.ref_table and e.config.ref_table.blindfold_action
