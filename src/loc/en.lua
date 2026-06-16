@@ -71,6 +71,13 @@ return {
         ROUND    = "Round, {round}",
     },
 
+    -- Blind select screen (Small / Big / Boss choices).
+    BLIND = {
+        REQUIREMENT = "score at least {amount}",
+        REWARD      = "reward {dollars} dollars",
+        SKIP        = "skip",
+    },
+
     -- Spoken hand-scoring sequence.
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",

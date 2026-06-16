@@ -654,9 +654,126 @@ function ProxyJoker:get_value_message()
     return Message.localized(self.node.highlighted and "CARD.SELECTED" or "CARD.DESELECTED")
 end
 
+-- Blind select screen: the Select and Skip buttons are the only focusable nodes,
+-- but each blind panel also shows the blind name, score requirement, reward,
+-- effect, and (for Small/Big) a skip tag. The Select button carries the blind
+-- config in config.ref_table; the Skip button carries its Tag. Read those for an
+-- accurate readout instead of scraping the panel.
+local BLIND_TYPES = { Small = true, Big = true, Boss = true }
+
+local function blind_panel_type(node)
+    local cur, up = node, 0
+    while cur and up < 8 do
+        local c = cur.config
+        if c and c.id and BLIND_TYPES[c.id] then return c.id end
+        cur, up = cur.parent, up + 1
+    end
+    return nil
+end
+
+local function blind_name(cfg)
+    if not cfg or not cfg.key then return nil end
+    local ok, n = pcall(localize, { type = "name_text", key = cfg.key, set = "Blind" })
+    if ok and type(n) == "string" and n ~= "" then return n end
+    return cfg.name
+end
+
+local function blind_requirement(cfg)
+    if not cfg or type(get_blind_amount) ~= "function" then return nil end
+    local ok, amt = pcall(function()
+        local rr = G.GAME and G.GAME.round_resets
+        local ante = (rr and (rr.blind_ante or rr.ante)) or 1
+        local scaling = (G.GAME and G.GAME.starting_params and G.GAME.starting_params.ante_scaling) or 1
+        return get_blind_amount(ante) * (cfg.mult or 1) * scaling
+    end)
+    if not ok or type(amt) ~= "number" then return nil end
+    local okf, s = pcall(number_format, amt)
+    return Message.localized("BLIND.REQUIREMENT", { amount = (okf and s) or tostring(amt) }):resolve()
+end
+
+local function blind_effect(cfg)
+    if not cfg or not cfg.key then return nil end
+    local hand = G.GAME and G.GAME.current_round and G.GAME.current_round.most_played_poker_hand
+    local vars = { (hand and Proxy.loc_str(hand, "poker_hands")) or "" }
+    local ok, lines = pcall(localize, { type = "raw_descriptions", key = cfg.key, set = "Blind", vars = vars })
+    if not ok or type(lines) ~= "table" then return nil end
+    local parts = {}
+    for _, ln in ipairs(lines) do if type(ln) == "string" and ln ~= "" then parts[#parts + 1] = ln end end
+    return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+-- A skip tag's description, via the game's own builder (mirrors a card's
+-- ability_UIBox_table). get_uibox_table populates it with the right loc vars.
+local function tag_description(tag)
+    if type(tag) ~= "table" or type(tag.get_uibox_table) ~= "function" then return nil end
+    local ok, sprite = pcall(function() return tag:get_uibox_table() end)
+    if not ok or type(sprite) ~= "table" then return nil end
+    return Proxy.card_description(sprite)
+end
+
+local ProxyBlind = class(Proxy)
+ProxyBlind.new = ctor(ProxyBlind)
+function ProxyBlind:blind_cfg()
+    local c = self.node.config
+    if c and c.button == "select_blind" and type(c.ref_table) == "table" then return c.ref_table end
+    local ty = blind_panel_type(self.node)
+    local rr = G and G.GAME and G.GAME.round_resets
+    local key = ty and rr and rr.blind_choices and rr.blind_choices[ty]
+    return key and G.P_BLINDS and G.P_BLINDS[key] or nil
+end
+function ProxyBlind:get_focus_announcements()
+    if self.node.config and self.node.config.button == "skip_blind" then
+        return self:skip_announcements()
+    end
+    return self:select_announcements()
+end
+function ProxyBlind:select_announcements()
+    local cfg = self:blind_cfg()
+    local anns = {}
+    local name = blind_name(cfg)
+    if name then anns[#anns + 1] = A.label(name) end
+    -- Action + requirement + reward go in status (always on); effect is gated.
+    local parts = {}
+    local action = Proxy.value_text(self.node)
+    if action then parts[#parts + 1] = action end
+    local req = blind_requirement(cfg)
+    if req then parts[#parts + 1] = req end
+    if cfg and type(cfg.dollars) == "number" and cfg.dollars > 0 then
+        parts[#parts + 1] = Message.localized("BLIND.REWARD", { dollars = tostring(cfg.dollars) }):resolve()
+    end
+    if #parts > 0 then anns[#anns + 1] = A.status(table.concat(parts, ", ")) end
+    if Proxy.announce_enabled("description") then
+        local eff = blind_effect(cfg)
+        if eff then anns[#anns + 1] = A.description(eff) end
+    end
+    return anns
+end
+function ProxyBlind:skip_announcements()
+    local anns = {}
+    local name = blind_name(self:blind_cfg())
+    if name then anns[#anns + 1] = A.label(name) end
+    local parts = { Message.localized("BLIND.SKIP"):resolve() }
+    local tag = self.node.config and self.node.config.ref_table
+    if type(tag) == "table" then
+        local tname
+        if tag.key then
+            local ok, n = pcall(localize, { type = "name_text", key = tag.key, set = "Tag" })
+            if ok and type(n) == "string" and n ~= "" then tname = n end
+        end
+        tname = tname or tag.name
+        if tname then parts[#parts + 1] = tname end
+    end
+    anns[#anns + 1] = A.status(table.concat(parts, ", "))
+    if Proxy.announce_enabled("description") and type(tag) == "table" then
+        local td = tag_description(tag)
+        if td then anns[#anns + 1] = A.description(td) end
+    end
+    return anns
+end
+
 return {
     Proxy = Proxy,
     Button = ProxyButton, Slider = ProxySlider, Cycle = ProxyCycle,
     Toggle = ProxyToggle, Tab = ProxyTab, Text = ProxyText, TextInput = ProxyTextInput,
-    PlayingCard = ProxyPlayingCard, Joker = ProxyJoker,
+    PlayingCard = ProxyPlayingCard, Joker = ProxyJoker, Blind = ProxyBlind,
 }
