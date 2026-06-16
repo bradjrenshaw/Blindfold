@@ -24,6 +24,7 @@ function A.enhancement(v)  return { key = "enhancement", suffix = ",", render = 
 function A.edition(v)      return { key = "edition",     suffix = ",", render = function() return msg(v) end } end
 function A.seal(v)         return { key = "seal",        suffix = ",", render = function() return msg(v) end } end
 function A.debuff()        return { key = "debuff",      suffix = ",", render = function() return Message.localized("CARD.DEBUFFED") end } end
+function A.selected()      return { key = "selected",    suffix = ",", render = function() return Message.localized("CARD.SELECTED") end } end
 function A.description(v)  return { key = "description", suffix = "",  render = function() return msg(v) end } end
 -- Secondary help/info text on a control (e.g. an option's explanatory line).
 function A.extras(v)       return { key = "extras",      suffix = ",", render = function() return msg(v) end } end

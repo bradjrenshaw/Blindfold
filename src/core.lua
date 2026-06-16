@@ -58,6 +58,21 @@ do
             handler = function() BA.dump_focus() end,
             bindings = { Input.KeyboardBinding.new("f8") } }
         BA.input = Input
+
+        -- Buffers: browsable review cursors over game state (Ctrl + arrows).
+        local Buffers = ba_require("buffers.manager")
+        Buffers.say = speech.say
+        Buffers.add(ba_require("buffers.game"))
+        BA.buffers = Buffers
+        local kb = Input.KeyboardBinding
+        Input.register{ key = "buffer_next_item", label_key = "INPUT.BUFFER_NEXT_ITEM",
+            handler = function() Buffers.next_item() end, bindings = { kb.new("up", true) } }
+        Input.register{ key = "buffer_prev_item", label_key = "INPUT.BUFFER_PREV_ITEM",
+            handler = function() Buffers.prev_item() end, bindings = { kb.new("down", true) } }
+        Input.register{ key = "buffer_next", label_key = "INPUT.BUFFER_NEXT",
+            handler = function() Buffers.next_buffer() end, bindings = { kb.new("right", true) } }
+        Input.register{ key = "buffer_prev", label_key = "INPUT.BUFFER_PREV",
+            handler = function() Buffers.prev_buffer() end, bindings = { kb.new("left", true) } }
     end)
     if not ok then speech.log("Mod modules failed to load: " .. tostring(lerr)) end
 end

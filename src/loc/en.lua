@@ -28,9 +28,11 @@ return {
 
     -- Playing cards and their modifiers.
     CARD = {
-        PLAYING   = "{rank} of {suit}",
-        DEBUFFED  = "debuffed",
-        FACE_DOWN = "face down",
+        PLAYING    = "{rank} of {suit}",
+        DEBUFFED   = "debuffed",
+        FACE_DOWN  = "face down",
+        SELECTED   = "selected",
+        DESELECTED = "deselected",
     },
     EDITION = {
         foil = "foil", holographic = "holographic",
@@ -47,5 +49,24 @@ return {
         SHOULDER_LEFT = "Sell / Previous Tab", SHOULDER_RIGHT = "Buy / Use / Next Tab",
         VIEW_DECK = "View Deck", RIGHT_TRIGGER = "Right Trigger",
         RUN_INFO = "Run Info", DEBUG_DUMP = "Debug: Dump Focus",
+        BUFFER_NEXT_ITEM = "Buffer: Next Item", BUFFER_PREV_ITEM = "Buffer: Previous Item",
+        BUFFER_NEXT = "Buffer: Next Buffer", BUFFER_PREV = "Buffer: Previous Buffer",
+    },
+
+    -- Buffer (review-cursor) readouts.
+    BUFFER = {
+        GAME = "Game",
+        NONE = "No buffers",
+        EMPTY = "{buffer} buffer is empty",
+        CURRENT = "{buffer}, {item}",
+    },
+    GAME = {
+        HANDS    = "Hands left, {count}",
+        DISCARDS = "Discards left, {count}",
+        MONEY    = "Money, {amount} dollars",
+        SCORE    = "Score, {score} of {req}",
+        BLIND    = "Blind, {name}",
+        ANTE     = "Ante, {ante} of 8",
+        ROUND    = "Round, {round}",
     },
 }

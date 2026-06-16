@@ -370,7 +370,7 @@ function ProxyText:get_label() return Message.maybe_raw(self.override_label or P
 -- / seal / debuff as modifiers. (Ability descriptions are a later pass.)
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
-ProxyPlayingCard.announcement_order = { "label", "type", "enhancement", "edition", "seal", "debuff", "description", "position" }
+ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "description", "position" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 function ProxyPlayingCard:get_label()
     local base = self.node.base
@@ -384,6 +384,7 @@ function ProxyPlayingCard:get_focus_announcements()
     if not label then return {} end
     local node = self.node
     local anns = { A.label(label), A.type(self.type_key) }
+    if node.highlighted then anns[#anns + 1] = A.selected() end
     local c = node.config and node.config.center
     if c and c.set == "Enhanced" and c.key ~= "c_base" then
         local name = Proxy.center_name(c) or c.name
@@ -397,6 +398,11 @@ function ProxyPlayingCard:get_focus_announcements()
     return anns
 end
 function ProxyPlayingCard:get_deferred() return Message.maybe_raw(Proxy.card_description(self.node)) end
+-- Selecting/deselecting (highlighting) a card re-announces just the new state.
+function ProxyPlayingCard:poll_value() return self.node.highlighted and true or false end
+function ProxyPlayingCard:get_value_message()
+    return Message.localized(self.node.highlighted and "CARD.SELECTED" or "CARD.DESELECTED")
+end
 
 -- Joker / consumable / voucher / booster: localized name + kind + edition.
 -- (Ability description text is the next pass.)
@@ -405,7 +411,7 @@ local SET_TO_TYPE = {
     Spectral = "spectral", Voucher = "voucher", Booster = "booster",
 }
 local ProxyJoker = class(Proxy)
-ProxyJoker.announcement_order = { "label", "type", "edition", "debuff", "description", "position" }
+ProxyJoker.announcement_order = { "label", "type", "selected", "edition", "debuff", "description", "position" }
 ProxyJoker.new = ctor(ProxyJoker)
 function ProxyJoker:get_label()
     local c = self.node.config and self.node.config.center
@@ -422,12 +428,17 @@ function ProxyJoker:get_focus_announcements()
     local set = node.ability and node.ability.set
     local tword = set and SET_TO_TYPE[set]
     if tword then anns[#anns + 1] = A.type(tword) end
+    if node.highlighted then anns[#anns + 1] = A.selected() end
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     return anns
 end
 function ProxyJoker:get_deferred() return Message.maybe_raw(Proxy.card_description(self.node)) end
+function ProxyJoker:poll_value() return self.node.highlighted and true or false end
+function ProxyJoker:get_value_message()
+    return Message.localized(self.node.highlighted and "CARD.SELECTED" or "CARD.DESELECTED")
+end
 
 return {
     Proxy = Proxy,
