@@ -21,9 +21,10 @@ return {
         SPECTRAL = "spectral",
         VOUCHER  = "voucher",
         BOOSTER  = "booster pack",
+        TEXT_FIELD = "text field",
     },
     STATUS = { ON = "on", OFF = "off" },
-    LABELS = { LOCKED = "locked" },
+    LABELS = { LOCKED = "locked", EMPTY = "empty" },
     POSITION = { OF = "{index} of {total}" },
 
     -- Playing cards and their modifiers.

@@ -31,6 +31,29 @@ local function walk(node, exclude, visit, depth)
     if kids then for _, c in ipairs(kids) do walk(c, exclude, visit, depth + 1) end end
 end
 
+-- A node that itself takes focus as an interactive control (mirrors the config
+-- side of Controller:is_node_focusable): a real focus widget, a button, or a
+-- force_focus node. Funnel wrappers (funnel_from) and decorative buttons
+-- (focus_args.type == 'none', e.g. cycle arrows) are not controls.
+local function node_is_control(n)
+    local c = n.config
+    if not c then return false end
+    if c.focus_args then
+        if c.focus_args.type == "none" or c.focus_args.funnel_from then return false end
+        return true
+    end
+    return (c.button or c.force_focus) and true or false
+end
+
+-- True when the subtree under `scope` (excluding the focused `node`) holds
+-- another interactive control. Such a `scope` is a shared container, not a
+-- caption group, so its static text must not be read as this control's label.
+function Proxy.has_other_control(scope, node)
+    local found = false
+    walk(scope, node, function(n) if not found and node_is_control(n) then found = true end end)
+    return found
+end
+
 -- Literal caption text (G.UIT.T with a plain config.text, no ref binding).
 function Proxy.static_text(node, exclude)
     local parts = {}
@@ -63,6 +86,109 @@ function Proxy.value_text(node, exclude)
     return #parts > 0 and table.concat(parts, " ") or nil
 end
 
+-- Some cycles carry a raw option value that isn't meaningful spoken aloud,
+-- keyed by the cycle's opt_callback. The stake selector's options are stake
+-- levels (1..8); speak the localized stake name ("White Stake") instead.
+local CYCLE_VALUE_FORMAT = {
+    change_stake = function(v)
+        local n = tonumber(v)
+        local pool = G and G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
+        local center = n and pool and pool[n]
+        if center and center.key then
+            local ok, name = pcall(localize, { type = "name_text", set = "Stake", key = center.key })
+            if ok and type(name) == "string" and name ~= "" then return name end
+        end
+        return tostring(v)
+    end,
+}
+
+-- A cycle's current option value, read from its args table (current_option_val).
+-- Works even for cycles with a custom `mid` (deck/stake selectors) that have no
+-- DynaText to read. The cycle's args also carry opt_callback, so a few cycles
+-- map their raw value to a friendlier spoken form (see CYCLE_VALUE_FORMAT).
+function Proxy.cycle_value(node)
+    local val, args
+    walk(node, nil, function(n)
+        local c = n.config
+        if not args and c and type(c.ref_table) == "table" and c.ref_table.current_option_val ~= nil then
+            args, val = c.ref_table, c.ref_table.current_option_val
+        end
+    end)
+    if val == nil then return nil end
+    local fmt = args and args.opt_callback and CYCLE_VALUE_FORMAT[args.opt_callback]
+    return fmt and fmt(val) or tostring(val)
+end
+
+-- A few selectors (deck / stake) show an effect description in their preview
+-- pane that we skip when reading the value. Re-derive that text from the game's
+-- own builders (rather than scraping the live preview subtree), keyed by the
+-- cycle's opt_callback. Returns the description string, or nil.
+local function deck_description()
+    local back = G and G.GAME and G.GAME.viewed_back
+    if not back or not back.generate_UI then return nil end
+    local ok, def = pcall(function() return back:generate_UI() end)
+    if not ok or type(def) ~= "table" then return nil end
+    local parts = {}
+    Proxy.collect_def_text(def, parts)
+    return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+local function stake_description()
+    local n = G and G.viewed_stake
+    local pool = G and G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
+    local center = n and pool and pool[n]
+    if not center or not center.key then return nil end
+    local nodes = {}
+    local ok = pcall(localize, { type = "descriptions", key = center.key, set = "Stake", nodes = nodes })
+    if not ok then return nil end
+    local parts = {}
+    Proxy.collect_def_text(nodes, parts)
+    return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+local CYCLE_DESCRIPTION = {
+    change_viewed_back = deck_description,
+    change_stake = stake_description,
+}
+
+function Proxy.cycle_description(node)
+    local args
+    walk(node, nil, function(n)
+        local c = n.config
+        if not args and c and type(c.ref_table) == "table" and c.ref_table.current_option_val ~= nil then
+            args = c.ref_table
+        end
+    end)
+    local fn = args and args.opt_callback and CYCLE_DESCRIPTION[args.opt_callback]
+    return fn and fn() or nil
+end
+
+-- Whether the focused selector's current option is locked. A locked deck still
+-- cycles into view but shows its unlock requirement instead of its effect, so we
+-- flag the locked state for context. (Stakes on the selector are all
+-- selectable, so there's nothing to flag.)
+local function deck_locked()
+    local back = G and G.GAME and G.GAME.viewed_back
+    local center = back and back.effect and back.effect.center
+    return center ~= nil and not center.unlocked
+end
+
+local CYCLE_LOCKED = {
+    change_viewed_back = deck_locked,
+}
+
+function Proxy.cycle_locked(node)
+    local args
+    walk(node, nil, function(n)
+        local c = n.config
+        if not args and c and type(c.ref_table) == "table" and c.ref_table.current_option_val ~= nil then
+            args = c.ref_table
+        end
+    end)
+    local fn = args and args.opt_callback and CYCLE_LOCKED[args.opt_callback]
+    return fn and fn() or false
+end
+
 -- Static + value combined (generic fallback label).
 function Proxy.all_text(node)
     local s, v = Proxy.static_text(node), Proxy.value_text(node)
@@ -77,6 +203,10 @@ function Proxy.label_above(node, max_up)
     max_up = max_up or 4
     local cur, up = node.parent, 0
     while cur and up < max_up do
+        -- Don't climb into a container shared with other controls — its text
+        -- belongs to those siblings, not to us (e.g. the deck cycle would
+        -- otherwise grab the "Seeded Run" / "Play" captions from the ROOT).
+        if Proxy.has_other_control(cur, node) then break end
         local t = Proxy.static_text(cur, node)
         if t then return t end
         cur, up = cur.parent, up + 1
@@ -179,6 +309,7 @@ function Proxy.captioned_scope(node, max_up)
     max_up = max_up or 4
     local cur, up = node.parent, 0
     while cur and up < max_up do
+        if Proxy.has_other_control(cur, node) then return nil, {} end
         local list = Proxy.static_text_list(cur, node)
         if #list > 0 then return cur, list end
         cur, up = cur.parent, up + 1
@@ -249,10 +380,13 @@ end
 -- element's announcement_order). Silent when there's no meaningful label.
 function Proxy:get_focus_announcements()
     local label = self:get_label()
-    if not label then return {} end
-    local anns = { A.label(label) }
-    if self.type_key then anns[#anns + 1] = A.type(self.type_key) end
     local status = self:get_status()
+    -- Stay silent only when there's truly nothing — a value control with a value
+    -- but no label (e.g. the deck selector) should still announce.
+    if not label and not status then return {} end
+    local anns = {}
+    if label then anns[#anns + 1] = A.label(label) end
+    if self.type_key then anns[#anns + 1] = A.type(self.type_key) end
     if status then anns[#anns + 1] = A.status(status) end
     local extras = self:get_extras()
     if extras then anns[#anns + 1] = A.extras(extras) end
@@ -304,14 +438,44 @@ local ProxyCycle = class(Proxy)
 ProxyCycle.type_key = "cycle"
 ProxyCycle.new = ctor(ProxyCycle)
 function ProxyCycle:get_label() return Message.maybe_raw(self.override_label or Proxy.label_above(self.node)) end
-function ProxyCycle:get_status() return Message.maybe_raw(Proxy.value_text(self.node)) end
-function ProxyCycle:poll_value() return Proxy.value_text(self.node) end
+function ProxyCycle:get_status() return Message.maybe_raw(Proxy.cycle_value(self.node) or Proxy.value_text(self.node)) end
+function ProxyCycle:poll_value() return Proxy.cycle_value(self.node) or Proxy.value_text(self.node) end
 function ProxyCycle:get_extras()
     local _, list = Proxy.captioned_scope(self.node)
     if #list <= 1 then return nil end
     local extra = {}
     for i = 2, #list do extra[#extra + 1] = list[i] end
     return Message.raw(table.concat(extra, ". "))
+end
+-- Flag a locked option (e.g. a locked deck) after the value. The locked state
+-- itself is always announced — knowing a deck is locked matters even with
+-- descriptions off — while the requirement text rides along as the description.
+function ProxyCycle:get_focus_announcements()
+    local anns = Proxy.get_focus_announcements(self)
+    if Proxy.cycle_locked(self.node) then anns[#anns + 1] = A.locked() end
+    return anns
+end
+-- Deck / stake selectors carry an effect description in their preview pane.
+-- Speak it after the value on focus (deferred), and again whenever the option
+-- changes, so cycling reveals each deck's / stake's effect. Gated by the
+-- "Announce descriptions" setting.
+function ProxyCycle:get_deferred()
+    if not Proxy.announce_enabled("description") then return nil end
+    return Message.maybe_raw(Proxy.cycle_description(self.node))
+end
+function ProxyCycle:get_value_message()
+    local name = Proxy.cycle_value(self.node) or Proxy.value_text(self.node)
+    if not name then return nil end
+    local out = name
+    if Proxy.cycle_locked(self.node) then
+        local lk = Message.localized("LABELS.LOCKED"):resolve()
+        if lk and lk ~= "" then out = out .. ", " .. lk end
+    end
+    if Proxy.announce_enabled("description") then
+        local desc = Proxy.cycle_description(self.node)
+        if desc then out = out .. ". " .. desc end
+    end
+    return Message.raw(out)
 end
 
 local ProxyToggle = class(Proxy)
@@ -374,6 +538,41 @@ local ProxyText = class(Proxy)
 ProxyText.type_key = nil
 ProxyText.new = ctor(ProxyText)
 function ProxyText:get_label() return Message.maybe_raw(self.override_label or Proxy.all_text(self.node)) end
+
+-- Text input field (create_text_input, button='select_text_input'). Reads its
+-- prompt + current value rather than the raw per-letter nodes. The args table
+-- (with .text, .ref_table/.ref_value, .prompt_text) is on the inner rows.
+local function textinput_args(node)
+    local found
+    walk(node, nil, function(n)
+        local c = n.config
+        if not found and c and type(c.ref_table) == "table"
+           and type(c.ref_table.text) == "table" and c.ref_table.ref_value ~= nil then
+            found = c.ref_table
+        end
+    end)
+    return found
+end
+
+local ProxyTextInput = class(Proxy)
+ProxyTextInput.type_key = "text_field"
+ProxyTextInput.new = ctor(ProxyTextInput)
+function ProxyTextInput:get_label()
+    local args = textinput_args(self.node)
+    return Message.maybe_raw(self.override_label or (args and args.prompt_text and tostring(args.prompt_text)))
+end
+function ProxyTextInput:get_status()
+    local args = textinput_args(self.node)
+    if not args or type(args.ref_table) ~= "table" then return nil end
+    local val = args.ref_table[args.ref_value]
+    if type(val) == "string" and val ~= "" then return Message.raw(val) end
+    return Message.localized("LABELS.EMPTY")
+end
+function ProxyTextInput:poll_value()
+    local args = textinput_args(self.node)
+    if not args or type(args.ref_table) ~= "table" then return nil end
+    return args.ref_table[args.ref_value]
+end
 
 -- Playing card: identity is rank + suit (card.base), with enhancement / edition
 -- / seal / debuff as modifiers. (Ability descriptions are a later pass.)
@@ -458,6 +657,6 @@ end
 return {
     Proxy = Proxy,
     Button = ProxyButton, Slider = ProxySlider, Cycle = ProxyCycle,
-    Toggle = ProxyToggle, Tab = ProxyTab, Text = ProxyText,
+    Toggle = ProxyToggle, Tab = ProxyTab, Text = ProxyText, TextInput = ProxyTextInput,
     PlayingCard = ProxyPlayingCard, Joker = ProxyJoker,
 }
