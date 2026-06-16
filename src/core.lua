@@ -78,6 +78,11 @@ do
         Scoring.say = speech.say
         BA.scoring = Scoring
 
+        -- Round actions: speak plays / discards (and how many remain).
+        local Round = ba_require("events.round")
+        Round.say = speech.say
+        BA.round = Round
+
         -- Settings: registry + the native "Blindfold" tab in the Options screen.
         local Settings = ba_require("settings.registry")
         Settings.register{ key = "scoring.enabled",      type = "bool",   label_key = "SET.SCORING_ENABLED", default = true,   category = "scoring" }
@@ -85,6 +90,7 @@ do
         Settings.register{ key = "scoring.detail",       type = "choice", label_key = "SET.SCORING_DETAIL",  default = "full", category = "scoring",
             options = { "full", "jokers", "summary" },
             labels  = { "SET.DETAIL_FULL", "SET.DETAIL_JOKERS", "SET.DETAIL_SUMMARY" } }
+        Settings.register{ key = "round.actions",        type = "bool",   label_key = "SET.ROUND_ACTIONS",   default = true,   category = "scoring" }
         -- Per-announcement toggles (read by announce.Context / proxy descriptions).
         Settings.register{ key = "announce.type.enabled",        type = "bool", label_key = "SET.ANN_TYPE",        default = true, category = "announce" }
         Settings.register{ key = "announce.selected.enabled",    type = "bool", label_key = "SET.ANN_SELECTED",    default = true, category = "announce" }
@@ -94,6 +100,7 @@ do
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings
+        Round.settings = Settings
 
         local Menu = ba_require("settings.menu")
         BA.settings_tab = Menu.settings_tab   -- referenced by the Options-tab patch
@@ -277,6 +284,26 @@ function BA.install()
             function update_hand_text(config, vals)
                 orig_hand(config, vals)
                 pcall(Scoring.on_hand_text, config, vals)
+            end
+        end
+    end
+
+    -- 6) Announce play / discard actions with the hands / discards remaining, by
+    --    wrapping the two FUNCS the play/discard buttons invoke.
+    if BA.round and G and G.FUNCS then
+        local Round = BA.round
+        if G.FUNCS.play_cards_from_highlighted then
+            local orig_play = G.FUNCS.play_cards_from_highlighted
+            G.FUNCS.play_cards_from_highlighted = function(e)
+                orig_play(e)
+                pcall(Round.on_play)
+            end
+        end
+        if G.FUNCS.discard_cards_from_highlighted then
+            local orig_discard = G.FUNCS.discard_cards_from_highlighted
+            G.FUNCS.discard_cards_from_highlighted = function(e, hook)
+                orig_discard(e, hook)
+                pcall(Round.on_discard, hook)
             end
         end
     end

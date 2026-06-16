@@ -78,6 +78,12 @@ return {
         SKIP        = "skip",
     },
 
+    -- In-round play / discard feedback.
+    ROUND = {
+        HAND_PLAYED = "Hand played, {count} hands remaining",
+        DISCARDED   = "Discarded, {count} discards remaining",
+    },
+
     -- Spoken hand-scoring sequence.
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
@@ -99,6 +105,7 @@ return {
         DETAIL_FULL     = "Full",
         DETAIL_JOKERS   = "Jokers only",
         DETAIL_SUMMARY  = "Summary",
+        ROUND_ACTIONS   = "Announce plays and discards",
         KEYBINDS        = "Keybindings",
         ANNOUNCEMENTS   = "Announcements",
         PRESS_KEY       = "Press a key for {action}",
