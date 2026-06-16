@@ -7,7 +7,7 @@
 
 local speech = require("blindfold_speech")
 
-local BA = { _installed = false, kb_active = false, lock_focus_mode = true }
+local BA = { _installed = false }
 _G.Blindfold = BA   -- expose for the in-game console / debugging
 
 local MOD_DIR = love.filesystem.getSaveDirectory() .. "/Mods/Blindfold"
@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory
+local Factory, Input
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -50,8 +50,16 @@ do
         BA.loc.init(G and G.SETTINGS and G.SETTINGS.language)
         Message.set_resolver(BA.loc.get)
         Factory = ba_require("ui.factory")
+
+        Input = ba_require("input.manager")
+        Input.init()
+        Input.silence = speech.silence
+        Input.register{ key = "dump_focus", label_key = "INPUT.DEBUG_DUMP",
+            handler = function() BA.dump_focus() end,
+            bindings = { Input.KeyboardBinding.new("f8") } }
+        BA.input = Input
     end)
-    if not ok then speech.log("UI modules failed to load: " .. tostring(lerr)) end
+    if not ok then speech.log("Mod modules failed to load: " .. tostring(lerr)) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -119,35 +127,11 @@ function BA.dump_focus()
 end
 
 -- ---------------------------------------------------------------------------
--- Keyboard -> controller buttons
--- The release build disables the keyboard->gamepad path (it forces mouse mode),
--- so the engine's focus navigation is unreachable from the keyboard. We re-wire
--- the nav keys to the controller buttons the engine already navigates with, and
--- drive them through the engine's own update loop (so sliders, tabs, the button
--- registry, hold-to-repeat, etc. all keep working natively).
+-- Keyboard handling lives in the InputAction layer (input/manager.lua): it maps
+-- keys to the gamepad buttons the engine already navigates with (the release
+-- build disables the keyboard->gamepad path), and the engine routes them by
+-- context. The hooks below just forward to it.
 -- ---------------------------------------------------------------------------
-local KEY_TO_BUTTON = {
-    up = "dpup", down = "dpdown", left = "dpleft", right = "dpright",
-    ["return"] = "a", kpenter = "a", backspace = "b",
-}
-
--- Point the controller at the engine's built-in keyboard "gamepad" (its axes
--- return 0, so update_axis won't crash or inject phantom stick input). set_gamepad
--- touches asset atlases that may not exist at boot, so guard it; object is set
--- regardless so update_axis always has something safe to poll.
-local function ensure_gamepad(ctrl)
-    if ctrl.GAMEPAD.object ~= ctrl.keyboard_controller then
-        pcall(function() ctrl:set_gamepad(ctrl.keyboard_controller) end)
-        ctrl.GAMEPAD.object = ctrl.keyboard_controller
-    end
-end
-
-local function ensure_kb_nav(ctrl)
-    ensure_gamepad(ctrl)
-    ctrl:set_HID_flags("button")   -- force focus-navigation (controller) mode
-    BA.kb_active = true
-end
-
 function BA.install()
     if BA._installed then return end
     BA._installed = true
@@ -159,26 +143,21 @@ function BA.install()
         pcall(BA.focus_tick, self)
     end
 
-    -- 2) Drive focus navigation from the keyboard.
+    -- 2) Drive the engine from the keyboard via the InputAction layer.
     local orig_key_press = Controller.key_press
     function Controller:key_press(key)
-        if key == "f8" then BA.dump_focus(); return end   -- debug: dump focused control tree
-        local button = KEY_TO_BUTTON[key]
-        if button then
-            speech.silence()   -- keep nav and value-scrubbing responsive (don't backlog)
-            ensure_kb_nav(self)
-            self:button_press(button)
-            return
+        if Input then
+            local ok, consumed = pcall(Input.on_key_down, self, key)
+            if ok and consumed then return end
         end
         return orig_key_press(self, key)
     end
 
     local orig_key_release = Controller.key_release
     function Controller:key_release(key)
-        local button = KEY_TO_BUTTON[key]
-        if button then
-            self:button_release(button)
-            return
+        if Input then
+            local ok, consumed = pcall(Input.on_key_up, self, key)
+            if ok and consumed then return end
         end
         return orig_key_release(self, key)
     end
@@ -189,7 +168,7 @@ function BA.install()
     --    mouse, the focused node stops colliding, and focus is lost.
     local orig_set_HID = Controller.set_HID_flags
     function Controller:set_HID_flags(HID_type, button)
-        if BA.lock_focus_mode and BA.kb_active
+        if Input and Input.lock_focus_mode and Input.kb_active
            and (HID_type == "mouse" or HID_type == "touch" or HID_type == "axis_cursor") then
             HID_type = "button"
         end

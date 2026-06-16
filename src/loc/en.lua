@@ -37,4 +37,15 @@ return {
         polychrome = "polychrome", negative = "negative",
     },
     SEAL = { GOLD = "gold seal", RED = "red seal", BLUE = "blue seal", PURPLE = "purple seal" },
+
+    -- Input action labels (shown in the future rebinding settings menu).
+    INPUT = {
+        NAV_UP = "Navigate Up", NAV_DOWN = "Navigate Down",
+        NAV_LEFT = "Navigate Left", NAV_RIGHT = "Navigate Right",
+        SELECT = "Select / Confirm", BACK = "Back / Deselect",
+        PLAY_HAND = "Play Hand", DISCARD = "Discard",
+        SHOULDER_LEFT = "Sell / Previous Tab", SHOULDER_RIGHT = "Buy / Use / Next Tab",
+        VIEW_DECK = "View Deck", RIGHT_TRIGGER = "Right Trigger",
+        RUN_INFO = "Run Info", DEBUG_DUMP = "Debug: Dump Focus",
+    },
 }
