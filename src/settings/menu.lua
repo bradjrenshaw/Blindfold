@@ -5,6 +5,7 @@
 local require = ...
 local Settings = require("settings.registry")
 local Message = require("ui.message")
+local Input = require("input.manager")
 
 local M = {}
 
@@ -12,6 +13,11 @@ local function loc(key) return Message.localized(key):resolve() end
 
 local function build()
     local nodes = {}
+    -- Keybindings open in their own sub-screen (button at the top of the tab).
+    nodes[#nodes + 1] = { n = G.UIT.R, config = { align = "cm", padding = 0.1 }, nodes = {
+        UIBox_button({ label = { loc("SET.KEYBINDS") }, button = "blindfold_keybinds",
+            minw = 4, minh = 0.6, scale = 0.5, colour = G.C.BLUE }),
+    } }
     for _, s in ipairs(Settings.list) do
         if s.type == "bool" then
             nodes[#nodes + 1] = create_toggle({
@@ -49,6 +55,27 @@ function M.settings_tab()
             { n = G.UIT.T, config = { text = "Blindfold settings unavailable", scale = 0.4, colour = G.C.UI.TEXT_LIGHT } },
         } },
     } }
+end
+
+-- The keybindings sub-screen: a single linear column of rebind buttons (one per
+-- input action) — easiest to navigate by ear. Rows are compact so they fit on
+-- screen (off-screen rows wouldn't be focusable). Opened via
+-- G.FUNCS.blindfold_keybinds (overlay_menu); back returns to Options.
+function M.keybinds_uibox()
+    local rows = {}
+    for _, a in ipairs(Input.actions or {}) do
+        local label = (a.label_key and loc(a.label_key)) or a.key
+        rows[#rows + 1] = { n = G.UIT.R, config = { align = "cm", padding = 0.02 }, nodes = {
+            UIBox_button({
+                label = { label .. ": " .. a:bindings_display() },
+                button = "blindfold_rebind",
+                ref_table = { blindfold_action = a.key },
+                minw = 5, minh = 0.4, scale = 0.3, colour = G.C.GREY,
+            }),
+        } }
+    end
+    local content = { n = G.UIT.C, config = { align = "cm", padding = 0.02 }, nodes = rows }
+    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
 end
 
 return M

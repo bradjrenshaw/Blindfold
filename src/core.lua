@@ -98,6 +98,32 @@ do
             local s = key and Settings.by_key[key]
             if s and a.to_key and s.options then Settings.on_change(key, s.options[a.to_key]) end
         end
+
+        -- Keybindings sub-screen + rebind capture.
+        G.FUNCS.blindfold_keybinds = function()
+            G.FUNCS.overlay_menu{ definition = Menu.keybinds_uibox() }
+        end
+        G.FUNCS.blindfold_rebind = function(e)
+            local key = e and e.config and e.config.ref_table and e.config.ref_table.blindfold_action
+            local action = key and Input.find(key)
+            if not action then return end
+            local label = (action.label_key and Message.localized(action.label_key):resolve()) or action.key
+            speech.say(Message.localized("SET.PRESS_KEY", { action = label }):resolve())
+            Input.start_listening(function(binding)
+                if binding.key == "escape" then
+                    speech.say(Message.localized("SET.CANCELLED"):resolve())
+                else
+                    action.bindings = { binding }
+                    Input.save_bindings()
+                    speech.say(Message.localized("SET.BOUND", { action = label, key = binding:display() }):resolve())
+                end
+                -- Rebuild the screen (deferred out of the input event).
+                G.E_MANAGER:add_event(Event({ blocking = false, blockable = false,
+                    func = function() G.FUNCS.blindfold_keybinds(); return true end }))
+            end)
+        end
+
+        Input.load_bindings()   -- apply saved rebinds over the defaults
     end)
     if not ok then speech.log("Mod modules failed to load: " .. tostring(lerr)) end
 end

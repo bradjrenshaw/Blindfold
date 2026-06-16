@@ -91,5 +91,9 @@ return {
         DETAIL_FULL     = "Full",
         DETAIL_JOKERS   = "Jokers only",
         DETAIL_SUMMARY  = "Summary",
+        KEYBINDS        = "Keybindings",
+        PRESS_KEY       = "Press a key for {action}",
+        BOUND           = "{action} bound to {key}",
+        CANCELLED       = "Rebinding cancelled",
     },
 }

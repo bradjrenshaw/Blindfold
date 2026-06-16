@@ -9,6 +9,10 @@ local require = ...
 local KeyboardBinding = require("input.binding")
 local InputAction = require("input.action")
 
+-- Modifier keys, skipped during rebind capture so combos (e.g. Ctrl+X) bind on
+-- the X press with Ctrl folded into the held state.
+local MODIFIER_KEYS = { lctrl = true, rctrl = true, lshift = true, rshift = true, lalt = true, ralt = true }
+
 local M = {
     actions = {},
     by_key = {},
@@ -53,12 +57,15 @@ end
 -- Returns true if the key was consumed (the caller then suppresses the game's
 -- own handling of it).
 function M.on_key_down(ctrl, key)
-    -- Rebind capture for the settings menu: the next keypress becomes a binding.
+    -- Rebind capture for the settings menu: the next non-modifier keypress
+    -- becomes a binding (held modifiers are folded in).
     if M._listen_cb then
-        local cb = M._listen_cb
-        M._listen_cb = nil
-        local mods = mods_from(ctrl)
-        cb(KeyboardBinding.new(key, mods.ctrl, mods.shift, mods.alt))
+        if not MODIFIER_KEYS[key] then
+            local cb = M._listen_cb
+            M._listen_cb = nil
+            local mods = mods_from(ctrl)
+            cb(KeyboardBinding.new(key, mods.ctrl, mods.shift, mods.alt))
+        end
         return true
     end
     -- Let the game's text fields (seed / profile name) receive keys untouched.
@@ -135,6 +142,55 @@ function M.init()
     reg("view_deck",      "INPUT.VIEW_DECK",      "triggerleft",   { "q" })
     reg("right_trigger",  "INPUT.RIGHT_TRIGGER",  "triggerright",  { "e" })
     reg("run_info",       "INPUT.RUN_INFO",       "back",          { "tab" })
+end
+
+-- ---- Persistence of rebound keys (blindfold_keybinds.lua in the save dir) ----
+local function ser(v)
+    local t = type(v)
+    if t == "string" then return string.format("%q", v)
+    elseif t == "boolean" or t == "number" then return tostring(v)
+    elseif t == "table" then
+        local parts, arr = {}, #v > 0
+        for k, val in pairs(v) do
+            if arr and type(k) == "number" then parts[#parts + 1] = ser(val)
+            else parts[#parts + 1] = "[" .. ser(k) .. "]=" .. ser(val) end
+        end
+        return "{" .. table.concat(parts, ",") .. "}"
+    end
+    return "nil"
+end
+
+function M.save_bindings()
+    local map = {}
+    for _, a in ipairs(M.actions) do
+        local binds = {}
+        for _, b in ipairs(a.bindings) do
+            binds[#binds + 1] = { key = b.key, ctrl = b.ctrl, shift = b.shift, alt = b.alt }
+        end
+        map[a.key] = binds
+    end
+    pcall(function() love.filesystem.write("blindfold_keybinds.lua", "return " .. ser(map)) end)
+end
+
+function M.load_bindings()
+    pcall(function()
+        local data = love.filesystem.read("blindfold_keybinds.lua")
+        if not data then return end
+        local chunk = load(data, "@blindfold_keybinds.lua")
+        local map = chunk and chunk()
+        if type(map) ~= "table" then return end
+        for _, a in ipairs(M.actions) do
+            local saved = map[a.key]
+            if type(saved) == "table" then
+                a.bindings = {}
+                for _, b in ipairs(saved) do
+                    if type(b) == "table" and type(b.key) == "string" then
+                        a.bindings[#a.bindings + 1] = KeyboardBinding.new(b.key, b.ctrl, b.shift, b.alt)
+                    end
+                end
+            end
+        end
+    end)
 end
 
 return M
