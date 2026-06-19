@@ -22,14 +22,16 @@ end
 local function area_key(area)
     if not area or not G then return nil end
     if area == G.hand then return "HAND"
-    elseif area == G.jokers then return "JOKERS"
+    -- The shop's for-sale cards read as "Jokers" too; the "Shop" screen title
+    -- (announced on entry) is what disambiguates them from your owned jokers.
+    elseif area == G.jokers or area == G.shop_jokers then return "JOKERS"
     elseif area == G.consumeables then return "CONSUMABLES"
-    elseif area == G.shop_jokers then return "SHOP"
     elseif area == G.shop_vouchers then return "VOUCHERS"
-    elseif area == G.shop_booster then return "BOOSTERS"
-    elseif area == G.pack_cards then return "PACK"
+    elseif area == G.shop_booster then return "PACKS"
     elseif area == G.deck then return "DECK"
     elseif area == G.play then return "PLAYED"
+    -- Cards inside an opened booster pack have no row label — the "Booster pack"
+    -- screen title already orients you (one row of choices).
     end
     return nil
 end

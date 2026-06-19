@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring, Containers
+local Factory, Input, Scoring, Containers, Screens
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -52,6 +52,10 @@ do
         Factory = ba_require("ui.factory")
         Containers = ba_require("ui.containers")
         BA.containers = Containers
+        Screens = ba_require("ui.screens")
+        Screens.say = speech.say
+        Screens.containers = Containers
+        BA.screens = Screens
 
         Input = ba_require("input.manager")
         Input.init()
@@ -104,6 +108,7 @@ do
         Settings.register{ key = "announce.extras.enabled",      type = "bool", label_key = "SET.ANN_EXTRAS",      default = true, category = "announce" }
         Settings.register{ key = "announce.position.enabled",    type = "bool", label_key = "SET.ANN_POSITION",    default = true, category = "announce" }
         Settings.register{ key = "announce.container.enabled",   type = "bool", label_key = "SET.ANN_CONTAINER",   default = true, category = "announce" }
+        Settings.register{ key = "announce.screen.enabled",      type = "bool", label_key = "SET.ANN_SCREEN",      default = true, category = "announce" }
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings
@@ -119,12 +124,15 @@ do
             if s and a.to_key and s.options then Settings.on_change(key, s.options[a.to_key]) end
         end
 
-        -- Keybindings sub-screen + rebind capture.
+        -- Keybindings sub-screen + rebind capture. Tag the overlay so the screen
+        -- tracker names it directly instead of scraping a title.
         G.FUNCS.blindfold_keybinds = function()
             G.FUNCS.overlay_menu{ definition = Menu.keybinds_uibox() }
+            if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.KEYBINDS" end
         end
         G.FUNCS.blindfold_announcements = function()
             G.FUNCS.overlay_menu{ definition = Menu.announcements_uibox() }
+            if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.ANNOUNCEMENTS" end
         end
         G.FUNCS.blindfold_rebind = function(e)
             local key = e and e.config and e.config.ref_table and e.config.ref_table.blindfold_action
@@ -171,6 +179,9 @@ end
 -- ---------------------------------------------------------------------------
 local _focus_node, _focus_proxy, _last_value, _deferred_done
 function BA.focus_tick(ctrl)
+    -- Screen-change detection first: it resets the container context so the new
+    -- screen's first focus re-announces its row, and speaks the screen title.
+    if Screens then pcall(Screens.tick) end
     local t = ctrl and ctrl.focused and ctrl.focused.target
     if t ~= _focus_node then
         _focus_node, _focus_proxy, _last_value, _deferred_done = t, nil, nil, false

@@ -27,15 +27,25 @@ return {
     LABELS = { LOCKED = "locked", EMPTY = "empty" },
     POSITION = { OF = "{index} of {total}" },
 
+    -- Screen / state names (announced on a screen transition).
+    SCREEN = {
+        PLAYING      = "Playing",
+        SHOP         = "Shop",
+        BLIND_SELECT = "Blind select",
+        CASH_OUT     = "Cash out",
+        PACK         = "Booster pack",
+        GAME_OVER    = "Game over",
+        MAIN_MENU    = "Main menu",
+        MENU         = "Menu",
+    },
+
     -- Container / region names (announced when focus enters a new card row).
     CONTAINER = {
         HAND        = "Hand",
         JOKERS      = "Jokers",
         CONSUMABLES = "Consumables",
-        SHOP        = "Shop",
         VOUCHERS    = "Vouchers",
-        BOOSTERS    = "Boosters",
-        PACK        = "Pack",
+        PACKS       = "Packs",
         DECK        = "Deck",
         PLAYED      = "Played",
     },
@@ -144,5 +154,6 @@ return {
         ANN_EXTRAS      = "Announce option info",
         ANN_POSITION    = "Announce position",
         ANN_CONTAINER   = "Announce container",
+        ANN_SCREEN      = "Announce screen changes",
     },
 }
