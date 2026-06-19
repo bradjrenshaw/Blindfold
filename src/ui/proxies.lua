@@ -262,6 +262,29 @@ function Proxy.edition_word(node)
     return k and Message.localized("EDITION." .. k) or nil
 end
 
+-- A card's price for the price announcement. Buyable shop items (shop cards,
+-- vouchers, booster packs) read their buy cost ("5 dollars", or "free" when a
+-- coupon zeroes it); your own jokers / consumables read their sell value while
+-- you're in the shop, so prices only ever speak in a shop context.
+function Proxy.card_cost(card)
+    if not card or not G then return nil end
+    local area = card.area
+    if area == G.shop_jokers or area == G.shop_vouchers or area == G.shop_booster then
+        local cost = card.cost
+        if type(cost) ~= "number" then return nil end
+        if cost <= 0 then return Message.localized("SHOP.FREE") end
+        return Message.localized("SHOP.COST", { cost = cost })
+    end
+    if (area == G.jokers or area == G.consumeables)
+        and G.STATES and G.STATE == G.STATES.SHOP then
+        local sell = card.sell_cost
+        if type(sell) == "number" and sell > 0 then
+            return Message.localized("SHOP.SELL", { cost = sell })
+        end
+    end
+    return nil
+end
+
 -- A card's position within its CardArea ("3 of 8"), for the position
 -- announcement. Cards are ordered left-to-right by their index in area.cards.
 function Proxy.card_position(card)
@@ -590,7 +613,7 @@ end
 -- / seal / debuff as modifiers. (Ability descriptions are a later pass.)
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
-ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "description", "position" }
+ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price", "description", "position" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 function ProxyPlayingCard:get_label()
     local base = self.node.base
@@ -615,6 +638,8 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.seal then anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal)))) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     if node.facing == "back" then anns[#anns + 1] = A.status(Message.localized("CARD.FACE_DOWN")) end
+    local price = Proxy.card_cost(node)
+    if price then anns[#anns + 1] = A.price(price) end
     local pos = Proxy.card_position(node)
     if pos then anns[#anns + 1] = A.position(pos) end
     return anns
@@ -636,7 +661,7 @@ local SET_TO_TYPE = {
     Spectral = "spectral", Voucher = "voucher", Booster = "booster",
 }
 local ProxyJoker = class(Proxy)
-ProxyJoker.announcement_order = { "label", "type", "selected", "edition", "debuff", "description", "position" }
+ProxyJoker.announcement_order = { "label", "type", "selected", "edition", "debuff", "price", "description", "position" }
 ProxyJoker.new = ctor(ProxyJoker)
 function ProxyJoker:get_label()
     local c = self.node.config and self.node.config.center
@@ -657,6 +682,8 @@ function ProxyJoker:get_focus_announcements()
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
+    local price = Proxy.card_cost(node)
+    if price then anns[#anns + 1] = A.price(price) end
     local pos = Proxy.card_position(node)
     if pos then anns[#anns + 1] = A.position(pos) end
     return anns

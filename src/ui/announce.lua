@@ -29,6 +29,8 @@ function A.selected()      return { key = "selected",    suffix = ",", render = 
 function A.description(v)  return { key = "description", suffix = "",  render = function() return msg(v) end } end
 -- Secondary help/info text on a control (e.g. an option's explanatory line).
 function A.extras(v)       return { key = "extras",      suffix = ",", render = function() return msg(v) end } end
+-- A shop item's buy cost.
+function A.price(v)        return { key = "price",       suffix = ",", render = function() return msg(v) end } end
 
 -- Per-announcement settings: reads announce.<ann>.<setting> from the registry
 -- (e.g. announce.type.enabled). Unregistered keys fall back to the default, so

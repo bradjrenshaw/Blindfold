@@ -107,6 +107,13 @@ return {
         DISCARDED   = "Discarded, {count} discards remaining",
     },
 
+    -- Shop prices (buy cost on shop items; sell value on your cards in the shop).
+    SHOP = {
+        COST = "{cost} dollars",
+        FREE = "free",
+        SELL = "sell {cost} dollars",
+    },
+
     -- End-of-round cash-out screen.
     CASHOUT = {
         LABEL    = "Cash out",
