@@ -27,6 +27,19 @@ return {
     LABELS = { LOCKED = "locked", EMPTY = "empty" },
     POSITION = { OF = "{index} of {total}" },
 
+    -- Container / region names (announced when focus enters a new card row).
+    CONTAINER = {
+        HAND        = "Hand",
+        JOKERS      = "Jokers",
+        CONSUMABLES = "Consumables",
+        SHOP        = "Shop",
+        VOUCHERS    = "Vouchers",
+        BOOSTERS    = "Boosters",
+        PACK        = "Pack",
+        DECK        = "Deck",
+        PLAYED      = "Played",
+    },
+
     -- Playing cards and their modifiers.
     CARD = {
         PLAYING    = "{rank} of {suit}",
@@ -84,6 +97,19 @@ return {
         DISCARDED   = "Discarded, {count} discards remaining",
     },
 
+    -- End-of-round cash-out screen.
+    CASHOUT = {
+        LABEL    = "Cash out",
+        TOTAL    = "{dollars} dollars",
+        ROW      = "{label}, {dollars} dollars",
+        BLIND    = "Blind reward",
+        HANDS    = "Remaining hands",
+        DISCARDS = "Remaining discards",
+        INTEREST = "Interest",
+        JOKER    = "Joker",
+        TAG      = "Tag",
+    },
+
     -- Spoken hand-scoring sequence.
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
@@ -116,5 +142,7 @@ return {
         ANN_DESCRIPTION = "Announce descriptions",
         ANN_TOOLTIP     = "Announce tooltips",
         ANN_EXTRAS      = "Announce option info",
+        ANN_POSITION    = "Announce position",
+        ANN_CONTAINER   = "Announce container",
     },
 }

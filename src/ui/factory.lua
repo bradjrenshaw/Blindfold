@@ -29,6 +29,7 @@ function Factory.create(node)
 
     if cfg.button == "select_text_input" then return P.TextInput.new(node) end
     if cfg.button == "select_blind" or cfg.button == "skip_blind" then return P.Blind.new(node) end
+    if cfg.button == "cash_out" then return P.CashOut.new(node) end
     if cfg.button == "toggle_button" then return P.Toggle.new(node) end
     if cfg.button then return P.Button.new(node) end
 

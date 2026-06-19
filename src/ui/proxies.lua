@@ -10,6 +10,7 @@ local Element = require("ui.element")
 local Message = require("ui.message")
 local A = require("ui.announce").A
 local Settings = require("settings.registry")
+local Cashout = require("events.cashout")
 
 -- ===================== Proxy base + text extraction =====================
 local Proxy = class(Element)
@@ -259,6 +260,17 @@ function Proxy.edition_word(node)
         or (e.polychrome and "polychrome") or (e.negative and "negative")
     local k = t and EDITION_KEY[t]
     return k and Message.localized("EDITION." .. k) or nil
+end
+
+-- A card's position within its CardArea ("3 of 8"), for the position
+-- announcement. Cards are ordered left-to-right by their index in area.cards.
+function Proxy.card_position(card)
+    local area = card and card.area
+    if not area or type(area.cards) ~= "table" then return nil end
+    local idx
+    for i, c in ipairs(area.cards) do if c == card then idx = i; break end end
+    if not idx then return nil end
+    return Message.localized("POSITION.OF", { index = idx, total = #area.cards })
 end
 
 -- Hover tooltip text from config.tooltip / config.on_demand_tooltip
@@ -603,6 +615,8 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.seal then anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal)))) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     if node.facing == "back" then anns[#anns + 1] = A.status(Message.localized("CARD.FACE_DOWN")) end
+    local pos = Proxy.card_position(node)
+    if pos then anns[#anns + 1] = A.position(pos) end
     return anns
 end
 function ProxyPlayingCard:get_deferred()
@@ -643,6 +657,8 @@ function ProxyJoker:get_focus_announcements()
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
+    local pos = Proxy.card_position(node)
+    if pos then anns[#anns + 1] = A.position(pos) end
     return anns
 end
 function ProxyJoker:get_deferred()
@@ -771,9 +787,28 @@ function ProxyBlind:skip_announcements()
     return anns
 end
 
+-- Cash-out screen: the only focusable node is the Cash Out button (it snaps to
+-- focus when the round-eval finishes). Read the total (always) plus the money
+-- breakdown accumulated by events/cashout.lua (gated by the description toggle).
+local ProxyCashOut = class(Proxy)
+ProxyCashOut.new = ctor(ProxyCashOut)
+function ProxyCashOut:get_focus_announcements()
+    local anns = { A.label(Message.localized("CASHOUT.LABEL")) }
+    local total = (G and G.GAME and G.GAME.current_round and G.GAME.current_round.dollars) or Cashout.total
+    if type(total) == "number" then
+        anns[#anns + 1] = A.status(Message.localized("CASHOUT.TOTAL", { dollars = total }))
+    end
+    if Proxy.announce_enabled("description") then
+        local bd = Cashout.breakdown_text()
+        if bd then anns[#anns + 1] = A.description(Message.raw(bd)) end
+    end
+    return anns
+end
+
 return {
     Proxy = Proxy,
     Button = ProxyButton, Slider = ProxySlider, Cycle = ProxyCycle,
     Toggle = ProxyToggle, Tab = ProxyTab, Text = ProxyText, TextInput = ProxyTextInput,
     PlayingCard = ProxyPlayingCard, Joker = ProxyJoker, Blind = ProxyBlind,
+    CashOut = ProxyCashOut,
 }

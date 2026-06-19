@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring
+local Factory, Input, Scoring, Containers
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -50,6 +50,8 @@ do
         BA.loc.init(G and G.SETTINGS and G.SETTINGS.language)
         Message.set_resolver(BA.loc.get)
         Factory = ba_require("ui.factory")
+        Containers = ba_require("ui.containers")
+        BA.containers = Containers
 
         Input = ba_require("input.manager")
         Input.init()
@@ -83,6 +85,9 @@ do
         Round.say = speech.say
         BA.round = Round
 
+        -- Cash-out: accumulate the end-of-round money breakdown for ProxyCashOut.
+        BA.cashout = ba_require("events.cashout")
+
         -- Settings: registry + the native "Blindfold" tab in the Options screen.
         local Settings = ba_require("settings.registry")
         Settings.register{ key = "scoring.enabled",      type = "bool",   label_key = "SET.SCORING_ENABLED", default = true,   category = "scoring" }
@@ -97,6 +102,8 @@ do
         Settings.register{ key = "announce.description.enabled", type = "bool", label_key = "SET.ANN_DESCRIPTION", default = true, category = "announce" }
         Settings.register{ key = "announce.tooltip.enabled",     type = "bool", label_key = "SET.ANN_TOOLTIP",     default = true, category = "announce" }
         Settings.register{ key = "announce.extras.enabled",      type = "bool", label_key = "SET.ANN_EXTRAS",      default = true, category = "announce" }
+        Settings.register{ key = "announce.position.enabled",    type = "bool", label_key = "SET.ANN_POSITION",    default = true, category = "announce" }
+        Settings.register{ key = "announce.container.enabled",   type = "bool", label_key = "SET.ANN_CONTAINER",   default = true, category = "announce" }
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings
@@ -169,9 +176,20 @@ function BA.focus_tick(ctrl)
         _focus_node, _focus_proxy, _last_value, _deferred_done = t, nil, nil, false
         if t and not t.REMOVED and Factory then
             _focus_proxy = Factory.create(t)
+            -- Container context: announce the row/area name when focus enters a
+            -- new one (path diffing). Called for every focused node so the path
+            -- stays in sync; the prefix is used only when we have something to say.
+            local prefix
+            if Containers then
+                local ok, p = pcall(Containers.on_focus, t)
+                if ok then prefix = p end
+            end
             if _focus_proxy then
                 local m = _focus_proxy:get_focus_message()
                 local s = m and m:resolve() or ""
+                if type(prefix) == "string" and prefix ~= "" then
+                    s = (s ~= "" and (prefix .. ", " .. s)) or prefix
+                end
                 if s ~= "" then speech.say(s) end
                 _last_value = _focus_proxy:poll_value()
             end
@@ -305,6 +323,17 @@ function BA.install()
                 orig_discard(e, hook)
                 pcall(Round.on_discard, hook)
             end
+        end
+    end
+
+    -- 7) Record the end-of-round money breakdown (read by ProxyCashOut) by
+    --    wrapping the global that builds each cash-out row.
+    if BA.cashout and add_round_eval_row then
+        local Cashout = BA.cashout
+        local orig_row = add_round_eval_row
+        function add_round_eval_row(config)
+            pcall(Cashout.on_row, config)
+            return orig_row(config)
         end
     end
 end
