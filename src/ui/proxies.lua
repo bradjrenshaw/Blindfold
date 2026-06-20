@@ -384,10 +384,19 @@ function Proxy.collect_def_text(node, parts, depth)
     end
 end
 
--- A card's description text from the game-managed ability_UIBox_table (set on
--- hover at card.lua:4321). Reads, never builds, so no DynaText leak.
+-- A card's description text. The game caches it in card.ability_UIBox_table but
+-- only rebuilds that on hover, which lags behind the animated cursor — so for
+-- scaling jokers (e.g. Ceremonial Dagger's mult) it goes stale. Rebuild it fresh
+-- here via the card's own builder so the values are always current, falling back
+-- to the cached table for non-Card sources (e.g. tag sprites in the cash-out).
 function Proxy.card_description(card)
-    local t = card and card.ability_UIBox_table
+    if not card then return nil end
+    local t
+    if type(card.generate_UIBox_ability_table) == "function" then
+        local ok, res = pcall(function() return card:generate_UIBox_ability_table() end)
+        if ok then t = res end
+    end
+    t = t or card.ability_UIBox_table
     if type(t) ~= "table" or type(t.main) ~= "table" then return nil end
     local parts = {}
     Proxy.collect_def_text(t.main, parts)
@@ -623,9 +632,18 @@ function ProxyPlayingCard:get_label()
     return Message.localized("CARD.PLAYING", { rank = rank, suit = suit })
 end
 function ProxyPlayingCard:get_focus_announcements()
+    local node = self.node
+    -- Face down: the identity is hidden, so never reveal rank/suit/modifiers —
+    -- just say it's a face-down card (plus selection / position, still useful).
+    if node.facing == "back" then
+        local anns = { A.label(Message.localized("CARD.FACE_DOWN")), A.type(self.type_key) }
+        if node.highlighted then anns[#anns + 1] = A.selected() end
+        local pos = Proxy.card_position(node)
+        if pos then anns[#anns + 1] = A.position(pos) end
+        return anns
+    end
     local label = self:get_label()
     if not label then return {} end
-    local node = self.node
     local anns = { A.label(label), A.type(self.type_key) }
     if node.highlighted then anns[#anns + 1] = A.selected() end
     local c = node.config and node.config.center
@@ -637,7 +655,6 @@ function ProxyPlayingCard:get_focus_announcements()
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.seal then anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal)))) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
-    if node.facing == "back" then anns[#anns + 1] = A.status(Message.localized("CARD.FACE_DOWN")) end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
     local pos = Proxy.card_position(node)
@@ -645,6 +662,8 @@ function ProxyPlayingCard:get_focus_announcements()
     return anns
 end
 function ProxyPlayingCard:get_deferred()
+    -- No description for a face-down card — that would leak its identity.
+    if self.node.facing == "back" then return nil end
     if not Proxy.announce_enabled("description") then return nil end
     return Message.maybe_raw(Proxy.card_description(self.node))
 end
