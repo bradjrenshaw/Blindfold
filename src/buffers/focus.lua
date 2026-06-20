@@ -12,39 +12,21 @@ local require = ...
 local Buffer = require("buffers.buffer")
 local Manager = require("buffers.manager")
 local Factory = require("ui.factory")
-local Proxy = require("ui.proxies").Proxy
 
--- The element's own focus readout (what you heard on focus) — the buffer header.
-local function header(entity)
-    local proxy = Factory.create(entity)
-    local m = proxy and proxy:get_focus_message()
-    local s = m and m:resolve() or ""
-    return s ~= "" and s or nil
-end
-
--- Detail for a focused card: header, description, then each keyword tip.
-local function card_detail(buf, card)
-    local h = header(card); if h then buf:add(h) end
-    local desc = Proxy.card_description(card)
-    if desc then buf:add(desc) end
-    for _, tip in ipairs(Proxy.card_info_tips(card)) do buf:add(tip) end
-end
-
--- Detail for a generic UI element: header + any tooltip text.
-local function ui_detail(buf, node)
+-- Detail lines for a focused node: the header (its focus readout) plus whatever
+-- depth its proxy contributes via fill_buffer (card description + keyword tips,
+-- skip-tag tips, a control's tooltip, ...). Proxy-driven, so every element type
+-- surfaces its own tooltips without focus.lua knowing about it.
+local function detail(buf, node)
     local proxy = Factory.create(node)
     if not proxy then return end
     local h = proxy:get_focus_message()
     local hs = h and h:resolve() or ""
     if hs ~= "" then buf:add(hs) end
-    local tip = proxy.get_tooltip and proxy:get_tooltip()
-    if type(tip) == "table" and tip.resolve then
-        local ts = tip:resolve()
-        if ts and ts ~= "" then buf:add(ts) end
-    end
+    if proxy.fill_buffer then proxy:fill_buffer(buf) end
 end
 
-local function make(key, detail)
+local function make(key)
     -- Disabled until something of this kind is focused; bind_focus enables it.
     local b = Buffer.new(key, { enabled = false })
     b.bound = nil
@@ -65,10 +47,10 @@ local function make(key, detail)
 end
 
 local M = {}
-M.card = make("card", card_detail)
-M.joker = make("joker", card_detail)
-M.consumable = make("consumable", card_detail)
-M.ui = make("ui", ui_detail)
+M.card = make("card")
+M.joker = make("joker")
+M.consumable = make("consumable")
+M.ui = make("ui")
 local ALL = { M.card, M.joker, M.consumable, M.ui }
 
 -- The buffer that should hold a focused node's detail (mirrors the factory's

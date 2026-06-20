@@ -59,6 +59,7 @@ return {
         FACE_DOWN  = "face down",
         SELECTED   = "selected",
         DESELECTED = "deselected",
+        TIP        = "{name}, {desc}",   -- keyword hover tip: "Foil, +50 chips"
     },
     EDITION = {
         foil = "foil", holographic = "holographic",

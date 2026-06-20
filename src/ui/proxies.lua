@@ -418,18 +418,41 @@ end
 -- alongside the description (ability_UIBox_table.info — each entry is a row-list
 -- describing a referenced enhancement / edition / seal / sticker / etc.).
 -- Rebuilt fresh (same reason as card_description); returns a list of strings.
-function Proxy.card_info_tips(card)
-    if not card or card.facing == "back" then return {} end          -- hide face-down identity
-    if type(card.generate_UIBox_ability_table) ~= "function" then return {} end
-    local ok, t = pcall(function() return card:generate_UIBox_ability_table() end)
-    if not ok or type(t) ~= "table" or type(t.info) ~= "table" then return {} end
+-- Keyword tips from an already-built ability_UIBox_table (its .info boxes). Each
+-- box carries its keyword's localized name (desc_nodes.name in generate_card_ui)
+-- — prepend it: "Foil, +50 chips". Works for any ability table (cards, tags...).
+function Proxy.table_info_tips(t)
+    if type(t) ~= "table" or type(t.info) ~= "table" then return {} end
     local tips = {}
     for _, box in ipairs(t.info) do
         local parts = {}
         Proxy.collect_def_text(box, parts)
-        if #parts > 0 then tips[#tips + 1] = table.concat(parts, " ") end
+        local desc = #parts > 0 and table.concat(parts, " ") or nil
+        if desc then
+            local name = type(box.name) == "string" and box.name ~= "" and box.name or nil
+            tips[#tips + 1] = name and Message.localized("CARD.TIP", { name = name, desc = desc }):resolve() or desc
+        end
     end
     return tips
+end
+
+function Proxy.card_info_tips(card)
+    if not card or card.facing == "back" then return {} end          -- hide face-down identity
+    if type(card.generate_UIBox_ability_table) ~= "function" then return {} end
+    local ok, t = pcall(function() return card:generate_UIBox_ability_table() end)
+    return ok and Proxy.table_info_tips(t) or {}
+end
+
+-- Detail lines for this element's review buffer (the depth offloaded from the
+-- concise focus announcement). Default: its tooltip text, if any. Card and blind
+-- proxies override to add descriptions + keyword tips. Not gated by the
+-- announcement toggles — the buffer is always the full-detail view.
+function Proxy:fill_buffer(buf)
+    local tip = self:get_tooltip()
+    if type(tip) == "table" and tip.resolve then
+        local s = tip:resolve()
+        if s and s ~= "" then buf:add(s) end
+    end
 end
 
 -- Secondary help/info text on a control (default: none). Sliders/cycles/toggles
@@ -696,6 +719,11 @@ function ProxyPlayingCard:get_deferred()
     if not Proxy.announce_enabled("description") then return nil end
     return Message.maybe_raw(Proxy.card_description(self.node))
 end
+function ProxyPlayingCard:fill_buffer(buf)
+    local desc = Proxy.card_description(self.node)         -- both guard face-down
+    if desc then buf:add(desc) end
+    for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
+end
 -- Selecting/deselecting (highlighting) a card re-announces just the new state.
 function ProxyPlayingCard:poll_value() return self.node.highlighted and true or false end
 function ProxyPlayingCard:get_value_message()
@@ -741,6 +769,11 @@ end
 function ProxyJoker:get_deferred()
     if not Proxy.announce_enabled("description") then return nil end
     return Message.maybe_raw(Proxy.card_description(self.node))
+end
+function ProxyJoker:fill_buffer(buf)
+    local desc = Proxy.card_description(self.node)
+    if desc then buf:add(desc) end
+    for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
 end
 function ProxyJoker:poll_value() return self.node.highlighted and true or false end
 function ProxyJoker:get_value_message()
@@ -862,6 +895,18 @@ function ProxyBlind:skip_announcements()
         if td then anns[#anns + 1] = A.description(td) end
     end
     return anns
+end
+-- Buffer detail: the skip tag's keyword tips (e.g. the Foil tip when the tag
+-- grants a foil joker) — these aren't in the focus readout. The tag's own
+-- description already rides the focus message (gated).
+function ProxyBlind:fill_buffer(buf)
+    local c = self.node.config
+    if c and c.button == "skip_blind" and type(c.ref_table) == "table"
+       and type(c.ref_table.get_uibox_table) == "function" then
+        local ok, sprite = pcall(function() return c.ref_table:get_uibox_table() end)
+        local t = ok and type(sprite) == "table" and sprite.ability_UIBox_table or nil
+        for _, tip in ipairs(Proxy.table_info_tips(t)) do buf:add(tip) end
+    end
 end
 
 -- Cash-out screen: the only focusable node is the Cash Out button (it snaps to
