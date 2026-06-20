@@ -75,6 +75,7 @@ do
         Buffers.add(FocusBuffers.card)
         Buffers.add(FocusBuffers.joker)
         Buffers.add(FocusBuffers.consumable)
+        Buffers.add(FocusBuffers.cashout)
         Buffers.add(FocusBuffers.ui)
         BA.focus_buffers = FocusBuffers
         BA.buffers = Buffers

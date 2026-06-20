@@ -86,6 +86,7 @@ return {
         CARD = "Card",
         JOKER = "Joker",
         CONSUMABLE = "Consumable",
+        CASHOUT = "Cash out",
         UI = "UI",
         NONE = "No buffers",
         EMPTY = "{buffer} buffer is empty",
@@ -121,17 +122,19 @@ return {
         SELL = "sell {cost} dollars",
     },
 
-    -- End-of-round cash-out screen.
+    -- End-of-round cash-out screen. Browsable per-source breakdown lives in the
+    -- Cash Out buffer; each joker/tag drills into its description + keyword tips.
     CASHOUT = {
-        LABEL    = "Cash out",
-        TOTAL    = "{dollars} dollars",
-        ROW      = "{label}, {dollars} dollars",
-        BLIND    = "Blind reward",
-        HANDS    = "Remaining hands",
-        DISCARDS = "Remaining discards",
-        INTEREST = "Interest",
-        JOKER    = "Joker",
-        TAG      = "Tag",
+        LABEL         = "Cash out",
+        TOTAL         = "{dollars} dollars",
+        ROW           = "{label}, {dollars} dollars",      -- jokers / tags (by name)
+        BLIND_ROW     = "Blind reward, {dollars} dollars",
+        SAVED         = "Saved by Mr. Bones",
+        HANDS_ROW     = "Remaining hands, {count}, {dollars} dollars",
+        DISCARDS_ROW  = "Remaining discards, {count}, {dollars} dollars",
+        INTEREST_ROW  = "Interest, {dollars} dollars, {rate} per 5 dollars up to {max}",
+        JOKER         = "Joker",
+        TAG           = "Tag",
     },
 
     -- Spoken hand-scoring sequence.

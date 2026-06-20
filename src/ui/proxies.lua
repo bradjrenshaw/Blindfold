@@ -910,21 +910,37 @@ function ProxyBlind:fill_buffer(buf)
 end
 
 -- Cash-out screen: the only focusable node is the Cash Out button (it snaps to
--- focus when the round-eval finishes). Read the total (always) plus the money
--- breakdown accumulated by events/cashout.lua (gated by the description toggle).
+-- focus when the round-eval finishes). Focus speaks just the total; the money
+-- breakdown (events/cashout.lua) is browsable per source in the Cash Out buffer.
 local ProxyCashOut = class(Proxy)
 ProxyCashOut.new = ctor(ProxyCashOut)
 function ProxyCashOut:get_focus_announcements()
+    -- Concise: just the total. The per-source breakdown lives in the Cash Out
+    -- buffer (browsable, with joker/tag drill-down) via fill_buffer.
     local anns = { A.label(Message.localized("CASHOUT.LABEL")) }
     local total = (G and G.GAME and G.GAME.current_round and G.GAME.current_round.dollars) or Cashout.total
     if type(total) == "number" then
         anns[#anns + 1] = A.status(Message.localized("CASHOUT.TOTAL", { dollars = total }))
     end
-    if Proxy.announce_enabled("description") then
-        local bd = Cashout.breakdown_text()
-        if bd then anns[#anns + 1] = A.description(Message.raw(bd)) end
-    end
     return anns
+end
+-- Buffer: one item per money source. Each joker/tag drills into its DESCRIPTION
+-- (the "why" of the payout) — but not its keyword tips (foil, enhancements, ...),
+-- which are scoring/edition info and don't contribute to the cash-out money.
+function ProxyCashOut:fill_buffer(buf)
+    for _, row in ipairs(Cashout.rows or {}) do
+        buf:add(Cashout.summary(row))
+        if row.card then
+            local d = Proxy.card_description(row.card)
+            if d then buf:add(d) end
+        elseif type(row.tag) == "table" and type(row.tag.get_uibox_table) == "function" then
+            local ok, sprite = pcall(function() return row.tag:get_uibox_table() end)
+            if ok and type(sprite) == "table" then
+                local d = Proxy.card_description(sprite)
+                if d then buf:add(d) end
+            end
+        end
+    end
 end
 
 return {

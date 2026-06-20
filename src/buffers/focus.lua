@@ -50,11 +50,13 @@ local M = {}
 M.card = make("card")
 M.joker = make("joker")
 M.consumable = make("consumable")
+M.cashout = make("cashout")
 M.ui = make("ui")
-local ALL = { M.card, M.joker, M.consumable, M.ui }
+local ALL = { M.card, M.joker, M.consumable, M.cashout, M.ui }
 
 -- The buffer that should hold a focused node's detail (mirrors the factory's
--- card dispatch). Non-cards fall to the generic ui buffer.
+-- card dispatch). The Cash Out button gets its own buffer; non-cards otherwise
+-- fall to the generic ui buffer.
 local function route(node)
     if node.is and Card and node:is(Card) then
         local base = node.base
@@ -63,6 +65,7 @@ local function route(node)
         if set == "Joker" then return M.joker end
         return M.consumable
     end
+    if node.config and node.config.button == "cash_out" then return M.cashout end
     return M.ui
 end
 
