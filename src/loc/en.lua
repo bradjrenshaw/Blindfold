@@ -120,6 +120,7 @@ return {
         COST = "{cost} dollars",
         FREE = "free",
         SELL = "sell {cost} dollars",
+        REROLL = "Reroll, {cost} dollars",
     },
 
     -- End-of-round cash-out screen. Browsable per-source breakdown lives in the

@@ -305,6 +305,24 @@ function Proxy.card_position(card)
     return Message.localized("POSITION.OF", { index = idx, total = #area.cards })
 end
 
+-- Deferred follow-up for a focused card: its description (gated by the
+-- descriptions toggle) THEN its position (gated by the position toggle) — so the
+-- position reads AFTER the description, not before it. Both guarded for
+-- face-down cards via card_description (no identity leak; position still reads).
+function Proxy.card_deferred(card)
+    local parts = {}
+    if Proxy.announce_enabled("description") then
+        local d = Proxy.card_description(card)
+        if d then parts[#parts + 1] = d end
+    end
+    if Proxy.announce_enabled("position") then
+        local p = Proxy.card_position(card)
+        if p then parts[#parts + 1] = p:resolve() end
+    end
+    if #parts == 0 then return nil end
+    return Message.raw(table.concat(parts, ", "))
+end
+
 -- Hover tooltip text from config.tooltip / config.on_demand_tooltip
 -- ({ title, text = {lines} }). The data is right in config, so nothing needs
 -- building. (Card ability descriptions are a separate, dynamic case.)
@@ -513,7 +531,16 @@ local ProxyButton = class(Proxy)
 ProxyButton.type_key = "button"
 ProxyButton.new = ctor(ProxyButton)
 function ProxyButton:get_label()
-    return Message.maybe_raw(self.override_label or Proxy.static_text(self.node) or Proxy.all_text(self.node))
+    -- The reroll button renders "Reroll $ {reroll_cost}", which reads as
+    -- "reroll dollar 5". Speak the cost number-first ("5 dollars") instead.
+    if self.node.config and self.node.config.button == "reroll_shop" then
+        local cr = G and G.GAME and G.GAME.current_round
+        local cost = cr and cr.reroll_cost
+        if type(cost) == "number" then return Message.localized("SHOP.REROLL", { cost = cost }) end
+    end
+    -- all_text (static + ref-bound/DynaText values), not just static, so other
+    -- buttons with a live value still read it.
+    return Message.maybe_raw(self.override_label or Proxy.all_text(self.node))
 end
 
 local ProxySlider = class(Proxy)
@@ -674,7 +701,8 @@ end
 -- / seal / debuff as modifiers. (Ability descriptions are a later pass.)
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
-ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price", "description", "position" }
+-- Position rides the deferred follow-up (card_deferred), AFTER the description.
+ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 function ProxyPlayingCard:get_label()
     local base = self.node.base
@@ -686,12 +714,10 @@ end
 function ProxyPlayingCard:get_focus_announcements()
     local node = self.node
     -- Face down: the identity is hidden, so never reveal rank/suit/modifiers —
-    -- just say it's a face-down card (plus selection / position, still useful).
+    -- just say it's a face-down card (selection still useful; position deferred).
     if node.facing == "back" then
         local anns = { A.label(Message.localized("CARD.FACE_DOWN")), A.type(self.type_key) }
         if node.highlighted then anns[#anns + 1] = A.selected() end
-        local pos = Proxy.card_position(node)
-        if pos then anns[#anns + 1] = A.position(pos) end
         return anns
     end
     local label = self:get_label()
@@ -709,20 +735,17 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.debuff then anns[#anns + 1] = A.debuff() end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
-    local pos = Proxy.card_position(node)
-    if pos then anns[#anns + 1] = A.position(pos) end
     return anns
 end
 function ProxyPlayingCard:get_deferred()
-    -- No description for a face-down card — that would leak its identity.
-    if self.node.facing == "back" then return nil end
-    if not Proxy.announce_enabled("description") then return nil end
-    return Message.maybe_raw(Proxy.card_description(self.node))
+    return Proxy.card_deferred(self.node)        -- description (guarded) then position
 end
 function ProxyPlayingCard:fill_buffer(buf)
     local desc = Proxy.card_description(self.node)         -- both guard face-down
     if desc then buf:add(desc) end
     for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
+    local pos = Proxy.card_position(self.node)
+    if pos then buf:add(pos:resolve()) end
 end
 -- Selecting/deselecting (highlighting) a card re-announces just the new state.
 function ProxyPlayingCard:poll_value() return self.node.highlighted and true or false end
@@ -737,7 +760,8 @@ local SET_TO_TYPE = {
     Spectral = "spectral", Voucher = "voucher", Booster = "booster",
 }
 local ProxyJoker = class(Proxy)
-ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "price", "description", "position" }
+-- Position rides the deferred follow-up (card_deferred), AFTER the description.
+ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
 function ProxyJoker:get_label()
     local c = self.node.config and self.node.config.center
@@ -762,18 +786,17 @@ function ProxyJoker:get_focus_announcements()
     if node.debuff then anns[#anns + 1] = A.debuff() end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
-    local pos = Proxy.card_position(node)
-    if pos then anns[#anns + 1] = A.position(pos) end
     return anns
 end
 function ProxyJoker:get_deferred()
-    if not Proxy.announce_enabled("description") then return nil end
-    return Message.maybe_raw(Proxy.card_description(self.node))
+    return Proxy.card_deferred(self.node)        -- description then position
 end
 function ProxyJoker:fill_buffer(buf)
     local desc = Proxy.card_description(self.node)
     if desc then buf:add(desc) end
     for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
+    local pos = Proxy.card_position(self.node)
+    if pos then buf:add(pos:resolve()) end
 end
 function ProxyJoker:poll_value() return self.node.highlighted and true or false end
 function ProxyJoker:get_value_message()
