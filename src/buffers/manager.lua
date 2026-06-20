@@ -24,6 +24,23 @@ function M.get(key)
     return nil
 end
 
+-- Runtime enable/disable: a disabled buffer is skipped by the cycle (not
+-- focusable). Used by the focus binding so only buffers relevant to the focused
+-- element are reachable.
+function M.set_enabled(buffer, on)
+    if buffer then buffer.enabled = on and true or false end
+end
+
+-- Auto-focus a buffer (make it current) without speaking — the user then browses
+-- it with the item hotkeys. No-op if it isn't enabled.
+function M.set_current(buffer)
+    if not buffer or not buffer.enabled then return false end
+    for i, b in ipairs(M.buffers) do
+        if b == buffer then M.position = i; return true end
+    end
+    return false
+end
+
 function M.current()
     if M.position < 1 or M.position > #M.buffers then return nil end
     local b = M.buffers[M.position]

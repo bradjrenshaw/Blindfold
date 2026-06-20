@@ -25,6 +25,8 @@ return {
     },
     STATUS = { ON = "on", OFF = "off" },
     LABELS = { LOCKED = "locked", EMPTY = "empty" },
+    -- Joker rarity, announced as a subtype ("common joker").
+    RARITY = { COMMON = "common", UNCOMMON = "uncommon", RARE = "rare", LEGENDARY = "legendary" },
     POSITION = { OF = "{index} of {total}" },
 
     -- Screen / state names (announced on a screen transition).
@@ -80,6 +82,10 @@ return {
     -- Buffer (review-cursor) readouts.
     BUFFER = {
         GAME = "Game",
+        CARD = "Card",
+        JOKER = "Joker",
+        CONSUMABLE = "Consumable",
+        UI = "UI",
         NONE = "No buffers",
         EMPTY = "{buffer} buffer is empty",
         CURRENT = "{buffer}, {item}",
@@ -155,6 +161,7 @@ return {
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",
         ANN_TYPE        = "Announce type",
+        ANN_SUBTYPE     = "Announce rarity",
         ANN_SELECTED    = "Announce selected",
         ANN_DESCRIPTION = "Announce descriptions",
         ANN_TOOLTIP     = "Announce tooltips",

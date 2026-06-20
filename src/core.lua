@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring, Containers, Screens
+local Factory, Input, Scoring, Containers, Screens, FocusBuffers
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -69,6 +69,14 @@ do
         local Buffers = ba_require("buffers.manager")
         Buffers.say = speech.say
         Buffers.add(ba_require("buffers.game"))
+        -- Focus buffers: per-kind review of the focused element's detail
+        -- (description + keyword tips), bound on focus in BA.focus_tick.
+        FocusBuffers = ba_require("buffers.focus")
+        Buffers.add(FocusBuffers.card)
+        Buffers.add(FocusBuffers.joker)
+        Buffers.add(FocusBuffers.consumable)
+        Buffers.add(FocusBuffers.ui)
+        BA.focus_buffers = FocusBuffers
         BA.buffers = Buffers
         local kb = Input.KeyboardBinding
         Input.register{ key = "buffer_next_item", label_key = "INPUT.BUFFER_NEXT_ITEM",
@@ -102,6 +110,7 @@ do
         Settings.register{ key = "round.actions",        type = "bool",   label_key = "SET.ROUND_ACTIONS",   default = true,   category = "scoring" }
         -- Per-announcement toggles (read by announce.Context / proxy descriptions).
         Settings.register{ key = "announce.type.enabled",        type = "bool", label_key = "SET.ANN_TYPE",        default = true, category = "announce" }
+        Settings.register{ key = "announce.subtype.enabled",     type = "bool", label_key = "SET.ANN_SUBTYPE",     default = true, category = "announce" }
         Settings.register{ key = "announce.selected.enabled",    type = "bool", label_key = "SET.ANN_SELECTED",    default = true, category = "announce" }
         Settings.register{ key = "announce.description.enabled", type = "bool", label_key = "SET.ANN_DESCRIPTION", default = true, category = "announce" }
         Settings.register{ key = "announce.tooltip.enabled",     type = "bool", label_key = "SET.ANN_TOOLTIP",     default = true, category = "announce" }
@@ -187,6 +196,9 @@ function BA.focus_tick(ctrl)
         _focus_node, _focus_proxy, _last_value, _deferred_done = t, nil, nil, false
         if t and not t.REMOVED and Factory then
             _focus_proxy = Factory.create(t)
+            -- Bind the focused element into its review buffer (cheap; populated
+            -- lazily when the user browses it).
+            if FocusBuffers then pcall(FocusBuffers.bind_focus, t) end
             -- Container context: announce the row/area name when focus enters a
             -- new one (path diffing). Called for every focused node so the path
             -- stays in sync; the prefix is used only when we have something to say.

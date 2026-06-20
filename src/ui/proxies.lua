@@ -264,8 +264,8 @@ end
 
 -- A card's price for the price announcement. Buyable shop items (shop cards,
 -- vouchers, booster packs) read their buy cost ("5 dollars", or "free" when a
--- coupon zeroes it); your own jokers / consumables read their sell value while
--- you're in the shop, so prices only ever speak in a shop context.
+-- coupon zeroes it). Your own jokers / consumables read their sell value on
+-- every screen — it's always visible and some effects depend on it.
 function Proxy.card_cost(card)
     if not card or not G then return nil end
     local area = card.area
@@ -275,14 +275,23 @@ function Proxy.card_cost(card)
         if cost <= 0 then return Message.localized("SHOP.FREE") end
         return Message.localized("SHOP.COST", { cost = cost })
     end
-    if (area == G.jokers or area == G.consumeables)
-        and G.STATES and G.STATE == G.STATES.SHOP then
+    if area == G.jokers or area == G.consumeables then
         local sell = card.sell_cost
         if type(sell) == "number" and sell > 0 then
             return Message.localized("SHOP.SELL", { cost = sell })
         end
     end
     return nil
+end
+
+-- A joker's rarity, as a "subtype" announcement (common / uncommon / rare /
+-- legendary). center.rarity is 1..4; non-jokers (no rarity) yield nil.
+local JOKER_RARITY = { "COMMON", "UNCOMMON", "RARE", "LEGENDARY" }
+function Proxy.joker_rarity(card)
+    local c = card and card.config and card.config.center
+    local r = c and c.rarity
+    local key = type(r) == "number" and JOKER_RARITY[r]
+    return key and Message.localized("RARITY." .. key) or nil
 end
 
 -- A card's position within its CardArea ("3 of 8"), for the position
@@ -391,6 +400,8 @@ end
 -- to the cached table for non-Card sources (e.g. tag sprites in the cash-out).
 function Proxy.card_description(card)
     if not card then return nil end
+    -- Never describe a face-down card — that would reveal its hidden identity.
+    if card.facing == "back" then return nil end
     local t
     if type(card.generate_UIBox_ability_table) == "function" then
         local ok, res = pcall(function() return card:generate_UIBox_ability_table() end)
@@ -401,6 +412,24 @@ function Proxy.card_description(card)
     local parts = {}
     Proxy.collect_def_text(t.main, parts)
     return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+-- A card's keyword "hover tips": the related-concept boxes the game builds
+-- alongside the description (ability_UIBox_table.info — each entry is a row-list
+-- describing a referenced enhancement / edition / seal / sticker / etc.).
+-- Rebuilt fresh (same reason as card_description); returns a list of strings.
+function Proxy.card_info_tips(card)
+    if not card or card.facing == "back" then return {} end          -- hide face-down identity
+    if type(card.generate_UIBox_ability_table) ~= "function" then return {} end
+    local ok, t = pcall(function() return card:generate_UIBox_ability_table() end)
+    if not ok or type(t) ~= "table" or type(t.info) ~= "table" then return {} end
+    local tips = {}
+    for _, box in ipairs(t.info) do
+        local parts = {}
+        Proxy.collect_def_text(box, parts)
+        if #parts > 0 then tips[#tips + 1] = table.concat(parts, " ") end
+    end
+    return tips
 end
 
 -- Secondary help/info text on a control (default: none). Sliders/cycles/toggles
@@ -680,7 +709,7 @@ local SET_TO_TYPE = {
     Spectral = "spectral", Voucher = "voucher", Booster = "booster",
 }
 local ProxyJoker = class(Proxy)
-ProxyJoker.announcement_order = { "label", "type", "selected", "edition", "debuff", "price", "description", "position" }
+ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "price", "description", "position" }
 ProxyJoker.new = ctor(ProxyJoker)
 function ProxyJoker:get_label()
     local c = self.node.config and self.node.config.center
@@ -694,6 +723,8 @@ function ProxyJoker:get_focus_announcements()
     if not label then return {} end
     local node = self.node
     local anns = { A.label(label) }
+    local rar = Proxy.joker_rarity(node)
+    if rar then anns[#anns + 1] = A.subtype(rar) end
     local set = node.ability and node.ability.set
     local tword = set and SET_TO_TYPE[set]
     if tword then anns[#anns + 1] = A.type(tword) end
