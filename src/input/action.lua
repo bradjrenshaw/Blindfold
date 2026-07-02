@@ -1,7 +1,9 @@
 -- input/action.lua — a rebindable input action (port of SayTheSpire2's
--- InputAction). Each action has a stable key, a localized label (for the future
--- settings menu), a set of keyboard bindings, and either a game gamepad button
--- to drive or a mod handler to run.
+-- InputAction). Each action has a stable key, a localized label (for the
+-- keybindings menu), a set of keyboard bindings, and what it drives: an
+-- overlay COMMAND on owned screens, a mod HANDLER, and/or a fallback gamepad
+-- BUTTON for the not-yet-owned game screens (menus). The button tier is
+-- transitional — it dies once every screen is an owned overlay.
 local require = ...
 
 local InputAction = {}
@@ -13,12 +15,13 @@ local function copy_bindings(t)
     return out
 end
 
--- opts: { key, label_key, game_button?, handler?, bindings? }
+-- opts: { key, label_key, command?, game_button?, handler?, bindings? }
 function InputAction.new(opts)
     local self = setmetatable({
         key = opts.key,
         label_key = opts.label_key,   -- loc key, resolved by the settings menu
-        game_button = opts.game_button,  -- gamepad button to send, or nil
+        command = opts.command,          -- overlay command table, or nil
+        game_button = opts.game_button,  -- fallback gamepad button, or nil
         handler = opts.handler,          -- mod-only action fn(ctrl), or nil
         bindings = opts.bindings or {},
     }, InputAction)

@@ -53,42 +53,21 @@ local function screen_id()
     return nil
 end
 
--- First meaningful text under a node (overlay title heuristic): a plain caption
--- or a DynaText's current string. Depth-limited; titles sit near the top.
-local function first_text(node, depth)
-    if type(node) ~= "table" or depth > 8 then return nil end
-    local c = node.config
-    if c then
-        if type(c.text) == "string" and #c.text > 1 then return c.text end
-        local o = c.object
-        if o then
-            local s = type(o.string) == "string" and o.string or nil
-            if not s and type(o.strings) == "table" and o.strings[1] then s = o.strings[1].string end
-            if type(s) == "string" and #s > 1 then return s end
-        end
-    end
-    if node.children then
-        for _, ch in ipairs(node.children) do
-            local r = first_text(ch, depth + 1)
-            if r then return r end
-        end
-    end
-    return nil
-end
-
 -- Run screens whose own contents already announce them, so the screen title
 -- would just duplicate: the play screen is oriented by its card rows (Hand /
 -- Jokers / ...), and cash-out by the Cash Out button. These reset the container
 -- context on entry but speak no title.
 local SILENT = { PLAYING = true, CASH_OUT = true }
 
--- Title for a changed screen (scrape happens only on change, never per frame).
--- Returns nil for silent screens.
+-- Title for a changed screen. Returns nil for silent screens. Overlay menus
+-- are owned by the menu mirror (which announces the focused control), so only
+-- our own TAGGED sub-screens speak a name; game overlays get no scraped title
+-- (the old first_text scrape read tab labels as titles and doubled the
+-- mirror's announcements).
 local function screen_title(id)
     if type(id) == "table" then
         if id.blindfold_title_key then return Message.localized(id.blindfold_title_key) end
-        local t = first_text(id.UIRoot or id, 0)
-        return t and Message.raw(t) or Message.localized("SCREEN.MENU")
+        return nil
     elseif id == "MAIN_MENU" then
         return Message.localized("SCREEN.MAIN_MENU")
     elseif type(id) == "string" then

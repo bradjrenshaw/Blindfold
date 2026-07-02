@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring, Containers, Screens, FocusBuffers
+local Factory, Input, Scoring, Containers, Screens, FocusBuffers, Overlays
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -88,6 +88,47 @@ do
             handler = function() Buffers.next_buffer() end, bindings = { kb.new("right", true) } }
         Input.register{ key = "buffer_prev", label_key = "INPUT.BUFFER_PREV",
             handler = function() Buffers.prev_buffer() end, bindings = { kb.new("left", true) } }
+
+        -- Owned-UI overlay layer (port of Tanglebeep's key-graph framework):
+        -- screens we own re-present live game state as a navigable graph; every
+        -- other screen stays on the legacy focus-follower below.
+        Overlays = ba_require("overlay.dispatcher")
+        local PlayOverlay = ba_require("overlays.play")
+        Overlays.register(PlayOverlay)
+        Overlays.register(ba_require("overlays.blinds"))
+        Overlays.register(ba_require("overlays.shop"))
+        -- Packs must sit ABOVE the shop: during pack states the shop reports
+        -- "sleeping" (position preserved), which would win the stack scan if it
+        -- were higher.
+        Overlays.register(ba_require("overlays.packs"))
+        Overlays.register(ba_require("overlays.cashout"))
+        -- Menu overlays (registered above play, so an open menu wins while the
+        -- play screen sleeps underneath with its position intact): the bespoke
+        -- main menu (spatial rows) and the generic mirror for every modal menu.
+        local Mirror = ba_require("overlays.menu_mirror")
+        Overlays.register(ba_require("overlays.main_menu"))
+        Overlays.register(Mirror.overlay)
+        BA.overlays = Overlays
+        Input.dispatcher = Overlays
+        Input.overlay_tick = function(cmd)
+            local ok, res = pcall(Overlays.tick, cmd)
+            if ok then
+                BA.speak_overlay_result(res)
+            else
+                speech.log("overlay tick error: " .. tostring(res))
+            end
+        end
+        -- Direct-call actions (X / C): the guarded play/discard logic shared
+        -- with the play overlay's button row. Feedback for a fired action comes
+        -- from the round/scoring hooks; errors are spoken here.
+        local function direct(fn)
+            return function()
+                local ok, err = pcall(fn)
+                if ok and err then speech.say(Message.localized(err):resolve()) end
+            end
+        end
+        Input.handlers.play_hand = direct(PlayOverlay.do_play)
+        Input.handlers.discard = direct(PlayOverlay.do_discard)
 
         Scoring = ba_require("events.scoring")
         Scoring.say = speech.say
@@ -183,65 +224,68 @@ function BA.describe_focus(node)
 end
 
 -- ---------------------------------------------------------------------------
--- Per-frame focus tick: announce on focus change, then poll the focused
--- control's value and announce it when it changes (slider / cycle / checkbox /
--- tab). Balatro's UI has no change events, so we detect changes by polling.
+-- Owned-overlay output: speak a dispatcher tick's result and sync what follows
+-- focus. Mirrors the legacy focus path: label first, then (for cards) the
+-- deferred description + position follow-up, queued so it trails the label;
+-- the focused card also binds into its review buffer.
 -- ---------------------------------------------------------------------------
-local _focus_node, _focus_proxy, _last_value, _deferred_done
-function BA.focus_tick(ctrl)
-    -- Screen-change detection first: it resets the container context so the new
-    -- screen's first focus re-announces its row, and speaks the screen title.
-    if Screens then pcall(Screens.tick) end
-    local t = ctrl and ctrl.focused and ctrl.focused.target
-    if t ~= _focus_node then
-        _focus_node, _focus_proxy, _last_value, _deferred_done = t, nil, nil, false
-        if t and not t.REMOVED and Factory then
-            _focus_proxy = Factory.create(t)
-            -- Bind the focused element into its review buffer (cheap; populated
-            -- lazily when the user browses it).
-            if FocusBuffers then pcall(FocusBuffers.bind_focus, t) end
-            -- Container context: announce the row/area name when focus enters a
-            -- new one (path diffing). Called for every focused node so the path
-            -- stays in sync; the prefix is used only when we have something to say.
-            local prefix
-            if Containers then
-                local ok, p = pcall(Containers.on_focus, t)
-                if ok then prefix = p end
-            end
-            if _focus_proxy then
-                local m = _focus_proxy:get_focus_message()
+function BA.speak_overlay_result(res)
+    if not res then return end
+    if res.message and res.message ~= "" then speech.say(res.message) end
+    -- Any focused backing object — a Card OR a UIElement — binds into its
+    -- review buffer; and whenever the node's LABEL was what got spoken (a
+    -- move, an edge bump, a fallback re-read — res.spoke_label), the deferred
+    -- follow-up (description / position / a cycle's effect text) is queued
+    -- after it, exactly like the legacy focus path. Keying on spoke_label
+    -- keeps every label announcement identical regardless of which key
+    -- produced it.
+    local ref = res.focus_ref
+    if ref and type(ref) == "table" then
+        if FocusBuffers then pcall(FocusBuffers.bind_focus, ref) end
+        if res.spoke_label and res.message and res.message ~= "" and Factory then
+            pcall(function()
+                local proxy = Factory.create(ref)
+                local m = proxy and proxy.get_deferred and proxy:get_deferred()
                 local s = m and m:resolve() or ""
-                if type(prefix) == "string" and prefix ~= "" then
-                    s = (s ~= "" and (prefix .. ", " .. s)) or prefix
-                end
                 if s ~= "" then speech.say(s) end
-                _last_value = _focus_proxy:poll_value()
-            end
+            end)
         end
-    elseif _focus_proxy then
-        local v = _focus_proxy:poll_value()
-        if v ~= nil and v ~= _last_value then
-            _last_value = v
-            local m = _focus_proxy:get_value_message()
-            local s = m and m:resolve() or ""
-            -- Silence first so held / rapid value changes replace rather than
-            -- queue (matches SayTheSpire2's silence-on-change behavior).
-            if s ~= "" then speech.silence(); speech.say(s) end
-        end
-        -- Deferred follow-up (e.g. a card's description, which the game only
-        -- populates one frame after focus). Spoken once, WITHOUT silencing, so
-        -- it follows the name instead of replacing it.
-        if not _deferred_done then
-            local m = _focus_proxy:get_deferred()
-            local s = m and m:resolve() or ""
-            if s ~= "" then speech.say(s); _deferred_done = true end
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Per-frame tick: screen-change detection, then the owned-overlay dispatcher
+-- (open/close detection, focus reconciliation, and any focus change the graph
+-- made on its own — a fresh open, or the focused control vanishing).
+--
+-- The legacy native-focus follower is GONE: every screen is either an owned
+-- overlay or (until its overlay is written: shop, blind select, packs, cash
+-- out, game over) navigable-but-quiet via the gamepad-emulation fallback, with
+-- the event announcements and review buffers still speaking. Following the
+-- game's focus meant narrating its internal snap churn during transitions.
+-- ---------------------------------------------------------------------------
+function BA.focus_tick(ctrl)
+    if Screens then pcall(Screens.tick) end
+    if Overlays then
+        local ok, res = pcall(Overlays.tick)
+        if ok then
+            BA.speak_overlay_result(res)
+        else
+            speech.log("overlay tick error: " .. tostring(res))
         end
     end
 end
 
 -- Debug: dump the focused node's UI subtree to the log via the engine's own
--- print_topology, so we can see a control's exact structure while tuning proxies.
+-- print_topology, so we can see a control's exact structure while tuning
+-- proxies. When an owned overlay is active, dump its graph (nodes in traversal
+-- order, labels, cursor, links) instead.
 function BA.dump_focus()
+    if Overlays then
+        local ok, desc = pcall(Overlays.describe)
+        speech.log("OVERLAY:\n" .. tostring(ok and desc or desc))
+        if ok and desc ~= "overlay: none" then return end
+    end
     local node = G and G.CONTROLLER and G.CONTROLLER.focused and G.CONTROLLER.focused.target
     if node and node.print_topology then
         speech.log("FOCUS TOPOLOGY:" .. tostring(node:print_topology(0)))

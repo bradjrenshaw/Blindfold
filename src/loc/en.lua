@@ -41,6 +41,12 @@ return {
         MENU         = "Menu",
     },
 
+    -- Spoken names for icon-only game buttons (menu mirror).
+    MENU = {
+        DISCORD = "Discord",
+        TWITTER = "Twitter",
+    },
+
     -- Container / region names (announced when focus enters a new card row).
     CONTAINER = {
         HAND        = "Hand",
@@ -50,6 +56,15 @@ return {
         PACKS       = "Packs",
         DECK        = "Deck",
         PLAYED      = "Played",
+        SHOP        = "Shop",
+        SHOP_GOODS  = "Vouchers and packs",
+        PACK        = "Pack",
+    },
+
+    -- Booster-pack opening screen.
+    PACK = {
+        CHOOSE    = "Choose {choices} of {count}",
+        CANT_SKIP = "Cannot skip",
     },
 
     -- Playing cards and their modifiers.
@@ -71,9 +86,12 @@ return {
     INPUT = {
         NAV_UP = "Navigate Up", NAV_DOWN = "Navigate Down",
         NAV_LEFT = "Navigate Left", NAV_RIGHT = "Navigate Right",
-        SELECT = "Select / Confirm", BACK = "Back / Deselect",
+        ROW_START = "Row Start", ROW_END = "Row End",
+        SELECT = "Select / Activate", GRAB = "Pick Up / Place",
+        BACK = "Back / Deselect",
         PLAY_HAND = "Play Hand", DISCARD = "Discard",
-        SHOULDER_LEFT = "Sell / Previous Tab", SHOULDER_RIGHT = "Buy / Use / Next Tab",
+        SELL = "Sell", USE = "Use",
+        TAB_LEFT = "Previous Tab", TAB_RIGHT = "Next Tab",
         VIEW_DECK = "View Deck", RIGHT_TRIGGER = "Right Trigger",
         RUN_INFO = "Run Info", DEBUG_DUMP = "Debug: Dump Focus",
         BUFFER_NEXT_ITEM = "Buffer: Next Item", BUFFER_PREV_ITEM = "Buffer: Previous Item",
@@ -107,6 +125,29 @@ return {
         REQUIREMENT = "score at least {amount}",
         REWARD      = "reward {dollars} dollars",
         SKIP        = "skip",
+        NOT_CURRENT = "Not the current blind",
+    },
+
+    -- The owned play screen (overlays/play.lua): its button row, card
+    -- activation feedback, and the Use / Sell action cells.
+    PLAY = {
+        PLAY_HAND   = "Play hand",
+        DISCARD     = "Discard",
+        SORT_RANK   = "Sort by rank",
+        SORT_SUIT   = "Sort by suit",
+        SORTED_RANK = "Sorted by rank",
+        SORTED_SUIT = "Sorted by suit",
+        NO_CARDS    = "No cards selected",
+        NO_DISCARDS = "No discards remaining",
+        CANT_SELECT = "Cannot select",
+        PICKED_UP   = "Picked up, {name}",
+        PICKUP_CANCELLED = "Cancelled",
+        MOVED       = "Moved",
+        CANT_MOVE_HERE = "Cannot place here",
+        USED        = "Used",
+        CANT_USE    = "Cannot use now",
+        SOLD        = "Sold",
+        CANT_SELL   = "Cannot sell",
     },
 
     -- In-round play / discard feedback.
@@ -115,12 +156,19 @@ return {
         DISCARDED   = "Discarded, {count} discards remaining",
     },
 
-    -- Shop prices (buy cost on shop items; sell value on your cards in the shop).
+    -- Shop prices (buy cost on shop items; sell value on your cards in the
+    -- shop) and the owned shop screen's feedback.
     SHOP = {
         COST = "{cost} dollars",
         FREE = "free",
         SELL = "sell {cost} dollars",
         REROLL = "Reroll, {cost} dollars",
+        CANT_AFFORD = "Cannot afford",
+        NO_ROOM     = "No room",
+        BOUGHT      = "Bought",
+        BOUGHT_USED = "Bought and used",
+        REDEEMED    = "Redeemed",
+        EMPTY       = "empty",
     },
 
     -- End-of-round cash-out screen. Browsable per-source breakdown lives in the

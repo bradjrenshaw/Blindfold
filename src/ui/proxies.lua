@@ -45,6 +45,7 @@ local function node_is_control(n)
     end
     return (c.button or c.force_focus) and true or false
 end
+Proxy.node_is_control = node_is_control   -- used by the menu-mirror overlay's tree walk
 
 -- True when the subtree under `scope` (excluding the focused `node`) holds
 -- another interactive control. Such a `scope` is a shared container, not a
@@ -871,7 +872,10 @@ function ProxyBlind:blind_cfg()
     return key and G.P_BLINDS and G.P_BLINDS[key] or nil
 end
 function ProxyBlind:get_focus_announcements()
-    if self.node.config and self.node.config.button == "skip_blind" then
+    -- force_skip: the game strips config.button off non-current panels every
+    -- frame (blind_choice_handler), so a disabled Skip node can't be routed by
+    -- its button; the blinds overlay flags it explicitly.
+    if self.force_skip or (self.node.config and self.node.config.button == "skip_blind") then
         return self:skip_announcements()
     end
     return self:select_announcements()
@@ -881,6 +885,7 @@ function ProxyBlind:select_announcements()
     local anns = {}
     local name = blind_name(cfg)
     if name then anns[#anns + 1] = A.label(name) end
+    anns[#anns + 1] = A.type("button")
     -- Action + requirement + reward go in status (always on); effect is gated.
     local parts = {}
     local action = Proxy.value_text(self.node)
@@ -901,6 +906,7 @@ function ProxyBlind:skip_announcements()
     local anns = {}
     local name = blind_name(self:blind_cfg())
     if name then anns[#anns + 1] = A.label(name) end
+    anns[#anns + 1] = A.type("button")
     local parts = { Message.localized("BLIND.SKIP"):resolve() }
     local tag = self.node.config and self.node.config.ref_table
     if type(tag) == "table" then

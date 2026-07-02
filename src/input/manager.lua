@@ -21,6 +21,10 @@ local M = {
     kb_active = false,   -- has the keyboard driven nav yet (gates the mouse lock)
     lock_focus_mode = true,
     silence = nil,       -- optional fn() run when a key is consumed (speech.silence)
+    dispatcher = nil,    -- overlay dispatcher (owned-UI layer), injected by core
+    overlay_tick = nil,  -- fn(command) that runs + speaks a dispatcher tick, injected by core
+    handlers = {},       -- direct-call action implementations, injected by core
+                         -- (play_hand / discard call into the play overlay)
 }
 M.KeyboardBinding = KeyboardBinding
 M.InputAction = InputAction
@@ -84,12 +88,27 @@ function M.on_key_down(ctrl, key)
     if not best then return false end
 
     if M.silence then pcall(M.silence) end
-    if best.game_button then
+
+    -- Owned-overlay routing: an action carrying an overlay command drives the
+    -- key graph, and the engine never sees the key. engaged() also covers a
+    -- "pending" (still settling) screen — there the tick is a no-op, which
+    -- deliberately SWALLOWS the key rather than letting it leak to the engine
+    -- and click whatever the game natively focused.
+    if best.command and M.overlay_tick and M.dispatcher
+        and (M.dispatcher.engaged and M.dispatcher.engaged() or M.dispatcher.captures()) then
+        local c = best.command
+        M.overlay_tick({ kind = c.kind, dir = c.dir, mods = mods })
+        return true
+    end
+
+    if best.handler then
+        pcall(best.handler, ctrl)
+    elseif best.game_button then
+        -- Transitional fallback for not-yet-owned screens (menus): emulate the
+        -- gamepad button the engine routes by context.
         M.ensure_kb_nav(ctrl)
         ctrl:button_press(best.game_button)
         M._active[key] = best.game_button
-    elseif best.handler then
-        pcall(best.handler, ctrl)
     end
     return true
 end
@@ -115,33 +134,42 @@ function M.reset_defaults()
     for _, a in ipairs(M.actions) do a:reset_to_default() end
 end
 
--- Register the default action set: the dev's keyboard scheme (WASD nav, Space
--- select, Shift back, X play, C discard, Q/E triggers) plus arrows/Enter for
--- accessibility, and bracket/Tab keys for the shoulders/run-info the dev scheme
--- left unbound. Escape is intentionally NOT bound — it falls through to the
--- game's native handler (options / exit-overlay), which is richer than 'start'.
+-- Register the default action set — keyboard-first, one key one meaning
+-- (Brad's scheme): arrows move, Enter selects/activates, Space grabs (pick up
+-- / place, distinct from select), Home/End jump to row ends, and dedicated
+-- letters for the run actions (X play, C discard, S sell, U use). game_button
+-- fallbacks remain ONLY for the not-yet-owned screens: nav/select/back drive
+-- native menus, brackets switch menu tabs, Q/E/Tab reach the engine features
+-- that are still game-driven. Escape is intentionally NOT bound — it falls
+-- through to the game's native handler (options / exit-overlay).
 function M.init()
     M.actions = {}
     M.by_key = {}
     M._active = {}
-    local function reg(key, label, button, keys)
+    local function reg(key, label, opts)
         local binds = {}
-        for _, k in ipairs(keys) do binds[#binds + 1] = KeyboardBinding.new(k) end
-        M.register{ key = key, label_key = label, game_button = button, bindings = binds }
+        for _, k in ipairs(opts.keys) do binds[#binds + 1] = KeyboardBinding.new(k) end
+        M.register{ key = key, label_key = label, bindings = binds,
+            command = opts.command, game_button = opts.game_button, handler = opts.handler }
     end
-    reg("nav_up",         "INPUT.NAV_UP",         "dpup",          { "w", "up" })
-    reg("nav_down",       "INPUT.NAV_DOWN",       "dpdown",        { "s", "down" })
-    reg("nav_left",       "INPUT.NAV_LEFT",       "dpleft",        { "a", "left" })
-    reg("nav_right",      "INPUT.NAV_RIGHT",      "dpright",       { "d", "right" })
-    reg("select",         "INPUT.SELECT",         "a",             { "space", "return", "kpenter" })
-    reg("back",           "INPUT.BACK",           "b",             { "lshift", "rshift", "backspace" })
-    reg("play_hand",      "INPUT.PLAY_HAND",      "x",             { "x" })
-    reg("discard",        "INPUT.DISCARD",        "y",             { "c" })
-    reg("shoulder_left",  "INPUT.SHOULDER_LEFT",  "leftshoulder",  { "[" })
-    reg("shoulder_right", "INPUT.SHOULDER_RIGHT", "rightshoulder", { "]" })
-    reg("view_deck",      "INPUT.VIEW_DECK",      "triggerleft",   { "q" })
-    reg("right_trigger",  "INPUT.RIGHT_TRIGGER",  "triggerright",  { "e" })
-    reg("run_info",       "INPUT.RUN_INFO",       "back",          { "tab" })
+    reg("nav_up",    "INPUT.NAV_UP",    { keys = { "up" },    command = { kind = "move", dir = "up" },    game_button = "dpup" })
+    reg("nav_down",  "INPUT.NAV_DOWN",  { keys = { "down" },  command = { kind = "move", dir = "down" },  game_button = "dpdown" })
+    reg("nav_left",  "INPUT.NAV_LEFT",  { keys = { "left" },  command = { kind = "move", dir = "left" },  game_button = "dpleft" })
+    reg("nav_right", "INPUT.NAV_RIGHT", { keys = { "right" }, command = { kind = "move", dir = "right" }, game_button = "dpright" })
+    reg("row_start", "INPUT.ROW_START", { keys = { "home" },  command = { kind = "move_to_edge", dir = "left" } })
+    reg("row_end",   "INPUT.ROW_END",   { keys = { "end" },   command = { kind = "move_to_edge", dir = "right" } })
+    reg("select",    "INPUT.SELECT",    { keys = { "return", "kpenter" }, command = { kind = "confirm" }, game_button = "a" })
+    reg("grab",      "INPUT.GRAB",      { keys = { "space" }, command = { kind = "grab" } })
+    reg("back",      "INPUT.BACK",      { keys = { "backspace", "lshift", "rshift" }, game_button = "b" })
+    reg("play_hand", "INPUT.PLAY_HAND", { keys = { "x" }, handler = function() local h = M.handlers.play_hand; if h then h() end end })
+    reg("discard",   "INPUT.DISCARD",   { keys = { "c" }, handler = function() local h = M.handlers.discard; if h then h() end end })
+    reg("sell",      "INPUT.SELL",      { keys = { "s" }, command = { kind = "sell" } })
+    reg("use",       "INPUT.USE",       { keys = { "u" }, command = { kind = "use" } })
+    reg("tab_left",  "INPUT.TAB_LEFT",  { keys = { "[" }, game_button = "leftshoulder" })
+    reg("tab_right", "INPUT.TAB_RIGHT", { keys = { "]" }, game_button = "rightshoulder" })
+    reg("view_deck", "INPUT.VIEW_DECK", { keys = { "q" }, game_button = "triggerleft" })
+    reg("right_trigger", "INPUT.RIGHT_TRIGGER", { keys = { "e" }, game_button = "triggerright" })
+    reg("run_info",  "INPUT.RUN_INFO",  { keys = { "tab" }, game_button = "back" })
 end
 
 -- ---- Persistence of rebound keys (blindfold_keybinds.lua in the save dir) ----
@@ -160,6 +188,11 @@ local function ser(v)
     return "nil"
 end
 
+-- Keymap-format version: bump when the default scheme changes meaning so that
+-- stale rebinds don't resurrect old semantics (e.g. Space was "select" in v1,
+-- "grab" in v2 — a v1 save would shadow the new grab action).
+local BINDS_VERSION = 2
+
 function M.save_bindings()
     local map = {}
     for _, a in ipairs(M.actions) do
@@ -169,7 +202,10 @@ function M.save_bindings()
         end
         map[a.key] = binds
     end
-    pcall(function() love.filesystem.write("blindfold_keybinds.lua", "return " .. ser(map)) end)
+    pcall(function()
+        love.filesystem.write("blindfold_keybinds.lua",
+            "return " .. ser({ v = BINDS_VERSION, map = map }))
+    end)
 end
 
 function M.load_bindings()
@@ -177,10 +213,11 @@ function M.load_bindings()
         local data = love.filesystem.read("blindfold_keybinds.lua")
         if not data then return end
         local chunk = load(data, "@blindfold_keybinds.lua")
-        local map = chunk and chunk()
-        if type(map) ~= "table" then return end
+        local t = chunk and chunk()
+        -- Older formats (v1 was a bare map) are discarded: defaults win.
+        if type(t) ~= "table" or t.v ~= BINDS_VERSION or type(t.map) ~= "table" then return end
         for _, a in ipairs(M.actions) do
-            local saved = map[a.key]
+            local saved = t.map[a.key]
             if type(saved) == "table" then
                 a.bindings = {}
                 for _, b in ipairs(saved) do
