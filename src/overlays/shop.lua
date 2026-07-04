@@ -199,16 +199,17 @@ end
 
 -- --- Overlay contract ------------------------------------------------------------
 
--- Initial-load settle: the Next Round button exists almost immediately, but
--- the wares deal in over the following second — navigating a half-built shop
--- gives weird landings. Stay pending until the ware counts have been stable
--- for SETTLE_TICKS (liveness-capped), then stay settled for the whole visit:
--- buying / rerolling changes counts too, and re-gating would fight the buy
--- flow's focus suggestions. Reset when the shop closes.
-local SETTLE_TICKS = 20    -- ~1/3s of no content changes
-local MAX_WAIT = 180       -- give up waiting after ~3s and go live regardless
+-- Initial-load gate: the Next Round button exists almost immediately, but the
+-- game's loader waits for the shop box to finish easing in and THEN populates
+-- every ware area synchronously in one event (game.lua:3090-3170, ending in
+-- its own snap_to) — so "any ware exists" IS the fully-loaded state, no
+-- timing heuristics. Settles once per visit: buying / rerolling changes the
+-- counts and must not re-gate (it would fight the buy flow's focus
+-- suggestions). The wait cap covers the pathological case of a loaded save
+-- whose shop was already completely sold out.
+local MAX_WAIT = 300       -- ~5s
 local settled = false
-local stable, waited, last_total = 0, 0, -1
+local waited = 0
 
 local function ware_total()
     local t = 0
@@ -220,7 +221,7 @@ end
 
 function M:handler()
     if not (G and G.STAGE == G.STAGES.RUN and G.STATES) then
-        settled, stable, waited, last_total = false, 0, 0, -1
+        settled, waited = false, 0
         return "inactive"
     end
     local st = G.STATE
@@ -229,10 +230,8 @@ function M:handler()
         -- The shop UI eases in after the state flips.
         if not next_round_node() then return "pending" end
         if not settled then
-            local t = ware_total()
-            if t == last_total then stable = stable + 1 else stable, last_total = 0, t end
             waited = waited + 1
-            if stable < SETTLE_TICKS and waited < MAX_WAIT then return "pending" end
+            if ware_total() == 0 and waited < MAX_WAIT then return "pending" end
             settled = true
         end
         return "active"
@@ -243,7 +242,7 @@ function M:handler()
         or st == G.STATES.BUFFOON_PACK or st == G.STATES.PLANET_PACK then
         return "sleeping"
     end
-    settled, stable, waited, last_total = false, 0, 0, -1
+    settled, waited = false, 0
     return "inactive"
 end
 
