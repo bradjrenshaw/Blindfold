@@ -106,17 +106,16 @@ function M:build(b)
 
     -- The screen's real buttons, discovered and driven like the mirror does.
     local controls = Mirror.gather({ box })
-    local first_btn
     if controls[1] then
         b:start_row("buttons")
         for i, n in ipairs(controls) do
-            local id = Id.referenced(n, "btn:" .. i)
-            first_btn = first_btn or id
-            b:add_item(id, Mirror.vtable_for(n))
+            b:add_item(Id.referenced(n, "btn:" .. i), Mirror.vtable_for(n))
         end
         b:end_row()
     end
-    if first_btn then b:set_start(first_btn) end
+    -- No set_start: focus opens on the header (the first node), so the recap
+    -- reads top-to-bottom by arrowing down — skippable straight to the
+    -- buttons for players who don't care.
 end
 
 return M
