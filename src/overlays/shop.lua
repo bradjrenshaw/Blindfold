@@ -46,8 +46,16 @@ end
 -- its row (then the previous), then the other sale rows, then Next Round.
 -- Without this, the reconciler's reference-following tracks the bought card
 -- into YOUR property row — technically correct, never what a shopper wants.
+--
+-- The suggestion is QUEUED on the game's event queue, not applied instantly:
+-- the purchase (and for buy-and-use, the consumable's whole effect) runs as
+-- queued events, and an instant suggestion re-focused and announced the next
+-- ware in the same breath as the action. Queued, it fires after the purchase
+-- events — and if a use animation is running (the shop reports pending), it
+-- simply sits until the shop reactivates.
 local function suggest_next(ctx, card)
     if not ctx.controller then return end
+    local ctrl = ctx.controller
     local target
     local area = card.area
     if area and area.cards then
@@ -73,7 +81,18 @@ local function suggest_next(ctx, card)
             if target then break end
         end
     end
-    ctx.controller:suggest_move(target or Id.structural("btn:next_round"))
+    target = target or Id.structural("btn:next_round")
+    if G and G.E_MANAGER and Event then
+        G.E_MANAGER:add_event(Event({
+            trigger = "immediate",
+            func = function()
+                ctrl:suggest_move(target)
+                return true
+            end,
+        }))
+    else
+        ctrl:suggest_move(target)
+    end
 end
 
 local function buy_click(card)
@@ -241,6 +260,14 @@ function M:handler()
     if st == G.STATES.TAROT_PACK or st == G.STATES.SPECTRAL_PACK or st == G.STATES.STANDARD_PACK
         or st == G.STATES.BUFFOON_PACK or st == G.STATES.PLANET_PACK then
         return "sleeping"
+    end
+    -- Using a consumable FROM the shop flips the state to PLAY_TAROT and back
+    -- (use_card records the origin in G.TAROT_INTERRUPT). Reporting inactive
+    -- here cleared the cursor cache mid-animation — the "focus jumps around
+    -- when using something" bug. Engaged-but-quiet keeps the position AND any
+    -- pending focus suggestion (buy-and-use) through the animation.
+    if st == G.STATES.PLAY_TAROT and G.TAROT_INTERRUPT == G.STATES.SHOP then
+        return "pending"
     end
     settled, waited = false, 0
     return "inactive"

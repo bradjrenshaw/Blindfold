@@ -168,6 +168,12 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
                 if card.can_use_consumeable and card:can_use_consumeable() then
                     G.FUNCS.use_card({ config = { ref_table = card } })
                     say(ctx, "PLAY.USED")
+                elseif type(card.ability.consumeable) == "table"
+                    and card.ability.consumeable.max_highlighted then
+                    -- Targeting tarots are only usable while selecting a hand
+                    -- with the right number of cards highlighted (the game's
+                    -- rule) — say WHY instead of a bare "cannot use".
+                    say(ctx, "PLAY.NEEDS_TARGETS")
                 else
                     say(ctx, "PLAY.CANT_USE")
                 end

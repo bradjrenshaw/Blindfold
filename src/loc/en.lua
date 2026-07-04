@@ -146,6 +146,7 @@ return {
         CANT_MOVE_HERE = "Cannot place here",
         USED        = "Used",
         CANT_USE    = "Cannot use now",
+        NEEDS_TARGETS = "Requires selected hand cards",
         SOLD        = "Sold",
         CANT_SELL   = "Cannot sell",
     },
@@ -189,6 +190,7 @@ return {
     -- Spoken hand-scoring sequence.
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
+        HAND_LEVEL = "{name} upgraded to level {level}, {chips} chips, {mult} mult",
         CHIPS   = "{amt} chips",
         MULT    = "plus {amt} mult",
         XMULT   = "times {amt} mult",

@@ -127,6 +127,16 @@ function M.on_hand_text(config, vals)
         -- guards against repeats WITHIN one scoring).
         M._last_score = nil
         speak(loc("SCORING.HAND", { name = vals.handname, chips = vals.chips, mult = vals.mult }))
+    elseif type(vals.handname) == "string" and vals.handname ~= ""
+        and type(vals.level) == "number"
+        and type(vals.chips) == "number" and type(vals.mult) == "number" then
+        -- A hand being UPGRADED (planet card, level-up jokers): the game sends
+        -- the name with its new level and new base chips/mult (card.lua:1265).
+        -- Speaking just the bare hand name here read as a non-sequitur.
+        M._last_hand = vals.handname
+        speak(loc("SCORING.HAND_LEVEL", {
+            name = vals.handname, level = vals.level, chips = vals.chips, mult = vals.mult,
+        }))
     elseif type(vals.handname) == "string" and vals.handname ~= "" and vals.handname ~= M._last_hand then
         M._last_hand = vals.handname
         if setting("scoring.hand_preview", true) then speak(vals.handname) end

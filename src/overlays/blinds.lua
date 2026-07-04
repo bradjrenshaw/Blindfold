@@ -80,9 +80,15 @@ local function blind_vtable(node, type_name, is_skip)
 end
 
 function M:handler()
-    if not (G and G.STAGE == G.STAGES.RUN and G.STATES and G.STATE == G.STATES.BLIND_SELECT) then
-        return "inactive"
+    if not (G and G.STAGE == G.STAGES.RUN and G.STATES) then return "inactive" end
+    -- Using a consumable from this screen flips the state to PLAY_TAROT and
+    -- back (origin recorded in G.TAROT_INTERRUPT); stay engaged-but-quiet so
+    -- the cursor survives the animation instead of resetting to the current
+    -- blind.
+    if G.STATE == G.STATES.PLAY_TAROT and G.TAROT_INTERRUPT == G.STATES.BLIND_SELECT then
+        return "pending"
     end
+    if G.STATE ~= G.STATES.BLIND_SELECT then return "inactive" end
     if G.OVERLAY_MENU then return "sleeping" end
     -- The panels ease in after the state flips; stay engaged-but-quiet until
     -- the current blind's Select button exists.

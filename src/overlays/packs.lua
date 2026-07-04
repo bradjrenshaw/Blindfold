@@ -56,7 +56,12 @@ local function pick_click(card)
     return function(ctx)
         if card.ability and card.ability.consumeable then
             if not (card.can_use_consumeable and card:can_use_consumeable()) then
-                say(ctx, "PLAY.CANT_USE")   -- e.g. needs hand cards selected
+                if type(card.ability.consumeable) == "table"
+                    and card.ability.consumeable.max_highlighted then
+                    say(ctx, "PLAY.NEEDS_TARGETS")
+                else
+                    say(ctx, "PLAY.CANT_USE")
+                end
                 return
             end
         elseif card.ability and card.ability.set == "Joker" then
