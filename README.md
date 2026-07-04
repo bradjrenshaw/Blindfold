@@ -84,7 +84,7 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | --- | --- |
 | Arrow keys | Move (mod-owned screens navigate by rows; sliders/cycles adjust) |
 | Home / End | Jump to the start / end of the row |
-| Enter | Select a card / activate a button |
+| Enter | Select a card / activate a button (on a joker: pick up / place) |
 | Space | Pick up / place (reorder jokers or hand cards; hands score left-to-right) |
 | X / C | Play hand / Discard |
 | S / U | Sell / Use the focused joker or consumable |
@@ -105,11 +105,11 @@ navigation):
 | Button | Action |
 | --- | --- |
 | D-pad | Move |
-| A | Select a card / activate a button |
+| A | Select a card / activate a button (on a joker: pick up / place) |
 | B | Back / deselect all (native) |
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
-| Left stick click | Pick up / place (reorder) |
+| Left stick click | Pick up / place a hand card (jokers use A) |
 | LT (hold) | View deck (native) |
 | Back | Run info (native) |
 | Start | Pause (native) |

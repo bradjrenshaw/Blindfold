@@ -153,6 +153,13 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
     end
     if opts and opts.grab then
         vtable.on_grab = grab_handler(card, area)
+        -- On non-selectable cards (jokers), grab IS the primary action:
+        -- select would otherwise just re-read the label, so Enter / gamepad A
+        -- pick up and place directly — no dedicated grab button needed for
+        -- the common case. Hand cards keep select and grab strictly separate.
+        if not (opts and opts.selectable) then
+            vtable.on_click = vtable.on_grab
+        end
     end
     if opts and opts.actions then
         vtable.on_sell = function(ctx)
