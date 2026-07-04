@@ -271,15 +271,19 @@ function M:handler()
     if G.OVERLAY_MENU then return "sleeping" end
     local S, st = G.STATES, G.STATE
     if not S then return "inactive" end
-    if st == S.SELECTING_HAND or st == S.HAND_PLAYED or st == S.DRAW_TO_HAND
-        or st == S.PLAY_TAROT then
-        return "active"
+    -- Active ONLY while the hand is stable and selectable. Every other in-round
+    -- state is a card-churning animation: the scoring cascade (HAND_PLAYED),
+    -- the redraw (DRAW_TO_HAND — SELECTING_HAND is entered by an event queued
+    -- BEHIND the draws, so waking there means the hand is full and positions
+    -- read right), consumable use (PLAY_TAROT), and the round outro
+    -- (NEW_ROUND). Announcing survivors mid-churn read wrong positions and
+    -- random landings; pending keeps us engaged but silent, and the single
+    -- wake announce lands on settled state.
+    if st == S.SELECTING_HAND then return "active" end
+    if st == S.HAND_PLAYED or st == S.DRAW_TO_HAND or st == S.PLAY_TAROT
+        or st == S.NEW_ROUND then
+        return "pending"
     end
-    -- The round outro: NEW_ROUND is entered only when the blind resolves, and
-    -- the hand animates out card by card — each removal would fire a
-    -- vanished-focus announcement. The screen's work is done; stay engaged but
-    -- quiet until the cash-out overlay takes over.
-    if st == S.NEW_ROUND then return "pending" end
     -- Opening a pack mid-round: the pack UI is game-driven (legacy layer);
     -- sleep so the hand position survives until the pack closes.
     if st == S.TAROT_PACK or st == S.SPECTRAL_PACK or st == S.STANDARD_PACK

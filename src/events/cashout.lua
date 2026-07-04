@@ -3,12 +3,16 @@
 -- source: blind reward, remaining hands/discards, jokers, tags, interest, then a
 -- 'bottom' row with the total). We wrap that (see core.lua) and record each row
 -- with enough context (counts, the joker card / tag object) that ProxyCashOut
--- can render a browsable, drill-down breakdown in the Cash Out buffer. Nothing
--- here speaks; it's read on demand.
+-- and the cash-out overlay can render a browsable breakdown — AND each row is
+-- spoken live as its payout animates: evaluate_round adds every row in one
+-- frame, while the visuals (name text + per-dollar coin ticks) are events the
+-- original queues on the sequential base queue. Our wrap runs before the
+-- original, so a speech event queued here lands right as its row's coin
+-- cascade begins (same pattern as events/scoring.lua).
 local require = ...
 local Message = require("ui.message")
 
-local M = { rows = {}, total = nil }
+local M = { rows = {}, total = nil, say = nil }
 
 -- Joker / tag rows carry their own name; resolved at record time while
 -- config.card / config.tag are live.
@@ -46,10 +50,26 @@ function M.on_row(config)
     elseif type(d) ~= "number" or d == 0 then
         return
     end
-    M.rows[#M.rows + 1] = {
+    local row = {
         name = n, dollars = d, disp = config.disp, saved = config.saved,
         card = config.card, tag = config.tag, item = item_name(config),
     }
+    M.rows[#M.rows + 1] = row
+
+    -- Speak the row when it lands on screen (composed now, spoken from the
+    -- event queue in step with the animation).
+    if M.say and G and G.E_MANAGER and Event then
+        local ok, line = pcall(M.summary, row)
+        if ok and type(line) == "string" and line ~= "" then
+            G.E_MANAGER:add_event(Event({
+                trigger = "immediate",
+                func = function()
+                    M.say(line)
+                    return true
+                end,
+            }))
+        end
+    end
 end
 
 -- One-line summary for a breakdown row (the browsable buffer item). Counts /

@@ -122,6 +122,10 @@ function M.on_hand_text(config, vals)
        and type(vals.chips) == "number" and type(vals.mult) == "number"
        and (vals.chips > 0 or vals.mult > 0) then
         M._last_hand = vals.handname
+        -- A new hand is being played: its total must speak even when it lands
+        -- on exactly the same number as the previous hand's (the dedupe only
+        -- guards against repeats WITHIN one scoring).
+        M._last_score = nil
         speak(loc("SCORING.HAND", { name = vals.handname, chips = vals.chips, mult = vals.mult }))
     elseif type(vals.handname) == "string" and vals.handname ~= "" and vals.handname ~= M._last_hand then
         M._last_hand = vals.handname

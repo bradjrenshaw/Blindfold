@@ -139,8 +139,10 @@ do
         Round.say = speech.say
         BA.round = Round
 
-        -- Cash-out: accumulate the end-of-round money breakdown for ProxyCashOut.
+        -- Cash-out: accumulate the end-of-round money breakdown (browsable on
+        -- the cash-out overlay / buffer) and speak each row as it animates in.
         BA.cashout = ba_require("events.cashout")
+        BA.cashout.say = speech.say
 
         -- Settings: registry + the native "Blindfold" tab in the Options screen.
         local Settings = ba_require("settings.registry")
