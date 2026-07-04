@@ -57,13 +57,22 @@ function Proxy.has_other_control(scope, node)
 end
 
 -- Literal caption text (G.UIT.T with a plain config.text, no ref binding).
+-- config.text can be a NUMBER — the game assigns raw values in places (the
+-- run-info poker-hand rows' chips / mult / play counts) — so accept both.
+local function literal_text(c)
+    local t = c.text
+    if type(t) == "number" then return tostring(t) end
+    if type(t) == "string" then return t end
+    return nil
+end
+
 function Proxy.static_text(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and type(c.text) == "string"
-           and c.ref_value == nil and not is_skip(c.text) then
-            parts[#parts + 1] = c.text
+        if c and n.UIT == G.UIT.T and c.ref_value == nil then
+            local t = literal_text(c)
+            if t and not is_skip(t) then parts[#parts + 1] = t end
         end
     end)
     return #parts > 0 and table.concat(parts, " ") or nil
@@ -362,9 +371,9 @@ function Proxy.static_text_list(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and type(c.text) == "string"
-           and c.ref_value == nil and not is_skip(c.text) then
-            parts[#parts + 1] = c.text
+        if c and n.UIT == G.UIT.T and c.ref_value == nil then
+            local t = literal_text(c)
+            if t and not is_skip(t) then parts[#parts + 1] = t end
         end
     end)
     return parts
@@ -394,8 +403,10 @@ function Proxy.collect_def_text(node, parts, depth)
     if node.n ~= nil or node.config ~= nil then
         local c = node.config
         if c then
-            if type(c.text) == "string" then
-                if not is_skip(c.text) then parts[#parts + 1] = c.text end
+            local lit = (type(c.text) == "string" and c.text)
+                or (type(c.text) == "number" and tostring(c.text)) or nil
+            if lit then
+                if not is_skip(lit) then parts[#parts + 1] = lit end
             elseif type(c.ref_table) == "table" and c.ref_value ~= nil then
                 local v = c.ref_table[c.ref_value]
                 if v ~= nil and not is_skip(tostring(v)) then parts[#parts + 1] = tostring(v) end
