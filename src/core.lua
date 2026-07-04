@@ -108,6 +108,10 @@ do
         local Mirror = ba_require("overlays.menu_mirror")
         Overlays.register(ba_require("overlays.main_menu"))
         Overlays.register(Mirror.overlay)
+        -- End-of-run screens (game over / win): above the mirror, since both
+        -- are overlay menus the mirror would otherwise claim (buttons only —
+        -- the run summary rows aren't focusable controls).
+        Overlays.register(ba_require("overlays.game_over"))
         BA.overlays = Overlays
         Input.dispatcher = Overlays
         Input.overlay_tick = function(cmd)
