@@ -130,13 +130,39 @@ function M.on_hand_text(config, vals)
     elseif type(vals.handname) == "string" and vals.handname ~= ""
         and type(vals.level) == "number"
         and type(vals.chips) == "number" and type(vals.mult) == "number" then
-        -- A hand being UPGRADED (planet card, level-up jokers): the game sends
-        -- the name with its new level and new base chips/mult (card.lua:1265).
-        -- Speaking just the bare hand name here read as a non-sequitur.
+        -- A hand being UPGRADED (planet card, level-up jokers). The values in
+        -- THIS call may be pre- or post-upgrade depending on the caller (the
+        -- planet path shows the panel BEFORE level_up_hand increments;
+        -- joker-triggered upgrades call it after) — so the announcement is
+        -- queued one event later and reads the LIVE hand table, which is
+        -- post-upgrade in every path by then.
         M._last_hand = vals.handname
-        speak(loc("SCORING.HAND_LEVEL", {
-            name = vals.handname, level = vals.level, chips = vals.chips, mult = vals.mult,
-        }))
+        local name = vals.handname
+        local fallback = { name = name, level = vals.level, chips = vals.chips, mult = vals.mult }
+        local function announce()
+            local live
+            pcall(function()
+                for key, h in pairs(G.GAME.hands) do
+                    local ok, loc_name = pcall(localize, key, "poker_hands")
+                    if ok and loc_name == name then
+                        live = { name = name, level = h.level, chips = h.chips, mult = h.mult }
+                        break
+                    end
+                end
+            end)
+            speak(loc("SCORING.HAND_LEVEL", live or fallback))
+        end
+        if G and G.E_MANAGER and Event then
+            G.E_MANAGER:add_event(Event({
+                trigger = "immediate",
+                func = function()
+                    announce()
+                    return true
+                end,
+            }))
+        else
+            announce()
+        end
     elseif type(vals.handname) == "string" and vals.handname ~= "" and vals.handname ~= M._last_hand then
         M._last_hand = vals.handname
         if setting("scoring.hand_preview", true) then speak(vals.handname) end
