@@ -113,9 +113,10 @@ navigation):
 | LT (hold) | View deck (native) |
 | Back | Run info (native) |
 | Start | Pause (native) |
+| Right stick | Review buffers: left/right switch buffer, up/down browse |
 
 Controller buttons aren't rebindable yet (keyboard is, in Options → Blindfold
-→ Keybindings). Review buffers (Ctrl+arrows) are keyboard-only for now.
+→ Keybindings).
 
 ## Verifying without a screen reader
 

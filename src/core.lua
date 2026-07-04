@@ -278,6 +278,8 @@ end
 -- ---------------------------------------------------------------------------
 function BA.focus_tick(ctrl)
     if Screens then pcall(Screens.tick) end
+    -- Right-stick -> buffer navigation (polled; sticks are axes, not buttons).
+    if Input and Input.update_pad_axes then pcall(Input.update_pad_axes, ctrl) end
     if Overlays then
         local ok, res = pcall(Overlays.tick)
         if ok then

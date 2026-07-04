@@ -174,6 +174,51 @@ function M.on_pad_up(button)
     return false
 end
 
+-- Right stick -> review buffers, mirroring Ctrl+arrows: up/down = next /
+-- previous item, left/right = next / previous buffer. Polled per frame (the
+-- stick is an axis pair, not buttons); edge-triggered on entering a direction
+-- with hysteresis, so one flick = one step and centering re-arms it. The
+-- keyboard-stub gamepad reports zero axes, so this is inert without a pad.
+local PAD_AXIS_ACTIONS = {
+    up = "buffer_next_item", down = "buffer_prev_item",
+    right = "buffer_next", left = "buffer_prev",
+}
+local PRESS_AT, RELEASE_AT = 0.55, 0.35
+local _stick_dir = nil
+
+function M.update_pad_axes(ctrl)
+    local pad = ctrl and ctrl.GAMEPAD and ctrl.GAMEPAD.object
+    if not pad or not pad.getGamepadAxis then return end
+    local ok, x, y = pcall(function()
+        return pad:getGamepadAxis("rightx"), pad:getGamepadAxis("righty")
+    end)
+    if not ok then return end
+    x, y = tonumber(x) or 0, tonumber(y) or 0
+
+    local ax, ay = math.abs(x), math.abs(y)
+    local mag = math.max(ax, ay)
+    local dir
+    if mag >= PRESS_AT then
+        if ay >= ax then dir = (y < 0) and "up" or "down"
+        else dir = (x < 0) and "left" or "right" end
+    elseif mag < RELEASE_AT then
+        dir = nil
+    else
+        dir = _stick_dir   -- hysteresis band: hold the current state
+    end
+
+    if dir ~= _stick_dir then
+        _stick_dir = dir
+        if dir then
+            local action = M.by_key[PAD_AXIS_ACTIONS[dir]]
+            if action and action.handler then
+                if M.silence then pcall(M.silence) end
+                pcall(action.handler, ctrl)
+            end
+        end
+    end
+end
+
 -- Settings-menu rebind: capture the next keypress as a binding via cb(binding).
 function M.start_listening(cb) M._listen_cb = cb end
 function M.stop_listening() M._listen_cb = nil end
