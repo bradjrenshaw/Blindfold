@@ -112,7 +112,7 @@ local function grab_handler(card, area)
         -- Land the cursor on the card in its new slot; the next tick's focus
         -- announce reads it (name, then position via the deferred follow-up).
         if ctx.controller then
-            ctx.controller:suggest_move(Id.referenced(moved, "card:" .. tostring(moved.sort_id)))
+            ctx.controller:suggest_move(Id.for_object(moved))
         end
     end
 end
@@ -174,7 +174,7 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
             end
         end
     end
-    b:add_item(Id.referenced(card, "card:" .. tostring(card.sort_id)), vtable)
+    b:add_item(Id.for_object(card), vtable)
 end
 
 -- All card rows share the row key so up/down preserves the position in the row.
@@ -302,7 +302,7 @@ function M:build(b)
 
     -- Land on the hand, not the top-left joker.
     if G.hand and G.hand.cards and G.hand.cards[1] then
-        b:set_start(Id.structural("card:" .. tostring(G.hand.cards[1].sort_id)))
+        b:set_start(Id.for_object(G.hand.cards[1]))
     end
 end
 

@@ -14,21 +14,28 @@ local Cashout = require("events.cashout")
 local M = { id = "cashout" }
 
 -- The Cash Out button is NOT inside G.round_eval: the game builds it as a
--- separate ANONYMOUS UIBox (common_events.lua:1069 — positioned via major =
--- G.round_eval, assigned to no global). Find it by scanning the game's UIBox
--- registry for the 'cash_out_button' id; cache the hit for the rest of the
--- eval (dropped when the screen deactivates or the node is removed).
+-- separate ANONYMOUS UIBox (common_events.lua:1069 — anchored via config.major
+-- = G.round_eval, assigned to no global) — and G.FUNCS.cash_out never removes
+-- that box, it only nils the clicked button's config.button. So old rounds'
+-- boxes LINGER in the registry with the same id and a dead button. The current
+-- round's box is the one whose config.major is the CURRENT G.round_eval (a
+-- fresh object every round); the button must still carry config.button.
 local cached_btn = nil
 
 local function button_node()
-    if cached_btn and not cached_btn.REMOVED then return cached_btn end
+    if cached_btn and not cached_btn.REMOVED
+        and cached_btn.config and cached_btn.config.button then
+        return cached_btn
+    end
     cached_btn = nil
+    if type(G.round_eval) ~= "table" then return nil end
     local boxes = G.I and G.I.UIBOX
     if type(boxes) ~= "table" then return nil end
     for _, box in pairs(boxes) do
-        if type(box) == "table" and not box.REMOVED and box.get_UIE_by_ID then
+        if type(box) == "table" and not box.REMOVED and box.get_UIE_by_ID
+            and box.config and box.config.major == G.round_eval then
             local ok, hit = pcall(box.get_UIE_by_ID, box, "cash_out_button")
-            if ok and hit then
+            if ok and hit and not hit.REMOVED and hit.config and hit.config.button then
                 cached_btn = hit
                 return hit
             end

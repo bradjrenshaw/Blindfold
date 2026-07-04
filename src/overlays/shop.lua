@@ -57,7 +57,7 @@ local function suggest_next(ctx, card)
         end
         if idx then
             local nxt = area.cards[idx + 1] or area.cards[idx - 1]
-            if nxt then target = Id.structural("card:" .. tostring(nxt.sort_id)) end
+            if nxt then target = Id.for_object(nxt) end
         end
     end
     if not target then
@@ -65,7 +65,7 @@ local function suggest_next(ctx, card)
             if a ~= area and type(a) == "table" and a.cards then
                 for _, c in ipairs(a.cards) do
                     if c ~= card then
-                        target = Id.structural("card:" .. tostring(c.sort_id))
+                        target = Id.for_object(c)
                         break
                     end
                 end
@@ -149,7 +149,7 @@ local function add_ware(b, card, pos_index, pos_total)
             vtable.on_use = buy_and_use(card)
         end
     end
-    b:add_item(Id.referenced(card, "card:" .. tostring(card.sort_id)), vtable)
+    b:add_item(Id.for_object(card), vtable)
 end
 
 -- A shop row: its wares, or a spoken placeholder when the area exists but is
@@ -254,7 +254,7 @@ function M:build(b)
     -- Land on the shelf (or the first thing after it).
     local shelf = G.shop_jokers and G.shop_jokers.cards and G.shop_jokers.cards[1]
     if shelf then
-        b:set_start(Id.structural("card:" .. tostring(shelf.sort_id)))
+        b:set_start(Id.for_object(shelf))
     elseif nr then
         b:set_start(Id.structural("btn:next_round"))
     end

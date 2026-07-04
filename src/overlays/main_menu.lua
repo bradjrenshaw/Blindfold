@@ -55,7 +55,7 @@ function M:build(b)
 
     local function id_for(n, key)
         if n.is and Card and n:is(Card) then
-            return Id.referenced(n, "card:" .. tostring(n.sort_id))
+            return Id.for_object(n)
         end
         return Id.referenced(n, key or n)
     end

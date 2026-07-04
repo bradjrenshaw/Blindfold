@@ -108,7 +108,7 @@ function M:build(b)
         b:start_row("cards", Play.container_label("CONTAINER.PACK"))
         local total = #pack
         for i, card in ipairs(pack) do
-            b:add_item(Id.referenced(card, "card:" .. tostring(card.sort_id)), {
+            b:add_item(Id.for_object(card), {
                 label = function(ctx)
                     local proxy = Factory.create(card)
                     local m = proxy and proxy:get_focus_message()
@@ -151,7 +151,7 @@ function M:build(b)
     end
 
     if pack[1] then
-        b:set_start(Id.structural("card:" .. tostring(pack[1].sort_id)))
+        b:set_start(Id.for_object(pack[1]))
     end
 end
 
