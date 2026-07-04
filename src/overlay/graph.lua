@@ -11,13 +11,15 @@
 -- Two construction styles, never mixed in one build:
 --   RAW GRAPH  add_node/connect/set_start — arbitrary nodes + directional edges.
 --   MENU SUGAR start_row/add_item/add_label/add_clickable/end_row — rows give
---     2-D navigation (left/right within a row, up/down between rows). Two rows
---     sharing a non-nil row key get COLUMN navigation: up/down preserves the
---     position within the row instead of snapping to the first item.
+--     2-D navigation (left/right within a row; up/down between rows always
+--     lands on the target row's `enter` item or its FIRST item — no column
+--     preservation; wire true columns with explicit connect overrides). The
+--     row key is currently informational only.
 --     Extensions over the C# original: start_row takes an optional row LABEL
 --     fn(ctx), spoken as the transition label when vertical navigation ENTERS
 --     the row from a different row (the container/lane announcement), and an
---     optional opts table ({ wrap = true } wraps left/right around the ends).
+--     optional opts table ({ wrap = true } wraps left/right around the ends;
+--     { enter = i } sets the vertical landing item).
 --
 -- build() returns a render { nodes = { [key] = node }, start_key,
 -- force_capture } or nil when empty (the engine treats that as closed).
@@ -69,8 +71,8 @@ end
 -- --- Menu sugar --------------------------------------------------------------
 
 -- row_opts: { wrap = true } makes left/right wrap around the row's ends;
--- { enter = i } makes vertical navigation arriving from a DIFFERENTLY-keyed
--- row land on item i instead of the first item (e.g. the current blind).
+-- { enter = i } makes vertical navigation arriving from another row land on
+-- item i instead of the first item (e.g. the current blind).
 function Builder:start_row(row_key, row_label, row_opts)
     assert(self.current_row == nil, "cannot start a row while another is open")
     self.current_row = { items = {}, key = row_key, label = row_label,
@@ -118,13 +120,11 @@ end
 
 -- --- Lowering ----------------------------------------------------------------
 
--- Where vertical navigation from position `pos` in row `from` lands in row
--- `to`: the same position when the rows share a key (column nav); else the
--- row's declared enter item, else the first item.
+-- Where vertical navigation lands in row `to`: its declared enter item, else
+-- its FIRST item — never a preserved column position (variable-length rows
+-- made index-preserving landings confusing; true column behavior, like the
+-- blind panels' select/skip pairs, is wired with explicit connect overrides).
 local function vertical_target(from, to, pos)
-    if from.key ~= nil and to.key ~= nil and from.key == to.key and pos <= #to.items then
-        return to.items[pos].id
-    end
     if to.enter and to.items[to.enter] then return to.items[to.enter].id end
     return to.items[1].id
 end
