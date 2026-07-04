@@ -199,20 +199,51 @@ end
 
 -- --- Overlay contract ------------------------------------------------------------
 
+-- Initial-load settle: the Next Round button exists almost immediately, but
+-- the wares deal in over the following second — navigating a half-built shop
+-- gives weird landings. Stay pending until the ware counts have been stable
+-- for SETTLE_TICKS (liveness-capped), then stay settled for the whole visit:
+-- buying / rerolling changes counts too, and re-gating would fight the buy
+-- flow's focus suggestions. Reset when the shop closes.
+local SETTLE_TICKS = 20    -- ~1/3s of no content changes
+local MAX_WAIT = 180       -- give up waiting after ~3s and go live regardless
+local settled = false
+local stable, waited, last_total = 0, 0, -1
+
+local function ware_total()
+    local t = 0
+    for _, a in ipairs({ G.shop_jokers, G.shop_vouchers, G.shop_booster }) do
+        if type(a) == "table" and a.cards then t = t + #a.cards end
+    end
+    return t
+end
+
 function M:handler()
-    if not (G and G.STAGE == G.STAGES.RUN and G.STATES) then return "inactive" end
+    if not (G and G.STAGE == G.STAGES.RUN and G.STATES) then
+        settled, stable, waited, last_total = false, 0, 0, -1
+        return "inactive"
+    end
     local st = G.STATE
     if st == G.STATES.SHOP then
         if G.OVERLAY_MENU then return "sleeping" end
         -- The shop UI eases in after the state flips.
         if not next_round_node() then return "pending" end
+        if not settled then
+            local t = ware_total()
+            if t == last_total then stable = stable + 1 else stable, last_total = 0, t end
+            waited = waited + 1
+            if stable < SETTLE_TICKS and waited < MAX_WAIT then return "pending" end
+            settled = true
+        end
         return "active"
     end
-    -- Opening a pack leaves the shop state and comes back: keep the position.
+    -- Opening a pack leaves the shop state and comes back: keep the position
+    -- (and the settled flag — the shop content didn't reload).
     if st == G.STATES.TAROT_PACK or st == G.STATES.SPECTRAL_PACK or st == G.STATES.STANDARD_PACK
         or st == G.STATES.BUFFOON_PACK or st == G.STATES.PLANET_PACK then
         return "sleeping"
     end
+    settled, stable, waited, last_total = false, 0, 0, -1
     return "inactive"
 end
 

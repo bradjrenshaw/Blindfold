@@ -71,20 +71,25 @@ local function pick_click(card)
     end
 end
 
--- The cards deal in one at a time; stay quiet until the count stops moving.
-local last_count = -1
+-- The cards deal in one at a time; stay quiet until the count has held still
+-- for SETTLE_TICKS (a single unchanged tick can fall BETWEEN two arrivals).
+-- Settles once per pack; picking a card changes the count without re-gating.
+local SETTLE_TICKS = 15
+local settled = false
+local stable, last_count = 0, -1
 
 function M:handler()
     if not (G and G.STAGE == G.STAGES.RUN and in_pack_state()) then
-        last_count = -1
+        settled, stable, last_count = false, 0, -1
         return "inactive"
     end
     if G.OVERLAY_MENU then return "sleeping" end
-    local cards = G.pack_cards and G.pack_cards.cards
-    local count = cards and #cards or 0
-    if count == 0 or count ~= last_count then
-        last_count = count
-        return "pending"
+    if not settled then
+        local cards = G.pack_cards and G.pack_cards.cards
+        local count = cards and #cards or 0
+        if count == last_count then stable = stable + 1 else stable, last_count = 0, count end
+        if count == 0 or stable < SETTLE_TICKS then return "pending" end
+        settled = true
     end
     return "active"
 end
