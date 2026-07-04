@@ -367,8 +367,14 @@ function BA.install()
         if card_eval_status_text then
             local orig_status = card_eval_status_text
             function card_eval_status_text(card, eval_type, amt, percent, dir, extra)
-                orig_status(card, eval_type, amt, percent, dir, extra)
+                -- Speech BEFORE the original: both queue onto the sequential
+                -- base event queue, and 'before' events run their func the
+                -- moment they reach the queue front, holding the queue for
+                -- their delay AFTERWARD (event.lua:92). Queued this way, the
+                -- utterance fires in the same beat as its popup; queued after,
+                -- it would land one popup late.
                 pcall(Scoring.on_status, card, eval_type, amt, extra)
+                orig_status(card, eval_type, amt, percent, dir, extra)
             end
         end
         if update_hand_text then

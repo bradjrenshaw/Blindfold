@@ -1,9 +1,9 @@
 -- events/scoring.lua — speak the hand-scoring sequence. The game funnels every
 -- floating "+10 chips / x3 mult / joker message" through card_eval_status_text,
 -- and the hand name + final score through update_hand_text. We wrap both (see
--- core.lua) and turn each call into one queued utterance, so the spoken sequence
--- follows the on-screen scoring. Source cards/jokers are named by reusing the
--- focus proxies.
+-- core.lua); per-effect lines are composed at evaluation time but spoken from
+-- the game's own event queue so each utterance lands when its popup animates
+-- (see on_status). Source cards/jokers are named by reusing the focus proxies.
 local require = ...
 local Factory = require("ui.factory")
 local Message = require("ui.message")
@@ -50,6 +50,15 @@ local function with_source(card, effect)
 end
 
 -- One scoring contribution (mirrors card_eval_status_text's own dispatch).
+--
+-- Composed IMMEDIATELY — the whole hand is evaluated in one frame, and joker
+-- names / effect messages must be read while that state is live — but SPOKEN
+-- from the game's event queue: the original card_eval_status_text call queued
+-- its popup + sound as a 'before'-delay event on the sequential base queue
+-- (common_events.lua:898), so queueing the utterance right behind it makes
+-- each line land exactly when its popup fires. The readout follows the
+-- animation pacing, including game-speed scaling. (extra.instant popups show
+-- immediately, so those speak immediately.)
 function M.on_status(card, eval_type, amt, extra)
     if not card then return end
     if not setting("scoring.enabled", true) then return end
@@ -88,7 +97,18 @@ function M.on_status(card, eval_type, amt, extra)
             if eff then phrase = with_source(card, eff) end
         end
     end
-    speak(phrase)
+    if not phrase then return end
+    if (extra and extra.instant) or not (G and G.E_MANAGER and Event) then
+        speak(phrase)
+        return
+    end
+    G.E_MANAGER:add_event(Event({
+        trigger = "immediate",
+        func = function()
+            speak(phrase)
+            return true
+        end,
+    }))
 end
 
 -- The hand name + base chips/mult on the play, and the final score.
