@@ -95,7 +95,14 @@ end
 -- node's LABEL (a move, an edge re-read, a fallback re-read from confirm or an
 -- action key, a follow announce) — the caller then appends the node's deferred
 -- follow-up (description / position), so every label announcement reads the
--- same regardless of which key produced it.
+-- same regardless of which key produced it. `deferred` is the focused node's
+-- own deferred override (vtable.deferred), when it declares one — e.g. a row
+-- position counted over the ROW rather than the backing CardArea.
+local function cur_deferred(graph, state)
+    local node = state.cur and graph.current and graph.current.nodes[state.cur.key]
+    return node and node.vtable.deferred or nil
+end
+
 local function apply_nav(graph, state, ctx, message, command)
     local kind = command.kind
 
@@ -103,14 +110,14 @@ local function apply_nav(graph, state, ctx, message, command)
     if slot then
         local acted = graph:invoke_node_action(ctx, slot)
         return { message = message:build(), focus_ref = state.cur and state.cur.ref,
-            spoke_label = not acted }
+            spoke_label = not acted, deferred = cur_deferred(graph, state) }
     end
 
     if kind == "confirm" then
         local acted = graph:click(ctx, command.mods)
         D.last_spoken = state.cur and state.cur.key
         return { message = message:build(), focus_ref = state.cur and state.cur.ref,
-            clicked = true, spoke_label = not acted }
+            clicked = true, spoke_label = not acted, deferred = cur_deferred(graph, state) }
     end
 
     -- A value control (a slider) intercepts horizontal input to adjust instead
@@ -130,7 +137,7 @@ local function apply_nav(graph, state, ctx, message, command)
     -- A move always speaks a label: the destination's, or the edge re-read.
     D.last_spoken = state.cur and state.cur.key
     return { message = message:build(), focus_ref = state.cur and state.cur.ref,
-        moved = moved, spoke_label = true }
+        moved = moved, spoke_label = true, deferred = cur_deferred(graph, state) }
 end
 
 local function build_and_process(overlay, command)
@@ -182,7 +189,8 @@ local function build_and_process(overlay, command)
     D.last_spoken = cur.key
     local node = graph.current.nodes[cur.key]
     if node and node.vtable.label then node.vtable.label(ctx) end
-    return { message = message:build(), focus_ref = cur.ref, entered = true, spoke_label = true }
+    return { message = message:build(), focus_ref = cur.ref, entered = true,
+        spoke_label = true, deferred = node and node.vtable.deferred or nil }
 end
 
 -- Run one frame, optionally applying a player navigation command:

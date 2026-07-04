@@ -15,6 +15,7 @@ local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
 local Factory = require("ui.factory")
+local Proxies = require("ui.proxies").Proxy
 local Play = require("overlays.play")
 
 local M = { id = "packs" }
@@ -92,23 +93,7 @@ function M:build(b)
     b:capture_input()
 
     -- Your property, for pick context.
-    local has_jokers = G.jokers and G.jokers.cards and #G.jokers.cards > 0
-    local has_cons = G.consumeables and G.consumeables.cards and #G.consumeables.cards > 0
-    if has_jokers or has_cons then
-        b:start_row("cards",
-            Play.container_label(has_jokers and "CONTAINER.JOKERS" or "CONTAINER.CONSUMABLES"))
-        if has_jokers then
-            for _, card in ipairs(G.jokers.cards) do
-                Play.add_card(b, card, G.jokers, { actions = true, grab = true })
-            end
-        end
-        if has_cons then
-            for _, card in ipairs(G.consumeables.cards) do
-                Play.add_card(b, card, G.consumeables, { actions = true })
-            end
-        end
-        b:end_row()
-    end
+    Play.property_row(b)
 
     local pack = G.pack_cards and G.pack_cards.cards or {}
 
@@ -121,7 +106,8 @@ function M:build(b)
 
     if pack[1] then
         b:start_row("cards", Play.container_label("CONTAINER.PACK"))
-        for _, card in ipairs(pack) do
+        local total = #pack
+        for i, card in ipairs(pack) do
             b:add_item(Id.referenced(card, "card:" .. tostring(card.sort_id)), {
                 label = function(ctx)
                     local proxy = Factory.create(card)
@@ -129,6 +115,9 @@ function M:build(b)
                     if m then ctx.message:fragment(m) end
                 end,
                 on_click = pick_click(card),
+                deferred = function()
+                    return Proxies.card_deferred(card, i, total)
+                end,
             })
         end
         b:end_row()
@@ -137,8 +126,9 @@ function M:build(b)
     -- The hand, when the pack dealt one (tarot / spectral targeting).
     if G.hand and G.hand.cards and #G.hand.cards > 0 then
         b:start_row("cards", Play.container_label("CONTAINER.HAND"), { wrap = true })
-        for _, card in ipairs(G.hand.cards) do
-            Play.add_card(b, card, G.hand, { selectable = true })
+        local total = #G.hand.cards
+        for i, card in ipairs(G.hand.cards) do
+            Play.add_card(b, card, G.hand, { selectable = true }, i, total)
         end
         b:end_row()
     end

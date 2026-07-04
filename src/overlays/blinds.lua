@@ -95,23 +95,7 @@ function M:build(b)
     b:capture_input()
 
     -- Jokers + consumables, one row.
-    local has_jokers = G.jokers and G.jokers.cards and #G.jokers.cards > 0
-    local has_cons = G.consumeables and G.consumeables.cards and #G.consumeables.cards > 0
-    if has_jokers or has_cons then
-        b:start_row("cards",
-            Play.container_label(has_jokers and "CONTAINER.JOKERS" or "CONTAINER.CONSUMABLES"))
-        if has_jokers then
-            for _, card in ipairs(G.jokers.cards) do
-                Play.add_card(b, card, G.jokers, { actions = true, grab = true })
-            end
-        end
-        if has_cons then
-            for _, card in ipairs(G.consumeables.cards) do
-                Play.add_card(b, card, G.consumeables, { actions = true })
-            end
-        end
-        b:end_row()
-    end
+    Play.property_row(b)
 
     -- Reroll Boss, when the voucher grants it (the game's func disables the
     -- button by clearing config.button when it can't fire, which also drops it

@@ -295,9 +295,13 @@ function Proxy.joker_rarity(card)
     return key and Message.localized("RARITY." .. key) or nil
 end
 
--- A card's position within its CardArea ("3 of 8"), for the position
--- announcement. Cards are ordered left-to-right by their index in area.cards.
-function Proxy.card_position(card)
+-- A card's position ("3 of 8"), for the position announcement. With explicit
+-- index/total the caller decides the unit (an owned overlay's ROW, which may
+-- span several CardAreas); the default is the card's own CardArea order.
+function Proxy.card_position(card, index, total)
+    if index and total then
+        return Message.localized("POSITION.OF", { index = index, total = total })
+    end
     local area = card and card.area
     if not area or type(area.cards) ~= "table" then return nil end
     local idx
@@ -310,14 +314,15 @@ end
 -- descriptions toggle) THEN its position (gated by the position toggle) — so the
 -- position reads AFTER the description, not before it. Both guarded for
 -- face-down cards via card_description (no identity leak; position still reads).
-function Proxy.card_deferred(card)
+-- index/total override the position's unit (see card_position).
+function Proxy.card_deferred(card, index, total)
     local parts = {}
     if Proxy.announce_enabled("description") then
         local d = Proxy.card_description(card)
         if d then parts[#parts + 1] = d end
     end
     if Proxy.announce_enabled("position") then
-        local p = Proxy.card_position(card)
+        local p = Proxy.card_position(card, index, total)
         if p then parts[#parts + 1] = p:resolve() end
     end
     if #parts == 0 then return nil end

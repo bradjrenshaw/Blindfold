@@ -17,6 +17,7 @@ local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
 local Factory = require("ui.factory")
+local Proxies = require("ui.proxies").Proxy
 local Play = require("overlays.play")
 
 local M = { id = "shop" }
@@ -125,12 +126,17 @@ local function use_card_click(card, spoken_key, suggest)
     end
 end
 
-local function add_ware(b, card)
+local function add_ware(b, card, pos_index, pos_total)
     local vtable = {
         label = function(ctx)
             local proxy = Factory.create(card)
             local m = proxy and proxy:get_focus_message()
             if m then ctx.message:fragment(m) end
+        end,
+        -- Position counted over the ROW (voucher + packs share one), not the
+        -- backing CardArea.
+        deferred = function()
+            return Proxies.card_deferred(card, pos_index, pos_total)
         end,
     }
     if card.area == G.shop_vouchers then
@@ -150,19 +156,23 @@ end
 -- sold out.
 local function ware_row(b, areas, row_label_key, empty_key)
     local any_area = false
-    local any_card = false
+    local total = 0
     for _, area in ipairs(areas) do
         if type(area) == "table" and area.cards then
             any_area = true
-            if #area.cards > 0 then any_card = true end
+            total = total + #area.cards
         end
     end
     if not any_area then return end
     b:start_row("cards", Play.container_label(row_label_key))
-    if any_card then
+    if total > 0 then
+        local i = 0
         for _, area in ipairs(areas) do
             if type(area) == "table" and area.cards then
-                for _, card in ipairs(area.cards) do add_ware(b, card) end
+                for _, card in ipairs(area.cards) do
+                    i = i + 1
+                    add_ware(b, card, i, total)
+                end
             end
         end
     else
@@ -210,23 +220,7 @@ function M:build(b)
     b:capture_input()
 
     -- Your property, one row (as on blind select).
-    local has_jokers = G.jokers and G.jokers.cards and #G.jokers.cards > 0
-    local has_cons = G.consumeables and G.consumeables.cards and #G.consumeables.cards > 0
-    if has_jokers or has_cons then
-        b:start_row("cards",
-            Play.container_label(has_jokers and "CONTAINER.JOKERS" or "CONTAINER.CONSUMABLES"))
-        if has_jokers then
-            for _, card in ipairs(G.jokers.cards) do
-                Play.add_card(b, card, G.jokers, { actions = true, grab = true })
-            end
-        end
-        if has_cons then
-            for _, card in ipairs(G.consumeables.cards) do
-                Play.add_card(b, card, G.consumeables, { actions = true })
-            end
-        end
-        b:end_row()
-    end
+    Play.property_row(b)
 
     -- The shelf, then voucher + packs together.
     ware_row(b, { G.shop_jokers }, "CONTAINER.SHOP", "SHOP.EMPTY")

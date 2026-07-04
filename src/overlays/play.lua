@@ -20,6 +20,7 @@ local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
 local Factory = require("ui.factory")
+local Proxy = require("ui.proxies").Proxy
 local Settings = require("settings.registry")
 
 local M = { id = "play" }
@@ -122,7 +123,11 @@ end
 -- semantics (Enter). Jokers / consumables are NOT selectable in controller HID
 -- mode (CardArea:can_highlight only allows the hand); their Enter re-reads the
 -- label. grab (Space) reorders within the row; sell/use are S / U node actions.
-local function add_card(b, card, area, opts)
+-- pos_index/pos_total: the card's position within its ROW (which may span
+-- several CardAreas on some screens) — spoken in the deferred follow-up
+-- instead of the CardArea-relative position, so "2 of 3" always matches what
+-- left/right actually walks.
+local function add_card(b, card, area, opts, pos_index, pos_total)
     local vtable = {
         label = function(ctx)
             local proxy = Factory.create(card)
@@ -130,6 +135,11 @@ local function add_card(b, card, area, opts)
             if m then ctx.message:fragment(m) end
         end,
     }
+    if pos_index and pos_total then
+        vtable.deferred = function()
+            return Proxy.card_deferred(card, pos_index, pos_total)
+        end
+    end
     if opts and opts.selectable then
         vtable.on_click = function(ctx)
             local before = not not card.highlighted
@@ -171,18 +181,39 @@ end
 local function card_row(b, area, loc_key, opts)
     if not area or not area.cards or #area.cards == 0 then return end
     b:start_row("cards", container_label(loc_key), { wrap = opts and opts.wrap })
-    for _, card in ipairs(area.cards) do
-        add_card(b, card, area, opts)
+    local total = #area.cards
+    for i, card in ipairs(area.cards) do
+        add_card(b, card, area, opts, i, total)
     end
     b:end_row()
 end
 
--- Shared with other in-run overlays (blind select): the card node builder
--- (labels via proxies, select/grab/sell/use behaviors — including the shared
--- grab carry, so a pickup works identically across screens) and the gated
--- container row label.
+-- Shared with other in-run overlays (blind select / shop / packs): the card
+-- node builder (labels via proxies, select/grab/sell/use behaviors — including
+-- the shared grab carry, so a pickup works identically across screens) and the
+-- gated container row label.
 M.add_card = add_card
 M.container_label = container_label
+
+-- The player's jokers + consumables as ONE row (consumables to the right) —
+-- shared by the blind select, shop, and pack overlays. Positions here are
+-- deliberately per AREA (the proxy default), not per row: jokers and
+-- consumables have separate slot capacities, so "joker 5 of 5" telling you
+-- you're at the rightmost joker is the information that matters (Brad).
+function M.property_row(b)
+    local jokers = (G.jokers and G.jokers.cards) or {}
+    local cons = (G.consumeables and G.consumeables.cards) or {}
+    if #jokers + #cons == 0 then return end
+    b:start_row("cards",
+        container_label(#jokers > 0 and "CONTAINER.JOKERS" or "CONTAINER.CONSUMABLES"))
+    for _, card in ipairs(jokers) do
+        add_card(b, card, G.jokers, { actions = true, grab = true })
+    end
+    for _, card in ipairs(cons) do
+        add_card(b, card, G.consumeables, { actions = true })
+    end
+    b:end_row()
+end
 
 -- --- Play / discard ------------------------------------------------------------
 --

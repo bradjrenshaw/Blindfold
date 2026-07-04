@@ -242,11 +242,17 @@ function BA.speak_overlay_result(res)
     local ref = res.focus_ref
     if ref and type(ref) == "table" then
         if FocusBuffers then pcall(FocusBuffers.bind_focus, ref) end
-        if res.spoke_label and res.message and res.message ~= "" and Factory then
+        if res.spoke_label and res.message and res.message ~= "" then
             pcall(function()
-                local proxy = Factory.create(ref)
-                local m = proxy and proxy.get_deferred and proxy:get_deferred()
-                local s = m and m:resolve() or ""
+                local m
+                if res.deferred then
+                    -- The node's own deferred (e.g. row-relative position).
+                    m = res.deferred()
+                elseif Factory then
+                    local proxy = Factory.create(ref)
+                    m = proxy and proxy.get_deferred and proxy:get_deferred()
+                end
+                local s = type(m) == "string" and m or (m and m.resolve and m:resolve()) or ""
                 if s ~= "" then speech.say(s) end
             end)
         end
