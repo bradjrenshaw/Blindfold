@@ -5,10 +5,6 @@ game_src/
 # Packaged mod build output
 *.zip
 
-# Third-party native libraries (Tolk + screen-reader clients) — drop locally,
-# don't commit binaries.
-src/lib/*.dll
-
 # Runtime log
 *.log
 

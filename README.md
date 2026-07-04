@@ -49,17 +49,31 @@ scripts/
 game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
 ```
 
-## Setup
+## Install
 
-1. **Install Lovely Injector** (latest x64 release): drop its `version.dll` next
-   to `Balatro.exe` in
-   `C:\Program Files (x86)\Steam\steamapps\common\Balatro\`.
-   https://github.com/ethangreen-dev/lovely-injector/releases
-2. **(Optional, for speech)** Put the x64 `Tolk.dll` + screen-reader client DLLs
-   in `src/lib/` — see `src/lib/README.md`. Skip this and the mod still logs
-   every announcement.
-3. **Deploy:** run `scripts/deploy.ps1` (junctions `src/` into the Mods folder).
-4. **Launch Balatro.** You should hear / see "Blindfold loaded."
+Everything needed is bundled (Lovely Injector, speech DLLs) — one script does it:
+
+1. Clone this repo anywhere and keep it (the install links to it).
+2. Run the deploy script from a PowerShell in the repo folder:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
+   ```
+
+   It finds your Steam install of Balatro, installs the bundled Lovely
+   Injector (`version.dll`) next to `Balatro.exe`, and links this repo's
+   `src/` into `%APPDATA%\Balatro\Mods\Blindfold`.
+
+   - Balatro somewhere unusual? `... deploy.ps1 -GameDir "D:\Games\Balatro"`
+   - "Couldn't write into the game folder": re-run from an **elevated**
+     PowerShell (the game lives under Program Files on some machines).
+3. **Launch Balatro through Steam.** You should hear "Blindfold loaded."
+
+**Updating:** `git pull`, then restart Balatro — the install is a link into
+this repo, so pulling *is* updating.
+
+**Uninstalling:** `scripts\deploy.ps1 -Uninstall` (removes the mod link;
+delete the game folder's `version.dll` too if you want Lovely gone).
 
 ## Controls
 
