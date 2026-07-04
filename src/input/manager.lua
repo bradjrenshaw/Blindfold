@@ -25,6 +25,22 @@ local M = {
     overlay_tick = nil,  -- fn(command) that runs + speaks a dispatcher tick, injected by core
     handlers = {},       -- direct-call action implementations, injected by core
                          -- (play_hand / discard call into the play overlay)
+    _pad_active = {},    -- gamepad buttons whose press we consumed (swallow the release)
+}
+
+-- The mod's controller scheme: physical gamepad buttons -> mod actions,
+-- mirroring the keyboard defaults. Buttons absent here pass through to the
+-- engine's native handling (B = back/deselect, Start = pause, Back = run
+-- info, triggers = view deck / secondary). Triggers can't be mapped to mod
+-- actions: they arrive as axes, not through the gamepad button callback.
+M.PAD_ACTIONS = {
+    dpup = "nav_up", dpdown = "nav_down", dpleft = "nav_left", dpright = "nav_right",
+    a = "select",
+    x = "play_hand",
+    y = "discard",
+    leftshoulder = "sell",
+    rightshoulder = "use",
+    leftstick = "grab",
 }
 M.KeyboardBinding = KeyboardBinding
 M.InputAction = InputAction
@@ -119,6 +135,40 @@ function M.on_key_up(ctrl, key)
     if btn then
         M._active[key] = nil
         ctrl:button_release(btn)
+        return true
+    end
+    return false
+end
+
+-- Physical gamepad press (already G.button_mapping-resolved by the caller).
+-- Same dispatch shape as on_key_down: overlay command when an overlay is
+-- engaged, else a direct handler; anything unmapped (or a command with no
+-- engaged overlay) returns false and the engine's native handling applies.
+function M.on_pad_down(ctrl, button)
+    if M._listen_cb then return false end          -- keyboard rebind capture: pads don't participate
+    if ctrl and ctrl.text_input_hook then return false end
+    local key = M.PAD_ACTIONS[button]
+    local action = key and M.by_key[key]
+    if not action then return false end
+    if M.silence then pcall(M.silence) end
+    if action.command and M.overlay_tick and M.dispatcher
+        and (M.dispatcher.engaged and M.dispatcher.engaged() or M.dispatcher.captures()) then
+        local c = action.command
+        M.overlay_tick({ kind = c.kind, dir = c.dir, mods = {} })
+        M._pad_active[button] = true
+        return true
+    end
+    if action.handler then
+        pcall(action.handler, ctrl)
+        M._pad_active[button] = true
+        return true
+    end
+    return false
+end
+
+function M.on_pad_up(button)
+    if M._pad_active[button] then
+        M._pad_active[button] = nil
         return true
     end
     return false

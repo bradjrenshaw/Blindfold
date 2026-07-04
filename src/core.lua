@@ -444,6 +444,47 @@ function BA.install()
             return orig_row(config)
         end
     end
+
+    -- 8) Physical gamepad -> the mod's own controller scheme. Wrapped at the
+    --    love callbacks, NOT Controller:button_press: the keyboard fallback
+    --    synthesizes button_press calls (brackets -> shoulders for menu tabs,
+    --    backspace -> b) that must keep their native meaning. Consumed presses
+    --    still register the gamepad + HID flags (controller detection, button
+    --    glyphs) exactly like the original callback; their releases are
+    --    swallowed symmetrically. Triggers arrive as axes elsewhere and stay
+    --    fully native (view deck / secondary).
+    if love and love.gamepadpressed and love.gamepadreleased then
+        local orig_pad_down = love.gamepadpressed
+        local orig_pad_up = love.gamepadreleased
+        love.gamepadpressed = function(joystick, button)
+            local mapped = (G.button_mapping and G.button_mapping[button]) or button
+            if Input then
+                local ok, consumed = pcall(Input.on_pad_down, G.CONTROLLER, mapped)
+                if ok and consumed then
+                    pcall(function()
+                        G.CONTROLLER:set_gamepad(joystick)
+                        G.CONTROLLER:set_HID_flags("button", mapped)
+                    end)
+                    return
+                end
+            end
+            return orig_pad_down(joystick, button)
+        end
+        love.gamepadreleased = function(joystick, button)
+            local mapped = (G.button_mapping and G.button_mapping[button]) or button
+            if Input then
+                local ok, consumed = pcall(Input.on_pad_up, mapped)
+                if ok and consumed then
+                    pcall(function()
+                        G.CONTROLLER:set_gamepad(joystick)
+                        G.CONTROLLER:set_HID_flags("button", mapped)
+                    end)
+                    return
+                end
+            end
+            return orig_pad_up(joystick, button)
+        end
+    end
 end
 
 -- ---------------------------------------------------------------------------

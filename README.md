@@ -96,6 +96,27 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | Escape | (unchanged — game's pause / back) |
 | F8 | Debug: dump the owned overlay graph (or the focused UI tree) to the log |
 
+### Controller
+
+The mod has its own controller scheme mirroring the keyboard actions (the
+game's native scheme reuses buttons contextually and doesn't drive the mod's
+navigation):
+
+| Button | Action |
+| --- | --- |
+| D-pad | Move |
+| A | Select a card / activate a button |
+| B | Back / deselect all (native) |
+| X / Y | Play hand / Discard |
+| LB / RB | Sell / Use |
+| Left stick click | Pick up / place (reorder) |
+| LT (hold) | View deck (native) |
+| Back | Run info (native) |
+| Start | Pause (native) |
+
+Controller buttons aren't rebindable yet (keyboard is, in Options → Blindfold
+→ Keybindings). Review buffers (Ctrl+arrows) are keyboard-only for now.
+
 ## Verifying without a screen reader
 
 Every announcement is appended to `%APPDATA%/Balatro/blindfold.log`. Tail it
