@@ -893,7 +893,19 @@ function ProxyBlind:select_announcements()
     anns[#anns + 1] = A.type("button")
     -- Action + requirement + reward go in status (always on); effect is gated.
     local parts = {}
-    local action = Proxy.value_text(self.node)
+    -- State word from the SEMANTIC table, localized here: the button's display
+    -- text binds loc_blind_states, which Game:update only refreshes a frame
+    -- AFTER blind_states changes (game.lua:2641) — reading it at panel
+    -- creation said "Upcoming" for the now-current blind.
+    local action
+    local ty = blind_panel_type(self.node)
+    local st = ty and G and G.GAME and G.GAME.round_resets
+        and G.GAME.round_resets.blind_states and G.GAME.round_resets.blind_states[ty]
+    if st then
+        local ok, w = pcall(localize, st, "blind_states")
+        if ok and type(w) == "string" and w ~= "" then action = w end
+    end
+    action = action or Proxy.value_text(self.node)
     if action then parts[#parts + 1] = action end
     local req = blind_requirement(cfg)
     if req then parts[#parts + 1] = req end
