@@ -279,9 +279,21 @@ function M:handler()
     -- (NEW_ROUND). Announcing survivors mid-churn read wrong positions and
     -- random landings; pending keeps us engaged but silent, and the single
     -- wake announce lands on settled state.
-    if st == S.SELECTING_HAND then return "active" end
+    if st == S.SELECTING_HAND then
+        -- Waking from an animation: the card set changed underneath us, so a
+        -- reconciled landing would depend on what happened to the old cursor —
+        -- inconsistent. Bump the generation instead: the dispatcher treats it
+        -- as a fresh open and focus always lands on the start node (the first
+        -- hand card). A menu round-trip (sleeping) still preserves position.
+        if self._churning then
+            self._churning = false
+            self._generation = (self._generation or 0) + 1
+        end
+        return "active"
+    end
     if st == S.HAND_PLAYED or st == S.DRAW_TO_HAND or st == S.PLAY_TAROT
         or st == S.NEW_ROUND then
+        self._churning = true
         return "pending"
     end
     -- Opening a pack mid-round: the pack UI is game-driven (legacy layer);
@@ -291,6 +303,11 @@ function M:handler()
         return "sleeping"
     end
     return "inactive"
+end
+
+-- A new generation per animation wake = a fresh open (cursor to start node).
+function M:sub_identity()
+    return tostring(self._generation or 0)
 end
 
 function M:build(b)
