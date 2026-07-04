@@ -296,6 +296,28 @@ function BA.dump_focus()
     if Overlays then
         local ok, desc = pcall(Overlays.describe)
         speech.log("OVERLAY:\n" .. tostring(ok and desc or desc))
+        -- Gate diagnostics: every buttoned node in the open game overlay with
+        -- the states our focusability gates read — for finding controls the
+        -- walk rejected (or never reached).
+        if type(G.OVERLAY_MENU) == "table" and G.OVERLAY_MENU.UIRoot then
+            pcall(function()
+                local function dump(n, d)
+                    if type(n) ~= "table" or d > 30 then return end
+                    local c = n.config
+                    if c and c.button then
+                        speech.log(string.format("  BTN %-28s vis=%s hover=%s removed=%s",
+                            tostring(c.button),
+                            tostring(n.states and n.states.visible),
+                            tostring(n.states and n.states.hover and n.states.hover.can),
+                            tostring(n.REMOVED)))
+                    end
+                    if n.children then
+                        for _, ch in pairs(n.children) do dump(ch, d + 1) end
+                    end
+                end
+                dump(G.OVERLAY_MENU.UIRoot, 0)
+            end)
+        end
         if ok and desc ~= "overlay: none" then return end
     end
     local node = G and G.CONTROLLER and G.CONTROLLER.focused and G.CONTROLLER.focused.target

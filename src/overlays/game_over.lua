@@ -104,14 +104,11 @@ function M:build(b)
             function(ctx) ctx.message:fragment(line) end)
     end
 
-    -- The screen's real buttons, discovered and driven like the mirror does.
-    local controls = Mirror.gather({ box })
-    if controls[1] then
-        b:start_row("buttons")
-        for i, n in ipairs(controls) do
-            b:add_item(Id.referenced(n, "btn:" .. i), Mirror.vtable_for(n))
-        end
-        b:end_row()
+    -- The screen's real buttons, discovered and driven like the mirror does —
+    -- each as its own row, continuing the vertical list (a horizontal buttons
+    -- row hid New Run / Main Menu to the right of Copy Seed).
+    for i, n in ipairs(Mirror.gather({ box })) do
+        b:add_item(Id.referenced(n, "btn:" .. i), Mirror.vtable_for(n))
     end
     -- No set_start: focus opens on the header (the first node), so the recap
     -- reads top-to-bottom by arrowing down — skippable straight to the

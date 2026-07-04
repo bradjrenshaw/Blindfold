@@ -56,6 +56,23 @@ local function card_focusable(card)
     return card.facing == "front" or card.area == G.hand or card.area == G.jokers
 end
 
+-- Children iteration that survives what the game does to children tables:
+-- remove_group NILS array entries (holes stop ipairs dead, hiding every later
+-- sibling), and several funcs attach STRING-KEYED children (children.alert).
+-- Numeric keys are visited in order first, then keyed extras.
+local function each_child(children, visit)
+    local maxn = 0
+    for k in pairs(children) do
+        if type(k) == "number" and k > maxn then maxn = k end
+    end
+    for i = 1, maxn do
+        if children[i] ~= nil then visit(children[i]) end
+    end
+    for k, v in pairs(children) do
+        if type(k) ~= "number" then visit(v) end
+    end
+end
+
 -- Depth-first, reading-order collection of interactive nodes. The outermost
 -- control wins — no descent inside one (a tab strip's inner choice buttons are
 -- reached by adjusting the strip, not as separate items). Embedded objects are
@@ -88,7 +105,9 @@ local function collect(node, out, depth, seen)
     end
 
     if node.children then
-        for _, ch in ipairs(node.children) do collect(ch, out, (depth or 0) + 1, seen) end
+        each_child(node.children, function(ch)
+            collect(ch, out, (depth or 0) + 1, seen)
+        end)
     end
 end
 
