@@ -51,6 +51,7 @@ local PAD_NAMES = {
     leftshoulder = "Left Bumper", rightshoulder = "Right Bumper",
     leftstick = "Left Stick Click", rightstick = "Right Stick Click",
     back = "Back", start = "Start", guide = "Guide",
+    triggerleft = "Left Trigger", triggerright = "Right Trigger",
 }
 function M.pad_display(button)
     return PAD_NAMES[button] or tostring(button)
@@ -74,6 +75,14 @@ end
 function M.set_pad_binding(action_key, button)
     apply_pad_binding(action_key, button)
     M.save_bindings()
+end
+
+-- True when the mod claims a trigger's presses: bound to an action, or a
+-- rebind capture is listening. Core suppresses the engine's own axis-to-press
+-- conversion for owned triggers so natives never double-fire; unbound
+-- triggers stay fully native.
+function M.owns_trigger(name)
+    return (M._listen_cb ~= nil) or (M.PAD_ACTIONS[name] ~= nil)
 end
 M.KeyboardBinding = KeyboardBinding
 M.InputAction = InputAction
@@ -226,10 +235,32 @@ local PAD_AXIS_ACTIONS = {
 }
 local PRESS_AT, RELEASE_AT = 0.55, 0.35
 local _stick_dir = nil
+local _trig_down = {}
+
+-- Triggers, polled into the normal pad pipeline (they're axes — the engine
+-- converts them itself in handle_axis_buttons, which core suppresses for
+-- owned triggers). Thresholds match the engine's own (press .5, release .3).
+-- Only owned triggers are fed through: unbound ones stay native.
+local function update_triggers(ctrl, pad)
+    for _, name in ipairs({ "triggerleft", "triggerright" }) do
+        local ok, v = pcall(pad.getGamepadAxis, pad, name)
+        v = ok and tonumber(v) or 0
+        if not _trig_down[name] and v > 0.5 then
+            _trig_down[name] = true
+            if M.owns_trigger(name) then
+                M.on_pad_down(ctrl, name)
+            end
+        elseif _trig_down[name] and v < 0.3 then
+            _trig_down[name] = nil
+            M.on_pad_up(name)
+        end
+    end
+end
 
 function M.update_pad_axes(ctrl)
     local pad = ctrl and ctrl.GAMEPAD and ctrl.GAMEPAD.object
     if not pad or not pad.getGamepadAxis then return end
+    update_triggers(ctrl, pad)
     local ok, x, y = pcall(function()
         return pad:getGamepadAxis("rightx"), pad:getGamepadAxis("righty")
     end)

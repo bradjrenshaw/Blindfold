@@ -460,6 +460,28 @@ function BA.install()
     --    glyphs) exactly like the original callback; their releases are
     --    swallowed symmetrically. Triggers arrive as axes elsewhere and stay
     --    fully native (view deck / secondary).
+    -- 9) Trigger ownership: triggers are AXES the engine converts to button
+    --    presses itself (handle_axis_buttons). When a trigger is bound to a
+    --    mod action — or a rebind capture is listening — blank its pending
+    --    conversion so the native press never fires; the mod's own axis
+    --    polling (Input.update_pad_axes) dispatches it instead. Unbound
+    --    triggers stay fully native (hold LT = view deck), including via the
+    --    keyboard fallback's synthesized button presses.
+    local orig_axis_buttons = Controller.handle_axis_buttons
+    function Controller:handle_axis_buttons()
+        if Input and Input.owns_trigger then
+            local ok, owns_l = pcall(Input.owns_trigger, "triggerleft")
+            local ok2, owns_r = pcall(Input.owns_trigger, "triggerright")
+            if ok and owns_l and self.axis_buttons and self.axis_buttons.l_trig then
+                self.axis_buttons.l_trig.current = ""
+            end
+            if ok2 and owns_r and self.axis_buttons and self.axis_buttons.r_trig then
+                self.axis_buttons.r_trig.current = ""
+            end
+        end
+        return orig_axis_buttons(self)
+    end
+
     if love and love.gamepadpressed and love.gamepadreleased then
         local orig_pad_down = love.gamepadpressed
         local orig_pad_up = love.gamepadreleased

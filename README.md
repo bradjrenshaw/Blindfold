@@ -110,15 +110,16 @@ navigation):
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
 | Left stick click | Pick up / place a hand card (jokers use A) |
-| LT (hold) | View deck (native) |
+| LT / RT | View deck / secondary (native until rebound) |
 | Back | Run info (native) |
 | Start | Pause (native) |
 | Right stick | Review buffers: left/right switch buffer, up/down browse |
 
 Keyboard keys and controller buttons are both rebindable in Options →
 Blindfold → Keybindings: activate an action's row, then press the key OR
-controller button you want (Escape cancels). Triggers can't be bound (the
-engine delivers them as axes); the right stick's buffer navigation is fixed.
+controller button you want — triggers included (Escape cancels). A trigger
+keeps its native role until you bind it. The right stick's buffer navigation
+is fixed.
 
 ## Verifying without a screen reader
 
