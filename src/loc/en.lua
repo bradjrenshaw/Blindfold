@@ -212,7 +212,7 @@ return {
         ROUND_ACTIONS   = "Announce plays and discards",
         KEYBINDS        = "Keybindings",
         ANNOUNCEMENTS   = "Announcements",
-        PRESS_KEY       = "Press a key for {action}",
+        PRESS_KEY       = "Press a key or controller button for {action}",
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",
         ANN_TYPE        = "Announce type",

@@ -198,7 +198,12 @@ do
             local label = (action.label_key and Message.localized(action.label_key):resolve()) or action.key
             speech.say(Message.localized("SET.PRESS_KEY", { action = label }):resolve())
             Input.start_listening(function(binding)
-                if binding.key == "escape" then
+                if binding.pad_button then
+                    -- A gamepad press: rebind the action's controller button.
+                    Input.set_pad_binding(action.key, binding.pad_button)
+                    speech.say(Message.localized("SET.BOUND",
+                        { action = label, key = Input.pad_display(binding.pad_button) }):resolve())
+                elseif binding.key == "escape" then
                     speech.say(Message.localized("SET.CANCELLED"):resolve())
                 else
                     action.bindings = { binding }

@@ -90,9 +90,12 @@ function M.keybinds_uibox()
     local rows = {}
     for _, a in ipairs(Input.actions or {}) do
         local label = (a.label_key and loc(a.label_key)) or a.key
+        local disp = label .. ": " .. a:bindings_display()
+        local pad = Input.pad_button_for and Input.pad_button_for(a.key)
+        if pad then disp = disp .. " / " .. Input.pad_display(pad) end
         rows[#rows + 1] = { n = G.UIT.R, config = { align = "cm", padding = 0.02 }, nodes = {
             UIBox_button({
-                label = { label .. ": " .. a:bindings_display() },
+                label = { disp },
                 button = "blindfold_rebind",
                 ref_table = { blindfold_action = a.key },
                 minw = 5, minh = 0.4, scale = 0.3, colour = G.C.GREY,

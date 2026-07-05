@@ -115,8 +115,10 @@ navigation):
 | Start | Pause (native) |
 | Right stick | Review buffers: left/right switch buffer, up/down browse |
 
-Controller buttons aren't rebindable yet (keyboard is, in Options → Blindfold
-→ Keybindings).
+Keyboard keys and controller buttons are both rebindable in Options →
+Blindfold → Keybindings: activate an action's row, then press the key OR
+controller button you want (Escape cancels). Triggers can't be bound (the
+engine delivers them as axes); the right stick's buffer navigation is fixed.
 
 ## Verifying without a screen reader
 

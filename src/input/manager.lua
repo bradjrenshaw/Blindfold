@@ -28,12 +28,13 @@ local M = {
     _pad_active = {},    -- gamepad buttons whose press we consumed (swallow the release)
 }
 
--- The mod's controller scheme: physical gamepad buttons -> mod actions,
--- mirroring the keyboard defaults. Buttons absent here pass through to the
--- engine's native handling (B = back/deselect, Start = pause, Back = run
--- info, triggers = view deck / secondary). Triggers can't be mapped to mod
--- actions: they arrive as axes, not through the gamepad button callback.
-M.PAD_ACTIONS = {
+-- The mod's default controller scheme: physical gamepad buttons -> mod
+-- actions, mirroring the keyboard defaults. Buttons absent from the live map
+-- pass through to the engine's native handling (B = back/deselect, Start =
+-- pause, Back = run info, triggers = view deck / secondary). Triggers can't
+-- be mapped to mod actions: they arrive as axes, not through the gamepad
+-- button callback (so they also can't be captured when rebinding).
+local DEFAULT_PAD_ACTIONS = {
     dpup = "nav_up", dpdown = "nav_down", dpleft = "nav_left", dpright = "nav_right",
     a = "select",
     x = "play_hand",
@@ -42,6 +43,38 @@ M.PAD_ACTIONS = {
     rightshoulder = "use",
     leftstick = "grab",
 }
+M.PAD_ACTIONS = {}   -- the live (rebindable, persisted) map; filled in init
+
+local PAD_NAMES = {
+    dpup = "D-Pad Up", dpdown = "D-Pad Down", dpleft = "D-Pad Left", dpright = "D-Pad Right",
+    a = "A", b = "B", x = "X", y = "Y",
+    leftshoulder = "Left Bumper", rightshoulder = "Right Bumper",
+    leftstick = "Left Stick Click", rightstick = "Right Stick Click",
+    back = "Back", start = "Start", guide = "Guide",
+}
+function M.pad_display(button)
+    return PAD_NAMES[button] or tostring(button)
+end
+
+-- The button an action is currently on, or nil (for the keybindings screen).
+function M.pad_button_for(action_key)
+    for btn, key in pairs(M.PAD_ACTIONS) do
+        if key == action_key then return btn end
+    end
+    return nil
+end
+
+local function apply_pad_binding(action_key, button)
+    for btn, key in pairs(M.PAD_ACTIONS) do
+        if key == action_key then M.PAD_ACTIONS[btn] = nil end
+    end
+    M.PAD_ACTIONS[button] = action_key   -- steals the button from any other action
+end
+
+function M.set_pad_binding(action_key, button)
+    apply_pad_binding(action_key, button)
+    M.save_bindings()
+end
 M.KeyboardBinding = KeyboardBinding
 M.InputAction = InputAction
 
@@ -145,7 +178,15 @@ end
 -- engaged, else a direct handler; anything unmapped (or a command with no
 -- engaged overlay) returns false and the engine's native handling applies.
 function M.on_pad_down(ctrl, button)
-    if M._listen_cb then return false end          -- keyboard rebind capture: pads don't participate
+    -- Rebind capture: a gamepad press binds the action to that button (the
+    -- callback receives { pad_button = ... } instead of a KeyboardBinding).
+    if M._listen_cb then
+        local cb = M._listen_cb
+        M._listen_cb = nil
+        M._pad_active[button] = true
+        cb({ pad_button = button })
+        return true
+    end
     if ctrl and ctrl.text_input_hook then return false end
     local key = M.PAD_ACTIONS[button]
     local action = key and M.by_key[key]
@@ -223,10 +264,12 @@ end
 function M.start_listening(cb) M._listen_cb = cb end
 function M.stop_listening() M._listen_cb = nil end
 
--- Restore every action's bindings to its defaults (keeps the action list, so
--- mod-only actions like the debug dump survive).
+-- Restore every action's bindings (keyboard AND pad) to the defaults (keeps
+-- the action list, so mod-only actions like the debug dump survive).
 function M.reset_defaults()
     for _, a in ipairs(M.actions) do a:reset_to_default() end
+    M.PAD_ACTIONS = {}
+    for btn, key in pairs(DEFAULT_PAD_ACTIONS) do M.PAD_ACTIONS[btn] = key end
 end
 
 -- Register the default action set — keyboard-first, one key one meaning
@@ -265,6 +308,9 @@ function M.init()
     reg("view_deck", "INPUT.VIEW_DECK", { keys = { "q" }, game_button = "triggerleft" })
     reg("right_trigger", "INPUT.RIGHT_TRIGGER", { keys = { "e" }, game_button = "triggerright" })
     reg("run_info",  "INPUT.RUN_INFO",  { keys = { "tab" }, game_button = "back" })
+
+    M.PAD_ACTIONS = {}
+    for btn, key in pairs(DEFAULT_PAD_ACTIONS) do M.PAD_ACTIONS[btn] = key end
 end
 
 -- ---- Persistence of rebound keys (blindfold_keybinds.lua in the save dir) ----
@@ -297,9 +343,13 @@ function M.save_bindings()
         end
         map[a.key] = binds
     end
+    -- Pad map saved per ACTION (action -> button), matching the keyboard
+    -- shape; rebuilt into the button -> action runtime map on load.
+    local pad = {}
+    for btn, key in pairs(M.PAD_ACTIONS) do pad[key] = btn end
     pcall(function()
         love.filesystem.write("blindfold_keybinds.lua",
-            "return " .. ser({ v = BINDS_VERSION, map = map }))
+            "return " .. ser({ v = BINDS_VERSION, map = map, pad = pad }))
     end)
 end
 
@@ -319,6 +369,15 @@ function M.load_bindings()
                     if type(b) == "table" and type(b.key) == "string" then
                         a.bindings[#a.bindings + 1] = KeyboardBinding.new(b.key, b.ctrl, b.shift, b.alt)
                     end
+                end
+            end
+        end
+        -- Pad rebinds, applied over the defaults (a save without `pad` — from
+        -- before controller support — keeps the default scheme).
+        if type(t.pad) == "table" then
+            for key, btn in pairs(t.pad) do
+                if M.by_key[key] and type(btn) == "string" then
+                    apply_pad_binding(key, btn)
                 end
             end
         end
