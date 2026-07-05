@@ -75,6 +75,21 @@ local function blind_vtable(node, type_name, is_skip)
                 return
             end
             node:click()
+            if is_skip then
+                -- Land on the NEW current blind. Left to the reconciler, the
+                -- vanished skip node's survivor is the node just before it in
+                -- the down-right order — the BOSS select, never what you want.
+                -- Applied instantly (not queued like the shop's): skip_blind
+                -- advances blind_on_deck synchronously and the panels aren't
+                -- rebuilt, so the target exists on the very next render — and
+                -- an instant suggestion wins reconcile before the survivor
+                -- walk can announce the boss.
+                if ctx.controller and G.GAME and G.GAME.blind_on_deck
+                    and G.GAME.blind_on_deck ~= type_name then
+                    ctx.controller:suggest_move(
+                        Id.structural("select:" .. G.GAME.blind_on_deck))
+                end
+            end
         end,
     }
 end
