@@ -51,6 +51,11 @@ end
 -- right by hand position; the arrangement resets on the next draw). Module
 -- state, not graph state: the carry survives rebuilds and row navigation, and
 -- is dropped if the carried card leaves its area (sold, played, round over).
+--
+-- While carrying, every other card in the area announces where a drop would
+-- land ("place between A and B" / "place left of A"), and the row grows a
+-- trailing "place right of <last>" slot — dropping on a card always inserts
+-- BEFORE it, so the slot is the only way to reach the far right.
 
 local carry = nil   -- { card = Card, area = CardArea }, or nil
 
@@ -73,6 +78,63 @@ local function card_name(card)
     return (ok and name) or ""
 end
 
+-- Move the carried card to sit before `before_card` (nil = the far right).
+-- Mirrors the engine's drag-reorder invariant: cards array in order, rank =
+-- index, realign (align_cards sets T.x synchronously, so a play right after
+-- scores in the new order).
+local function move_carried(ctx, area, before_card)
+    local cards = area.cards
+    local from
+    for i, c in ipairs(cards) do
+        if c == carry.card then from = i; break end
+    end
+    local moved = table.remove(cards, from)
+    local to = #cards + 1
+    for i, c in ipairs(cards) do
+        if c == before_card then to = i; break end
+    end
+    table.insert(cards, to, moved)
+    for i, c in ipairs(cards) do c.rank = i end
+    area:align_cards()
+    carry = nil
+    say(ctx, "PLAY.MOVED")
+    -- Land the cursor on the card in its new slot; the next tick's focus
+    -- announce reads it (name, then position via the deferred follow-up).
+    if ctx.controller then
+        ctx.controller:suggest_move(Id.for_object(moved))
+    end
+end
+
+-- The area's cards without the carried one: the order a drop would produce,
+-- which is what placement announcements must describe.
+local function cards_sans_carry(area)
+    local carried = carry and carry.card
+    local rest = {}
+    for _, c in ipairs(area.cards or {}) do
+        if c ~= carried then rest[#rest + 1] = c end
+    end
+    return rest
+end
+
+-- Where a drop on `card` would land, spoken INSTEAD of its label while
+-- carrying (the hint names the card, so the label would be noise — Brad):
+-- before the leftmost card = "place left of it", anywhere else = "place
+-- between <its left neighbor> and it".
+local function place_hint(card, area)
+    if not carry_valid() or carry.area ~= area or carry.card == card then return nil end
+    local rest = cards_sans_carry(area)
+    for i, c in ipairs(rest) do
+        if c == card then
+            if i == 1 then
+                return Message.localized("PLAY.PLACE_LEFT", { name = card_name(card) })
+            end
+            return Message.localized("PLAY.PLACE_BETWEEN",
+                { left = card_name(rest[i - 1]), right = card_name(card) })
+        end
+    end
+    return nil
+end
+
 local function grab_handler(card, area)
     return function(ctx)
         if not carry_valid() then carry = nil end
@@ -90,31 +152,35 @@ local function grab_handler(card, area)
             say(ctx, "PLAY.CANT_MOVE_HERE")   -- carry kept; navigate back to its row
             return
         end
-        -- Move the carried card to sit before this one. Mirrors the engine's
-        -- drag-reorder invariant: cards array in order, rank = index, realign
-        -- (align_cards sets T.x synchronously, so a play right after scores in
-        -- the new order).
-        local cards = area.cards
-        local from
-        for i, c in ipairs(cards) do
-            if c == carry.card then from = i; break end
-        end
-        local moved = table.remove(cards, from)
-        local to = #cards + 1
-        for i, c in ipairs(cards) do
-            if c == card then to = i; break end
-        end
-        table.insert(cards, to, moved)
-        for i, c in ipairs(cards) do c.rank = i end
-        area:align_cards()
-        carry = nil
-        say(ctx, "PLAY.MOVED")
-        -- Land the cursor on the card in its new slot; the next tick's focus
-        -- announce reads it (name, then position via the deferred follow-up).
-        if ctx.controller then
-            ctx.controller:suggest_move(Id.for_object(moved))
-        end
+        move_carried(ctx, area, card)
     end
+end
+
+-- While a card from `area` is carried, its row grows a trailing "place right
+-- of <last>" slot — dropping on a card inserts before it, so this slot is the
+-- only way to drop at the far right. Immediate mode makes it appear on the
+-- tick after pickup and vanish after the drop.
+function M.add_place_slot(b, area)
+    if not carry_valid() or carry.area ~= area then return end
+    local rest = cards_sans_carry(area)
+    if #rest == 0 then return end
+    local place = function(ctx)
+        if not carry_valid() or carry.area ~= area then
+            carry = nil
+            say(ctx, "PLAY.CANT_MOVE_HERE")
+            return
+        end
+        move_carried(ctx, area, nil)
+    end
+    b:add_item(Id.structural("place_end"), {
+        label = function(ctx)
+            local last = cards_sans_carry(area)
+            ctx.message:fragment(Message.localized("PLAY.PLACE_RIGHT",
+                { name = card_name(last[#last]) }))
+        end,
+        on_grab = place,
+        on_click = place,
+    })
 end
 
 -- --- Cards -------------------------------------------------------------------
@@ -130,6 +196,13 @@ end
 local function add_card(b, card, area, opts, pos_index, pos_total)
     local vtable = {
         label = function(ctx)
+            if opts and opts.grab then
+                local hint = place_hint(card, area)
+                if hint then
+                    ctx.message:fragment(hint)
+                    return
+                end
+            end
             local proxy = Factory.create(card)
             local m = proxy and proxy:get_focus_message()
             if m then ctx.message:fragment(m) end
@@ -137,6 +210,9 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
     }
     if pos_index and pos_total then
         vtable.deferred = function()
+            -- While carrying, the spoken label is the placement hint alone;
+            -- the description/position follow-up would drown it.
+            if opts and opts.grab and place_hint(card, area) then return nil end
             return Proxy.card_deferred(card, pos_index, pos_total)
         end
     end
@@ -198,6 +274,7 @@ local function card_row(b, area, loc_key, opts)
     for i, card in ipairs(area.cards) do
         add_card(b, card, area, opts, i, total)
     end
+    if opts and opts.grab then M.add_place_slot(b, area) end
     b:end_row()
 end
 
@@ -222,6 +299,7 @@ function M.property_row(b)
     for _, card in ipairs(jokers) do
         add_card(b, card, G.jokers, { actions = true, grab = true })
     end
+    M.add_place_slot(b, G.jokers)   -- sits between the jokers and consumables
     for _, card in ipairs(cons) do
         add_card(b, card, G.consumeables, { actions = true })
     end

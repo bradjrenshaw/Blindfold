@@ -89,6 +89,22 @@ do
         Input.register{ key = "buffer_prev", label_key = "INPUT.BUFFER_PREV",
             handler = function() Buffers.prev_buffer() end, bindings = { kb.new("left", true) } }
 
+        -- Status readouts: one-shot spoken values on Ctrl+letter; the default
+        -- pad chords (LT/RT + face buttons) live in the input manager's
+        -- DEFAULT_PAD_ACTIONS under these action keys.
+        local Status = ba_require("status")
+        Status.say = speech.say
+        Input.register{ key = "info_hands", label_key = "INPUT.INFO_HANDS",
+            handler = Status.hands, bindings = { kb.new("x", true) } }
+        Input.register{ key = "info_discards", label_key = "INPUT.INFO_DISCARDS",
+            handler = Status.discards, bindings = { kb.new("c", true) } }
+        Input.register{ key = "info_score", label_key = "INPUT.INFO_SCORE",
+            handler = Status.score, bindings = { kb.new("s", true) } }
+        Input.register{ key = "info_jokers", label_key = "INPUT.INFO_JOKERS",
+            handler = Status.jokers, bindings = { kb.new("j", true) } }
+        Input.register{ key = "info_money", label_key = "INPUT.INFO_MONEY",
+            handler = Status.money, bindings = { kb.new("m", true) } }
+
         -- Owned-UI overlay layer (port of Tanglebeep's key-graph framework):
         -- screens we own re-present live game state as a navigable graph; every
         -- other screen stays on the legacy focus-follower below.
@@ -281,7 +297,63 @@ end
 -- the event announcements and review buffers still speaking. Following the
 -- game's focus meant narrating its internal snap churn during transitions.
 -- ---------------------------------------------------------------------------
+-- Forensics for the save-reload pack bugs: log every G.STATE transition with
+-- the context that decides which overlay claims the screen. Fires only on
+-- change, so the log stays readable; remove once the reload flow is settled.
+local _last_logged_state = "boot"
+local function _state_name(st)
+    if st == nil then return "nil" end
+    for k, v in pairs((G and G.STATES) or {}) do
+        if v == st then return k end
+    end
+    return tostring(st)
+end
+local function log_state_transition()
+    if not G or G.STATE == _last_logged_state then return end
+    local from = _last_logged_state
+    _last_logged_state = G.STATE
+    local pc = G.pack_cards
+    local pack = type(pc) == "table"
+        and (tostring(#(pc.cards or {})) .. " cards" .. (pc.REMOVED and ", REMOVED" or ""))
+        or "nil"
+    speech.log(string.format("STATE %s -> %s | pack_cards=%s booster=%s pack_interrupt=%s complete=%s",
+        _state_name(from ~= "boot" and from or nil), _state_name(G.STATE),
+        pack, tostring(G.booster_pack ~= nil),
+        _state_name(G.GAME and G.GAME.PACK_INTERRUPT), tostring(G.STATE_COMPLETE)))
+end
+
+-- Recover a save bricked in PLAY_TAROT. PLAY_TAROT is transient bookkeeping
+-- inside use_card: live, it ALWAYS has G.TAROT_INTERRUPT set (assigned before
+-- the state, synchronously) and the use lock held, and exits via a queued
+-- restore ~0.3s later. A save written while G.GAME.PACK_INTERRUPT was
+-- poisoned (the pre-fix reload-replay double-use) loads straight into
+-- PLAY_TAROT with neither — the game's updater for it does nothing, so the
+-- run idles forever. If that shape holds for half a second, put the state
+-- back: the hand deals only during a blind, so cards-in-hand means we were
+-- selecting; otherwise the shop (STATE_COMPLETE=false rebuilds its UI from
+-- the still-pending G.load_shop_* saved areas).
+local _dead_tarot_ticks = 0
+local function recover_dead_state()
+    if not (G and G.STAGES and G.STAGE == G.STAGES.RUN and G.STATES
+        and G.STATE == G.STATES.PLAY_TAROT
+        and not G.TAROT_INTERRUPT
+        and not (G.CONTROLLER and G.CONTROLLER.locks and G.CONTROLLER.locks.use)
+        and not (type(G.pack_cards) == "table" and not G.pack_cards.REMOVED)) then
+        _dead_tarot_ticks = 0
+        return
+    end
+    _dead_tarot_ticks = _dead_tarot_ticks + 1
+    if _dead_tarot_ticks == 30 then
+        local in_hand = G.hand and G.hand.cards and #G.hand.cards > 0
+        G.STATE = in_hand and G.STATES.SELECTING_HAND or G.STATES.SHOP
+        G.STATE_COMPLETE = false
+        speech.log("recovered dead PLAY_TAROT -> " .. (in_hand and "SELECTING_HAND" or "SHOP"))
+    end
+end
+
 function BA.focus_tick(ctrl)
+    pcall(log_state_transition)
+    pcall(recover_dead_state)
     if Screens then pcall(Screens.tick) end
     -- Right-stick -> buffer navigation (polled; sticks are axes, not buttons).
     if Input and Input.update_pad_axes then pcall(Input.update_pad_axes, ctrl) end
@@ -512,6 +584,27 @@ function BA.install()
                 end
             end
             return orig_pad_up(joystick, button)
+        end
+    end
+
+    -- 10) Save-reload repair: G.sort_id (the card id counter) is NOT part of
+    --     the save, but restored cards keep their saved ids — so cards created
+    --     after a load can DUPLICATE a restored card's sort_id. The game's
+    --     mid-pack restore replays "open the booster" by scanning G.I.CARD
+    --     for the saved sort_id and calling use_card on EVERY match: on a
+    --     collision it also uses an unrelated card — eating a pack card,
+    --     bouncing G.STATE back to SHOP under the open pack, and consuming
+    --     G.GAME.PACK_INTERRUPT so the pack's real close later assigns
+    --     G.STATE = nil (every screen, game and mod, goes dead). Keeping the
+    --     counter above every loaded id keeps new ids unique.
+    if Card and Card.load then
+        local orig_card_load = Card.load
+        function Card:load(cardTable, other_card)
+            local r = orig_card_load(self, cardTable, other_card)
+            if type(self.sort_id) == "number" and (G.sort_id or 0) < self.sort_id then
+                G.sort_id = self.sort_id
+            end
+            return r
         end
     end
 end

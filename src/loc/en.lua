@@ -96,6 +96,9 @@ return {
         RUN_INFO = "Run Info", DEBUG_DUMP = "Debug: Dump Focus",
         BUFFER_NEXT_ITEM = "Buffer: Next Item", BUFFER_PREV_ITEM = "Buffer: Previous Item",
         BUFFER_NEXT = "Buffer: Next Buffer", BUFFER_PREV = "Buffer: Previous Buffer",
+        INFO_HANDS = "Read: Hands Remaining", INFO_DISCARDS = "Read: Discards Remaining",
+        INFO_SCORE = "Read: Score and Goal", INFO_JOKERS = "Read: Joker Slots",
+        INFO_MONEY = "Read: Money",
     },
 
     -- Buffer (review-cursor) readouts.
@@ -111,13 +114,15 @@ return {
         CURRENT = "{buffer}, {item}",
     },
     GAME = {
-        HANDS    = "Hands left, {count}",
-        DISCARDS = "Discards left, {count}",
-        MONEY    = "Money, {amount} dollars",
-        SCORE    = "Score, {score} of {req}",
+        HANDS    = "{count} hands left",
+        DISCARDS = "{count} discards left",
+        MONEY    = "${amount}",
+        SCORE    = "{score} of {req}",
         BLIND    = "Blind, {name}",
         ANTE     = "Ante, {ante} of 8",
         ROUND    = "Round, {round}",
+        JOKERS   = "{count} of {slots} jokers",
+        NOT_NOW  = "Not available now",
     },
 
     -- Blind select screen (Small / Big / Boss choices).
@@ -143,6 +148,9 @@ return {
         PICKED_UP   = "Picked up, {name}",
         PICKUP_CANCELLED = "Cancelled",
         MOVED       = "Moved",
+        PLACE_LEFT    = "place left of {name}",
+        PLACE_BETWEEN = "place between {left} and {right}",
+        PLACE_RIGHT   = "place right of {name}",
         CANT_MOVE_HERE = "Cannot place here",
         USED        = "Used",
         CANT_USE    = "Cannot use now",

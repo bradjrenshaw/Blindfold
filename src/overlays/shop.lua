@@ -244,8 +244,22 @@ function M:handler()
         return "inactive"
     end
     local st = G.STATE
+    -- Recover a run with NO state at all: reload-replay fallout can leave the
+    -- pack's close path assigning G.STATE = G.GAME.PACK_INTERRUPT after that
+    -- was already consumed (nil). The game keeps rendering the shop but no
+    -- state-machine screen matches, game or mod. If the shop is up with no
+    -- pack over it, put the state back.
+    if st == nil and G.shop
+        and not (type(G.pack_cards) == "table" and not G.pack_cards.REMOVED) then
+        G.STATE = G.STATES.SHOP
+        st = G.STATE
+    end
     if st == G.STATES.SHOP then
         if G.OVERLAY_MENU then return "sleeping" end
+        -- A pack can be on screen while G.STATE reads SHOP: reloading a
+        -- mid-pack save replays the pack open and its state bookkeeping
+        -- bounces back. Cede to the pack overlay, keep the shop position.
+        if type(G.pack_cards) == "table" and not G.pack_cards.REMOVED then return "sleeping" end
         -- The shop UI eases in after the state flips.
         if not next_round_node() then return "pending" end
         if not settled then

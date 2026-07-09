@@ -22,6 +22,9 @@ end
 local function run_state_key()
     local S, st = G.STATES, G.STATE
     if not S then return nil end
+    -- An open pack wins regardless of G.STATE: reloading a mid-pack save can
+    -- leave the state at SHOP while the restored pack is on screen.
+    if type(G.pack_cards) == "table" and not G.pack_cards.REMOVED then return "PACK" end
     if st == S.SHOP then return "SHOP"
     elseif st == S.BLIND_SELECT then return "BLIND_SELECT"
     elseif st == S.ROUND_EVAL then return "CASH_OUT"

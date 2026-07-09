@@ -29,11 +29,13 @@ local M = {
 }
 
 -- The mod's default controller scheme: physical gamepad buttons -> mod
--- actions, mirroring the keyboard defaults. Buttons absent from the live map
--- pass through to the engine's native handling (B = back/deselect, Start =
--- pause, Back = run info, triggers = view deck / secondary). Triggers can't
--- be mapped to mod actions: they arrive as axes, not through the gamepad
--- button callback (so they also can't be captured when rebinding).
+-- actions, mirroring the keyboard defaults. Composite "trigger+button" keys
+-- are CHORDS: the button pressed while that trigger is held (LT layer =
+-- current-blind readouts, RT layer = run-persistent ones, mirroring the
+-- keyboard's Ctrl combos). Buttons absent from the live map pass through to
+-- the engine's native handling (B = back/deselect, Start = pause, Back = run
+-- info). A trigger serving as a chord modifier counts as owned: its native
+-- role is suppressed and its bare press does nothing.
 local DEFAULT_PAD_ACTIONS = {
     dpup = "nav_up", dpdown = "nav_down", dpleft = "nav_left", dpright = "nav_right",
     a = "select",
@@ -42,6 +44,11 @@ local DEFAULT_PAD_ACTIONS = {
     leftshoulder = "sell",
     rightshoulder = "use",
     leftstick = "grab",
+    ["triggerleft+x"] = "info_hands",
+    ["triggerleft+y"] = "info_discards",
+    ["triggerleft+b"] = "info_score",
+    ["triggerright+x"] = "info_money",
+    ["triggerright+y"] = "info_jokers",
 }
 M.PAD_ACTIONS = {}   -- the live (rebindable, persisted) map; filled in init
 
@@ -54,6 +61,10 @@ local PAD_NAMES = {
     triggerleft = "Left Trigger", triggerright = "Right Trigger",
 }
 function M.pad_display(button)
+    local mod, btn = tostring(button):match("^(trigger%a+)%+(.+)$")
+    if mod then
+        return (PAD_NAMES[mod] or mod) .. " + " .. (PAD_NAMES[btn] or btn)
+    end
     return PAD_NAMES[button] or tostring(button)
 end
 
@@ -77,12 +88,25 @@ function M.set_pad_binding(action_key, button)
     M.save_bindings()
 end
 
--- True when the mod claims a trigger's presses: bound to an action, or a
--- rebind capture is listening. Core suppresses the engine's own axis-to-press
--- conversion for owned triggers so natives never double-fire; unbound
--- triggers stay fully native.
+-- True when the mod claims a trigger's presses: bound to an action, serving
+-- as a chord modifier, or a rebind capture is listening. Core suppresses the
+-- engine's own axis-to-press conversion for owned triggers so natives never
+-- double-fire; unbound triggers stay fully native.
 function M.owns_trigger(name)
-    return (M._listen_cb ~= nil) or (M.PAD_ACTIONS[name] ~= nil)
+    if M._listen_cb or M.PAD_ACTIONS[name] then return true end
+    local prefix = name .. "+"
+    for btn in pairs(M.PAD_ACTIONS) do
+        if btn:sub(1, #prefix) == prefix then return true end
+    end
+    return false
+end
+
+-- Trigger held-state (they're axes, polled in update_triggers below). Lives
+-- up here because on_pad_down consults it for chord dispatch.
+local _trig_down = {}
+local function held_trigger()
+    return (_trig_down.triggerleft and "triggerleft")
+        or (_trig_down.triggerright and "triggerright") or nil
 end
 M.KeyboardBinding = KeyboardBinding
 M.InputAction = InputAction
@@ -189,15 +213,23 @@ end
 function M.on_pad_down(ctrl, button)
     -- Rebind capture: a gamepad press binds the action to that button (the
     -- callback receives { pad_button = ... } instead of a KeyboardBinding).
+    -- Held triggers fold in like keyboard modifiers: trigger + button binds
+    -- the chord; a trigger pressed and released alone binds bare (the bind
+    -- happens on its release, in on_pad_up).
     if M._listen_cb then
+        if button == "triggerleft" or button == "triggerright" then return true end
         local cb = M._listen_cb
         M._listen_cb = nil
         M._pad_active[button] = true
-        cb({ pad_button = button })
+        local mod = held_trigger()
+        cb({ pad_button = mod and (mod .. "+" .. button) or button })
         return true
     end
     if ctrl and ctrl.text_input_hook then return false end
-    local key = M.PAD_ACTIONS[button]
+    -- A held trigger's chord layer wins; fall back to the bare button so a
+    -- half-pulled trigger doesn't dead-zone the unchorded actions.
+    local mod = held_trigger()
+    local key = (mod and M.PAD_ACTIONS[mod .. "+" .. button]) or M.PAD_ACTIONS[button]
     local action = key and M.by_key[key]
     if not action then return false end
     if M.silence then pcall(M.silence) end
@@ -217,6 +249,14 @@ function M.on_pad_down(ctrl, button)
 end
 
 function M.on_pad_up(button)
+    -- Rebind capture: a trigger that comes back up with the capture still
+    -- live was pressed alone — bind it bare.
+    if M._listen_cb and (button == "triggerleft" or button == "triggerright") then
+        local cb = M._listen_cb
+        M._listen_cb = nil
+        cb({ pad_button = button })
+        return true
+    end
     if M._pad_active[button] then
         M._pad_active[button] = nil
         return true
@@ -235,7 +275,6 @@ local PAD_AXIS_ACTIONS = {
 }
 local PRESS_AT, RELEASE_AT = 0.55, 0.35
 local _stick_dir = nil
-local _trig_down = {}
 
 -- Triggers, polled into the normal pad pipeline (they're axes — the engine
 -- converts them itself in handle_axis_buttons, which core suppresses for

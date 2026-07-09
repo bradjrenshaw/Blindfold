@@ -93,6 +93,9 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | Tab | Run info |
 | Backspace or Shift | Back / deselect all |
 | Ctrl + arrows | Review buffers: Left/Right switch buffer, Up/Down browse |
+| Ctrl + X / Ctrl + C | Read hands / discards remaining |
+| Ctrl + S | Read score and goal (e.g. "3000 of 80000") |
+| Ctrl + J / Ctrl + M | Read joker slots (e.g. "3 of 5 jokers") / money |
 | Escape | (unchanged — game's pause / back) |
 | F8 | Debug: dump the owned overlay graph (or the focused UI tree) to the log |
 
@@ -110,16 +113,18 @@ navigation):
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
 | Left stick click | Pick up / place a hand card (jokers use A) |
-| LT / RT | View deck / secondary (native until rebound) |
+| LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
+| RT + X / Y | Read money / joker slots |
 | Back | Run info (native) |
 | Start | Pause (native) |
 | Right stick | Review buffers: left/right switch buffer, up/down browse |
 
 Keyboard keys and controller buttons are both rebindable in Options →
 Blindfold → Keybindings: activate an action's row, then press the key OR
-controller button you want — triggers included (Escape cancels). A trigger
-keeps its native role until you bind it. The right stick's buffer navigation
-is fixed.
+controller button you want — Ctrl combos and trigger chords included (Escape
+cancels). Holding a trigger while pressing a button binds the chord; pressing
+and releasing a trigger alone binds the bare trigger. An unbound trigger
+keeps its native role. The right stick's buffer navigation is fixed.
 
 ## Verifying without a screen reader
 
