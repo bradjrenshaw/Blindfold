@@ -45,6 +45,8 @@ return {
     MENU = {
         DISCORD = "Discord",
         TWITTER = "Twitter",
+        CONFIRM_UNLOCK = "Confirm unlock all",
+        CONFIRM_ACTION = "Confirm {action}",
     },
 
     -- Container / region names (announced when focus enters a new card row).

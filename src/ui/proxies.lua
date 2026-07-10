@@ -66,11 +66,19 @@ local function literal_text(c)
     return nil
 end
 
+-- A T node is DYNAMIC only when actually ref-BOUND (ref_table AND ref_value);
+-- the engine renders config.text whenever ref_table is absent, and some game
+-- nodes carry a ref_value as a mere lookup tag (the profile screen's
+-- load_button_text) — skipping those read whole buttons as silent.
+local function is_ref_bound(c)
+    return type(c.ref_table) == "table" and c.ref_value ~= nil
+end
+
 function Proxy.static_text(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and c.ref_value == nil then
+        if c and n.UIT == G.UIT.T and not is_ref_bound(c) then
             local t = literal_text(c)
             if t and not is_skip(t) then parts[#parts + 1] = t end
         end
@@ -390,7 +398,7 @@ function Proxy.static_text_list(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and c.ref_value == nil then
+        if c and n.UIT == G.UIT.T and not is_ref_bound(c) then
             local t = literal_text(c)
             if t and not is_skip(t) then parts[#parts + 1] = t end
         end
@@ -567,6 +575,30 @@ local ProxyButton = class(Proxy)
 ProxyButton.type_key = "button"
 ProxyButton.new = ctor(ProxyButton)
 function ProxyButton:get_label()
+    -- Unlock All (profile screen) is a two-press confirm: the first press
+    -- shows the achievements warning (spoken by the mirror's click) and arms
+    -- the overlay's infotip slot (config.set). Read the armed state so the
+    -- second press is announced as a confirm, not a repeat.
+    if self.node.config and self.node.config.button == "unlock_all" then
+        local ok, armed = pcall(function()
+            local slot = G.OVERLAY_MENU and G.OVERLAY_MENU.get_UIE_by_ID
+                and G.OVERLAY_MENU:get_UIE_by_ID("overlay_menu_infotip")
+            return slot and slot.config and slot.config.set
+        end)
+        if ok and armed then return Message.localized("MENU.CONFIRM_UNLOCK") end
+    end
+    -- Delete/Reset Profile's confirm arms differently: the invisible
+    -- "Select again to confirm" line (id warning_text) turns WHITE.
+    if self.node.config and self.node.config.button == "delete_profile" then
+        local ok, armed = pcall(function()
+            local w = self.node.UIBox and self.node.UIBox:get_UIE_by_ID("warning_text")
+            return w and w.config and w.config.colour == G.C.WHITE
+        end)
+        if ok and armed then
+            local base = Proxy.all_text(self.node)
+            return Message.localized("MENU.CONFIRM_ACTION", { action = base or "" })
+        end
+    end
     -- The reroll button renders "Reroll $ {reroll_cost}", which reads as
     -- "reroll dollar 5". Speak the cost number-first ("5 dollars") instead.
     if self.node.config and self.node.config.button == "reroll_shop" then

@@ -73,6 +73,26 @@ local function each_child(children, visit)
     end
 end
 
+-- The game's label-colon-value stat rows (the profile's "Wins : 12", the
+-- Continue tab's Round/Ante/Money/Best Hand/Seed): columns whose middle cell
+-- is a literal ': ' text node. Pure renders, not controls — invisible to the
+-- mirror without this.
+local function is_stat_row(node)
+    if not (G.UIT and node.UIT == G.UIT.R and type(node.children) == "table") then
+        return false
+    end
+    for _, col in pairs(node.children) do
+        if type(col) == "table" and type(col.children) == "table" then
+            for _, t in pairs(col.children) do
+                if type(t) == "table" and t.config and t.config.text == ": " then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
 -- Depth-first, reading-order collection of interactive nodes. The outermost
 -- control wins — no descent inside one (a tab strip's inner choice buttons are
 -- reached by adjusting the strip, not as separate items). Embedded objects are
@@ -90,6 +110,20 @@ local function collect(node, out, depth, seen)
         return
     end
 
+    -- Progress bars (challenge unlocked/completed counts, collection
+    -- progress) are pure renders with their reading inside as text — surface
+    -- each as a readable item.
+    if node.config and node.config.progress_bar then
+        out[#out + 1] = node
+        return
+    end
+
+    -- Label-colon-value stat rows, same treatment.
+    if is_stat_row(node) then
+        out[#out + 1] = node
+        return
+    end
+
     local obj = node.config and node.config.object
     if obj and obj.is then
         if CardArea and obj:is(CardArea) then
@@ -99,7 +133,17 @@ local function collect(node, out, depth, seen)
             return
         end
         if UIBox and obj:is(UIBox) then
+            local before = #out
             collect(obj.UIRoot, out, (depth or 0) + 1, seen)
+            -- A nested box that yielded NO items is a pure information panel
+            -- (e.g. the locked Challenges tab's explanation text): surface
+            -- its text as one readable item instead of an "empty" screen.
+            if #out == before and obj.UIRoot then
+                local okt, text = pcall(Proxy.all_text, obj.UIRoot)
+                if okt and type(text) == "string" and text ~= "" then
+                    out[#out + 1] = obj.UIRoot
+                end
+            end
             return
         end
     end
@@ -149,7 +193,64 @@ local BUTTON_LABELS = {
     go_to_twitter = "MENU.TWITTER",
 }
 
+-- The overlay's infotip slot content (a UIBox swapped in by two-stage
+-- confirm buttons like Unlock All), or nil.
+local function infotip_box()
+    local ok, box = pcall(function()
+        local slot = G.OVERLAY_MENU and G.OVERLAY_MENU.get_UIE_by_ID
+            and G.OVERLAY_MENU:get_UIE_by_ID("overlay_menu_infotip")
+        return slot and slot.config and slot.config.object or nil
+    end)
+    return ok and box or nil
+end
+
+-- The other two-stage confirm mechanism (Delete/Reset Profile): an invisible
+-- "Select again to confirm" line (id warning_text, colour CLEAR) that the
+-- first press turns WHITE.
+local function warning_node(node)
+    local ok, w = pcall(function()
+        return node.UIBox and node.UIBox.get_UIE_by_ID
+            and node.UIBox:get_UIE_by_ID("warning_text") or nil
+    end)
+    return ok and w or nil
+end
+
+local function warning_visible(w)
+    return w and w.config and w.config.colour == G.C.WHITE or false
+end
+
 local function vtable_for(node)
+    -- Text panels pushed by collect (a controls-free nested box, or a
+    -- progress bar): read-only, label = their rendered text, re-read live.
+    local pcfg = node.config
+    if (pcfg and pcfg.progress_bar) or is_stat_row(node)
+        or (node.UIT and G.UIT and node.UIT == G.UIT.ROOT
+            and not (pcfg and (pcfg.button or pcfg.focus_args))) then
+        return {
+            label = function(ctx)
+                local parts = {}
+                -- A bar's naming label often sits in a SIBLING column of its
+                -- row (profile progress: "Collection" | bar "62% (212/340)");
+                -- prefix it, but only when the parent row holds no other
+                -- control — then its text can only belong to this bar.
+                if pcfg and pcfg.progress_bar and node.parent
+                    and not Proxy.has_other_control(node.parent, node) then
+                    local okp, prefix = pcall(Proxy.static_text, node.parent, node)
+                    if okp and type(prefix) == "string" and prefix ~= "" then
+                        parts[#parts + 1] = prefix
+                    end
+                end
+                local ok, text = pcall(Proxy.all_text, node)
+                if ok and type(text) == "string" and text ~= "" then
+                    parts[#parts + 1] = text
+                end
+                if parts[1] then
+                    ctx.message:fragment(Message.raw(table.concat(parts, ", ")))
+                end
+            end,
+        }
+    end
+
     -- Cards (from an inlined CardArea): label + the game's own click (the
     -- title-screen card, collection highlights); description follows via the
     -- deferred path.
@@ -184,10 +285,31 @@ local function vtable_for(node)
     -- everything else keeps the read-the-label fallback.
     if cfg.button or cfg.button_UIE then
         vt.on_click = function(ctx)
+            local tip_before = infotip_box()
+            local warn = warning_node(node)
+            local warn_before = warning_visible(warn)
             node:click()
             -- A toggle speaks its new state; buttons that swap the screen are
             -- announced by the fresh-open path instead.
             speak_value(ctx, node)
+            -- Two-stage confirms must SPEAK their first press, or it reads as
+            -- doing nothing: a newly attached overlay infotip (Unlock All's
+            -- achievements warning) ...
+            local tip_after = infotip_box()
+            if tip_after and tip_after ~= tip_before and tip_after.UIRoot then
+                local ok, text = pcall(Proxy.all_text, tip_after.UIRoot)
+                if ok and type(text) == "string" and text ~= "" then
+                    ctx.message:fragment(Message.raw(text))
+                end
+            end
+            -- ... or the warning_text line turning visible (Delete/Reset
+            -- Profile's "Select again to confirm").
+            if not warn_before and warning_visible(warn) then
+                local text = warn.config and warn.config.text
+                if type(text) == "string" and text ~= "" then
+                    ctx.message:fragment(Message.raw(text))
+                end
+            end
         end
     end
 
