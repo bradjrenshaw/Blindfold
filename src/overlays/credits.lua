@@ -66,8 +66,58 @@ local function has_deeper_text_row(n, depth)
     return false
 end
 
+-- Two parallel columns whose rows pair up (the Localization section:
+-- languages in one column, the translators beside them): tree order would
+-- read ALL of column one then all of column two, losing the pairing. Zip
+-- them instead — detected as exactly two column children with the same
+-- number of text rows in visually DISTINCT colours (paired tables colour
+-- the key and value differently; plain multi-column name grids share one
+-- colour and keep normal order).
+local function column_rows(col)
+    local rows = {}
+    for _, ch in ipairs(kids_of(col)) do
+        if type(ch) == "table" and ch.UIT == G.UIT.R and has_text(ch) then
+            rows[#rows + 1] = ch
+        end
+    end
+    return rows
+end
+
+local function first_colour(n, depth)
+    if type(n) ~= "table" or (depth or 0) > 6 then return nil end
+    if n.config and n.UIT == G.UIT.T and n.config.colour then return n.config.colour end
+    for _, ch in ipairs(kids_of(n)) do
+        local c = first_colour(ch, (depth or 0) + 1)
+        if c then return c end
+    end
+    return nil
+end
+
+local function try_zip(node, out)
+    local kids = kids_of(node)
+    local cols = {}
+    for _, ch in ipairs(kids) do
+        if type(ch) == "table" and ch.UIT == G.UIT.C then cols[#cols + 1] = ch end
+    end
+    if #cols ~= 2 or #cols ~= #kids then return false end
+    local a, b = column_rows(cols[1]), column_rows(cols[2])
+    if #a < 2 or #a ~= #b then return false end
+    if first_colour(cols[1]) == first_colour(cols[2]) then return false end
+    for i = 1, #a do
+        local oka, ta = pcall(Proxy.all_text, a[i])
+        local okb, tb = pcall(Proxy.all_text, b[i])
+        ta = (oka and type(ta) == "string") and ta or ""
+        tb = (okb and type(tb) == "string") and tb or ""
+        if ta ~= "" or tb ~= "" then
+            out[#out + 1] = (ta ~= "" and tb ~= "") and (ta .. ": " .. tb) or (ta .. tb)
+        end
+    end
+    return true
+end
+
 local function collect_lines(node, out, depth)
     if type(node) ~= "table" or (depth or 0) > 8 or is_control(node) then return end
+    if try_zip(node, out) then return end
     if not has_deeper_text_row(node) then
         if has_text(node) then
             local ok, t = pcall(Proxy.all_text, node)
