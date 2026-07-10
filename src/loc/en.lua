@@ -47,6 +47,7 @@ return {
         TWITTER = "Twitter",
         CONFIRM_UNLOCK = "Confirm unlock all",
         CONFIRM_ACTION = "Confirm {action}",
+        COMPLETED      = "completed",   -- the challenge list's green check
     },
 
     -- Container / region names (announced when focus enters a new card row).

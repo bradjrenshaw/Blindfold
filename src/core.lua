@@ -127,6 +127,9 @@ do
         -- The deck view is an overlay menu the mirror would otherwise claim;
         -- registered above it, the bespoke layout wins while G.VIEWING_DECK.
         Overlays.register(ba_require("overlays.deck_view"))
+        -- Challenge list + description: two side-by-side columns that read
+        -- bottom-heavy in the mirror's flat order; bespoke, description first.
+        Overlays.register(ba_require("overlays.challenges"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).
