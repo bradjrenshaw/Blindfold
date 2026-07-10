@@ -2,6 +2,7 @@
 -- Port of SayTheSpire2's KeyboardBinding. The rebindable settings menu will
 -- create/edit these; for now they're built from the default scheme.
 local require = ...
+local Message = require("ui.message")
 
 local KeyboardBinding = {}
 KeyboardBinding.__index = KeyboardBinding
@@ -19,19 +20,23 @@ function KeyboardBinding:matches(key, mods)
 end
 
 -- Human-readable form for the settings menu (e.g. "Ctrl+Left Shift").
+-- Names live in loc KEYS.* (bare letter keys read as themselves).
 local PRETTY = {
-    ["return"] = "Enter", kpenter = "Keypad Enter",
-    lshift = "Left Shift", rshift = "Right Shift",
-    lctrl = "Left Ctrl", rctrl = "Right Ctrl", lalt = "Left Alt", ralt = "Right Alt",
-    up = "Up", down = "Down", left = "Left", right = "Right",
-    space = "Space", escape = "Escape", tab = "Tab", backspace = "Backspace",
+    ["return"] = "RETURN", kpenter = "KPENTER",
+    lshift = "LSHIFT", rshift = "RSHIFT",
+    lctrl = "LCTRL", rctrl = "RCTRL", lalt = "LALT", ralt = "RALT",
+    up = "UP", down = "DOWN", left = "LEFT", right = "RIGHT",
+    space = "SPACE", escape = "ESCAPE", tab = "TAB", backspace = "BACKSPACE",
 }
+local function key_word(loc_key)
+    return Message.localized("KEYS." .. loc_key):resolve()
+end
 function KeyboardBinding:display()
     local parts = {}
-    if self.ctrl then parts[#parts + 1] = "Ctrl" end
-    if self.shift then parts[#parts + 1] = "Shift" end
-    if self.alt then parts[#parts + 1] = "Alt" end
-    parts[#parts + 1] = PRETTY[self.key] or self.key
+    if self.ctrl then parts[#parts + 1] = key_word("CTRL") end
+    if self.shift then parts[#parts + 1] = key_word("SHIFT") end
+    if self.alt then parts[#parts + 1] = key_word("ALT") end
+    parts[#parts + 1] = PRETTY[self.key] and key_word(PRETTY[self.key]) or self.key
     return table.concat(parts, "+")
 end
 

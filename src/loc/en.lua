@@ -25,6 +25,35 @@ return {
     },
     STATUS = { ON = "on", OFF = "off" },
     LABELS = { LOCKED = "locked", EMPTY = "empty", NOT_DISCOVERED = "Not discovered" },
+
+    -- Spoken names for physical KEYBOARD keys (keybindings screen). Bare
+    -- letter keys read as themselves and are not listed here.
+    KEYS = {
+        RETURN = "Enter", KPENTER = "Keypad Enter",
+        LSHIFT = "Left Shift", RSHIFT = "Right Shift",
+        LCTRL = "Left Ctrl", RCTRL = "Right Ctrl",
+        LALT = "Left Alt", RALT = "Right Alt",
+        UP = "Up", DOWN = "Down", LEFT = "Left", RIGHT = "Right",
+        SPACE = "Space", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
+        CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        UNBOUND = "(unbound)",
+    },
+
+    -- Spoken names for physical CONTROLLER buttons.
+    PAD = {
+        DPUP = "D-Pad Up", DPDOWN = "D-Pad Down",
+        DPLEFT = "D-Pad Left", DPRIGHT = "D-Pad Right",
+        A = "A", B = "B", X = "X", Y = "Y",
+        LEFTSHOULDER = "Left Bumper", RIGHTSHOULDER = "Right Bumper",
+        LEFTSTICK = "Left Stick Click", RIGHTSTICK = "Right Stick Click",
+        BACK = "Back", START = "Start", GUIDE = "Guide",
+        TRIGGERLEFT = "Left Trigger", TRIGGERRIGHT = "Right Trigger",
+        CHORD = "{mod} + {button}",
+    },
+
+    MISC = {
+        LOADED = "Blindfold loaded.",
+    },
     -- Joker rarity, announced as a subtype ("common joker").
     RARITY = { COMMON = "common", UNCOMMON = "uncommon", RARE = "rare", LEGENDARY = "legendary" },
     POSITION = { OF = "{index} of {total}" },
@@ -256,6 +285,7 @@ return {
         KEYBINDS        = "Keybindings",
         ANNOUNCEMENTS   = "Announcements",
         TUTORIAL        = "Play Tutorial",
+        UNAVAILABLE     = "Blindfold settings unavailable",
         PRESS_KEY       = "Press a key or controller button for {action}",
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",

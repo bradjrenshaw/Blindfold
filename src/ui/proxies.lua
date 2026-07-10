@@ -821,6 +821,7 @@ function ProxyPlayingCard:get_label()
     -- treats them as rankless/suitless. Read the enhancement name instead.
     if node.ability and node.ability.effect == "Stone Card" then
         local name = Proxy.center_name(node.config and node.config.center)
+            or (node.ability and node.ability.name)
         return Message.maybe_raw(name and tostring(name) or "Stone Card")
     end
     local fl = faceless_identity(node)

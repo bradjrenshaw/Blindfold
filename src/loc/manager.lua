@@ -10,8 +10,16 @@ local L = {
     current = nil,  -- active sparse locale table, or nil when language is English
 }
 
--- Locales we actually ship a table for. Add an entry when loc/<code>.lua exists.
-local AVAILABLE = { en = true }
+-- Locales we actually ship a table for. Add an entry when loc/<code>.lua
+-- exists. All non-English tables are machine translated (README) —
+-- correction submissions welcome.
+local AVAILABLE = {
+    en = true,
+    de = true, fr = true, it = true, nl = true, pl = true, ru = true,
+    es_es = true, es_419 = true, pt_br = true,
+    ja = true, ko = true, id = true,
+    zh_cn = true, zh_tw = true,
+}
 
 -- Map a Balatro language code (e.g. 'en-us', 'fr', 'pt_BR') to our locale file
 -- name. Unknown / untranslated languages resolve to English.

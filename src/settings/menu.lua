@@ -77,7 +77,10 @@ function M.settings_tab()
     if ok and root then return root end
     return { n = G.UIT.ROOT, config = { align = "cm", minh = 2, minw = 4, colour = G.C.CLEAR }, nodes = {
         { n = G.UIT.R, config = { align = "cm" }, nodes = {
-            { n = G.UIT.T, config = { text = "Blindfold settings unavailable", scale = 0.4, colour = G.C.UI.TEXT_LIGHT } },
+            { n = G.UIT.T, config = { text = (function()
+                local ok2, s = pcall(loc, "SET.UNAVAILABLE")
+                return ok2 and s or "Blindfold settings unavailable"
+            end)(), scale = 0.4, colour = G.C.UI.TEXT_LIGHT } },
         } },
     } }
 end

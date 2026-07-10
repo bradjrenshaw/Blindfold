@@ -769,7 +769,7 @@ end
 local ok, err = pcall(function()
     speech.init(MOD_DIR)
     BA.install()
-    speech.say("Blindfold loaded.")
+    speech.say((BA.loc and BA.loc.get and BA.loc.get("MISC.LOADED")) or "Blindfold loaded.")
 end)
 if not ok then
     pcall(function()

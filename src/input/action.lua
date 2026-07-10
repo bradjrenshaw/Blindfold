@@ -5,6 +5,7 @@
 -- BUTTON for the not-yet-owned game screens (menus). The button tier is
 -- transitional — it dies once every screen is an owned overlay.
 local require = ...
+local Message = require("ui.message")
 
 local InputAction = {}
 InputAction.__index = InputAction
@@ -42,7 +43,7 @@ function InputAction:clear_bindings() self.bindings = {} end
 function InputAction:reset_to_default() self.bindings = copy_bindings(self.default_bindings) end
 
 function InputAction:bindings_display()
-    if #self.bindings == 0 then return "(unbound)" end
+    if #self.bindings == 0 then return Message.localized("KEYS.UNBOUND"):resolve() end
     local parts = {}
     for _, b in ipairs(self.bindings) do parts[#parts + 1] = b:display() end
     return table.concat(parts, ", ")

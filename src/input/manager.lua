@@ -6,6 +6,7 @@
 -- Designed for a later rebinding settings menu: actions carry labels + default
 -- bindings, and start_listening/stop_listening capture a new binding.
 local require = ...
+local Message = require("ui.message")
 local KeyboardBinding = require("input.binding")
 local InputAction = require("input.action")
 
@@ -57,20 +58,25 @@ local DEFAULT_PAD_ACTIONS = {
 }
 M.PAD_ACTIONS = {}   -- the live (rebindable, persisted) map; filled in init
 
-local PAD_NAMES = {
-    dpup = "D-Pad Up", dpdown = "D-Pad Down", dpleft = "D-Pad Left", dpright = "D-Pad Right",
-    a = "A", b = "B", x = "X", y = "Y",
-    leftshoulder = "Left Bumper", rightshoulder = "Right Bumper",
-    leftstick = "Left Stick Click", rightstick = "Right Stick Click",
-    back = "Back", start = "Start", guide = "Guide",
-    triggerleft = "Left Trigger", triggerright = "Right Trigger",
+-- Spoken names live in loc PAD.* (keyed by the uppercased button name).
+local PAD_KEYS = {
+    dpup = true, dpdown = true, dpleft = true, dpright = true,
+    a = true, b = true, x = true, y = true,
+    leftshoulder = true, rightshoulder = true,
+    leftstick = true, rightstick = true,
+    back = true, start = true, guide = true,
+    triggerleft = true, triggerright = true,
 }
 function M.pad_display(button)
     local mod, btn = tostring(button):match("^(trigger%a+)%+(.+)$")
     if mod then
-        return (PAD_NAMES[mod] or mod) .. " + " .. (PAD_NAMES[btn] or btn)
+        return Message.localized("PAD.CHORD",
+            { mod = M.pad_display(mod), button = M.pad_display(btn) }):resolve()
     end
-    return PAD_NAMES[button] or tostring(button)
+    if PAD_KEYS[button] then
+        return Message.localized("PAD." .. string.upper(button)):resolve()
+    end
+    return tostring(button)
 end
 
 -- The button an action is currently on, or nil (for the keybindings screen).

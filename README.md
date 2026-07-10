@@ -132,6 +132,19 @@ cancels). Holding a trigger while pressing a button binds the chord; pressing
 and releasing a trigger alone binds the bare trigger. An unbound trigger
 keeps its native role. The right stick's buffer navigation is fixed.
 
+## Languages
+
+The mod follows the game's language setting and ships translations for all
+of Balatro's languages (German, French, Spanish, Italian, Portuguese,
+Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). Everything
+the game itself localizes — card names, descriptions, blind effects — is
+read from the game's own translations; the mod's ~250 phrases were
+**machine translated** with terminology anchored to the game's official
+localization. If anything reads wrong in your language, corrections are
+very welcome: the strings live in `src/loc/<code>.lua` (sparse — any key
+you delete falls back to English), one file per language, and a PR or
+issue with better wording is all it takes.
+
 ## Verifying without a screen reader
 
 Every announcement is appended to `%APPDATA%/Balatro/blindfold.log`. Tail it
