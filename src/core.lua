@@ -135,6 +135,12 @@ do
         Overlays.register(ba_require("overlays.collection"))
         -- Blinds collection: sprite chips the mirror's collector can't reach.
         Overlays.register(ba_require("overlays.blind_gallery"))
+        -- Stats screen (high-score rows are unreadable renders) and Card
+        -- Stats (top-10 usage histograms whose counts were silent).
+        Overlays.register(ba_require("overlays.stats"))
+        Overlays.register(ba_require("overlays.card_stats"))
+        -- Credits: tabbed text walls (tagged at open by the show_credits wrap).
+        Overlays.register(ba_require("overlays.credits"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).
@@ -235,6 +241,15 @@ do
         G.FUNCS.blindfold_announcements = function()
             G.FUNCS.overlay_menu{ definition = Menu.announcements_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.ANNOUNCEMENTS" end
+        end
+        -- Tag the credits overlay for its bespoke reader (nothing structural
+        -- identifies it: anonymous tab closures, raw-string tab labels).
+        if G.FUNCS.show_credits then
+            local orig_credits = G.FUNCS.show_credits
+            G.FUNCS.show_credits = function(e)
+                orig_credits(e)
+                if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_credits = true end
+            end
         end
         G.FUNCS.blindfold_rebind = function(e)
             local key = e and e.config and e.config.ref_table and e.config.ref_table.blindfold_action
@@ -621,6 +636,44 @@ function BA.install()
                 end)
                 return r
             end
+        end
+    end
+
+    -- 6c) Unlock / discovery toasts: notify_alert slides a visual-only box
+    --     in from the screen edge (new Joker/Voucher/Deck unlocks,
+    --     achievements, Challenge Mode unlocking) and slides it away — no
+    --     focus, never spoken. The box's text names only the CATEGORY; the
+    --     art identifies what unlocked, so the name joins the announcement.
+    if notify_alert then
+        local okp, ProxyMod = pcall(ba_require, "ui.proxies")
+        local P = okp and ProxyMod and ProxyMod.Proxy or nil
+        local SUBTEXT_KEYS = { Joker = "k_joker", Voucher = "k_voucher", Back = "k_deck" }
+        local orig_notify = notify_alert
+        function notify_alert(_achievement, _type)
+            pcall(function()
+                local t = _type or "achievement"
+                local parts = {}
+                local function add_loc(key, set)
+                    local ok, s = pcall(localize, key, set)
+                    if ok and type(s) == "string" and s ~= "" then parts[#parts + 1] = s end
+                end
+                if t == "achievement" then
+                    add_loc(_achievement, "achievement_names")
+                    add_loc(G.F_TROPHIES and "k_trophy" or "k_achievement")
+                else
+                    local center = G.P_CENTERS and G.P_CENTERS[_achievement]
+                    local name = center and P and P.center_name(center)
+                    if name then parts[#parts + 1] = tostring(name) end
+                    if _achievement == "b_challenge" then
+                        add_loc("k_challenges")
+                    else
+                        add_loc(SUBTEXT_KEYS[t])
+                    end
+                    add_loc("k_unlocked_ex")
+                end
+                if parts[1] then speech.say(table.concat(parts, ", ")) end
+            end)
+            return orig_notify(_achievement, _type)
         end
     end
 

@@ -138,6 +138,11 @@ return {
         NOT_NOW  = "Not available now",
     },
 
+    -- Card Stats usage histograms (overlays/card_stats.lua).
+    STATS = {
+        USES = "{count} uses",
+    },
+
     -- The owned deck view (overlays/deck_view.lua).
     DECK_VIEW = {
         NAME_DESC = "{name}: {desc}",
