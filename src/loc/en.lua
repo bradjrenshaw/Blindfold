@@ -97,11 +97,11 @@ return {
         NAV_LEFT = "Navigate Left", NAV_RIGHT = "Navigate Right",
         ROW_START = "Row Start", ROW_END = "Row End",
         SELECT = "Select / Activate", GRAB = "Pick Up / Place",
-        BACK = "Back / Deselect",
+        BACK = "Back / Deselect", PAUSE = "Pause",
         PLAY_HAND = "Play Hand", DISCARD = "Discard",
         SELL = "Sell", USE = "Use",
         TAB_LEFT = "Previous Tab", TAB_RIGHT = "Next Tab",
-        VIEW_DECK = "View Deck", RIGHT_TRIGGER = "Right Trigger",
+        VIEW_DECK = "View Deck",
         RUN_INFO = "Run Info", DEBUG_DUMP = "Debug: Dump Focus",
         BUFFER_NEXT_ITEM = "Buffer: Next Item", BUFFER_PREV_ITEM = "Buffer: Previous Item",
         BUFFER_NEXT = "Buffer: Next Buffer", BUFFER_PREV = "Buffer: Previous Buffer",
@@ -132,6 +132,15 @@ return {
         ROUND    = "Round, {round}",
         JOKERS   = "{count} of {slots} jokers",
         NOT_NOW  = "Not available now",
+    },
+
+    -- The owned deck view (overlays/deck_view.lua).
+    DECK_VIEW = {
+        NAME_DESC = "{name}: {desc}",
+        TALLY     = "{label}, {count}",
+        TALLY_MOD = "{label}, base {base}, effective {effective}",
+        DRAWN     = "drawn",
+        FLIPPED   = "{count} drawn face down",
     },
 
     -- Blind select screen (Small / Big / Boss choices).

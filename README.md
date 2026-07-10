@@ -89,7 +89,7 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | X / C | Play hand / Discard |
 | S / U | Sell / Use the focused joker or consumable |
 | `[` / `]` | Previous / next tab (menus) |
-| Q | View deck |
+| D | View deck |
 | Tab | Run info |
 | Backspace or Shift | Back / deselect all |
 | Ctrl + arrows | Review buffers: Left/Right switch buffer, Up/Down browse |
@@ -107,17 +107,23 @@ navigation):
 
 | Button | Action |
 | --- | --- |
-| D-pad | Move |
+| D-pad or left stick | Move |
 | A | Select a card / activate a button (on a joker: pick up / place) |
-| B | Back / deselect all (native) |
+| B | Back / deselect all |
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
-| Left stick click | Pick up / place a hand card (jokers use A) |
+| LT + A | Pick up / place a hand card (jokers use A) |
 | LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
+| LT + LB | Run info |
 | RT + X / Y | Read money / joker slots |
-| Back | Run info (native) |
-| Start | Pause (native) |
+| RT + RB | View deck |
+| Back | Run info |
+| Start | Pause |
 | Right stick | Review buffers: left/right switch buffer, up/down browse |
+
+Nothing passes through to the game's own controller scheme: every button
+dispatches through the mod's map (all of the above are rebindable), and
+unmapped buttons do nothing.
 
 Keyboard keys and controller buttons are both rebindable in Options →
 Blindfold → Keybindings: activate an action's row, then press the key OR

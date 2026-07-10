@@ -61,9 +61,10 @@ local function build_main()
         nav_button("SET.KEYBINDS", "blindfold_keybinds"),
         nav_button("SET.ANNOUNCEMENTS", "blindfold_announcements"),
         -- The game ships G.FUNCS.start_tutorial (reset progress + launch the
-        -- tutorial run) but no vanilla UI ever calls it — surface it here.
-        -- Starting it abandons any run in progress, like starting a new run.
-        nav_button("SET.TUTORIAL", "start_tutorial"),
+        -- tutorial run) but no vanilla UI ever calls it. Handy for TESTING
+        -- the tutorial flow, but it's not a real game feature, so it stays
+        -- out of the shipped menu — uncomment to re-test.
+        -- nav_button("SET.TUTORIAL", "start_tutorial"),
     }
     for _, c in ipairs(controls("scoring")) do nodes[#nodes + 1] = c end
     return { n = G.UIT.ROOT, config = { align = "cm", padding = 0.1, colour = G.C.CLEAR }, nodes = nodes }

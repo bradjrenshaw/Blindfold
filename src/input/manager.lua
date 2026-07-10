@@ -32,23 +32,28 @@ local M = {
 -- actions, mirroring the keyboard defaults. Composite "trigger+button" keys
 -- are CHORDS: the button pressed while that trigger is held (LT layer =
 -- current-blind readouts, RT layer = run-persistent ones, mirroring the
--- keyboard's Ctrl combos). Buttons absent from the live map pass through to
--- the engine's native handling (B = back/deselect, Start = pause, Back = run
--- info). A trigger serving as a chord modifier counts as owned: its native
--- role is suppressed and its bare press does nothing.
+-- keyboard's Ctrl combos). TOTAL OWNERSHIP (Brad): NOTHING falls through to
+-- the engine — unmapped buttons are swallowed; the engine behaviors we keep
+-- (B = back/deselect, Start = pause) are actions whose game_button the mod
+-- presses DELIBERATELY.
 local DEFAULT_PAD_ACTIONS = {
     dpup = "nav_up", dpdown = "nav_down", dpleft = "nav_left", dpright = "nav_right",
     a = "select",
+    b = "back",
     x = "play_hand",
     y = "discard",
     leftshoulder = "sell",
     rightshoulder = "use",
-    leftstick = "grab",
+    start = "pause",
+    back = "run_info",
+    ["triggerleft+a"] = "grab",   -- left stick click was awful (Brad)
     ["triggerleft+x"] = "info_hands",
     ["triggerleft+y"] = "info_discards",
     ["triggerleft+b"] = "info_score",
+    ["triggerleft+leftshoulder"] = "run_info",
     ["triggerright+x"] = "info_money",
     ["triggerright+y"] = "info_jokers",
+    ["triggerright+rightshoulder"] = "view_deck",
 }
 M.PAD_ACTIONS = {}   -- the live (rebindable, persisted) map; filled in init
 
@@ -86,19 +91,6 @@ end
 function M.set_pad_binding(action_key, button)
     apply_pad_binding(action_key, button)
     M.save_bindings()
-end
-
--- True when the mod claims a trigger's presses: bound to an action, serving
--- as a chord modifier, or a rebind capture is listening. Core suppresses the
--- engine's own axis-to-press conversion for owned triggers so natives never
--- double-fire; unbound triggers stay fully native.
-function M.owns_trigger(name)
-    if M._listen_cb or M.PAD_ACTIONS[name] then return true end
-    local prefix = name .. "+"
-    for btn in pairs(M.PAD_ACTIONS) do
-        if btn:sub(1, #prefix) == prefix then return true end
-    end
-    return false
 end
 
 -- Trigger held-state (they're axes, polled in update_triggers below). Lives
@@ -245,10 +237,18 @@ function M.on_pad_down(ctrl, button)
         M._pad_active[button] = true
         return true
     end
+    if action.game_button then
+        -- Deliberate engine behavior (B = back/deselect, Start = pause): the
+        -- physical press was swallowed; press the engine button ourselves and
+        -- forward the release symmetrically (stored as the string).
+        if ctrl then pcall(ctrl.button_press, ctrl, action.game_button) end
+        M._pad_active[button] = action.game_button
+        return true
+    end
     return false
 end
 
-function M.on_pad_up(button)
+function M.on_pad_up(button, ctrl)
     -- Rebind capture: a trigger that comes back up with the capture still
     -- live was pressed alone — bind it bare.
     if M._listen_cb and (button == "triggerleft" or button == "triggerright") then
@@ -257,8 +257,12 @@ function M.on_pad_up(button)
         cb({ pad_button = button })
         return true
     end
-    if M._pad_active[button] then
+    local held = M._pad_active[button]
+    if held then
         M._pad_active[button] = nil
+        if type(held) == "string" and ctrl then
+            pcall(ctrl.button_release, ctrl, held)
+        end
         return true
     end
     return false
@@ -277,21 +281,57 @@ local PRESS_AT, RELEASE_AT = 0.55, 0.35
 local _stick_dir = nil
 
 -- Triggers, polled into the normal pad pipeline (they're axes — the engine
--- converts them itself in handle_axis_buttons, which core suppresses for
--- owned triggers). Thresholds match the engine's own (press .5, release .3).
--- Only owned triggers are fed through: unbound ones stay native.
+-- converts them itself in handle_axis_buttons, which core blanks entirely).
+-- Thresholds match the engine's own (press .5, release .3). ALL trigger
+-- presses feed through — total ownership; an unmapped trigger just no-ops.
 local function update_triggers(ctrl, pad)
     for _, name in ipairs({ "triggerleft", "triggerright" }) do
         local ok, v = pcall(pad.getGamepadAxis, pad, name)
         v = ok and tonumber(v) or 0
         if not _trig_down[name] and v > 0.5 then
             _trig_down[name] = true
-            if M.owns_trigger(name) then
-                M.on_pad_down(ctrl, name)
-            end
+            M.on_pad_down(ctrl, name)
         elseif _trig_down[name] and v < 0.3 then
             _trig_down[name] = nil
-            M.on_pad_up(name)
+            M.on_pad_up(name, ctrl)
+        end
+    end
+end
+
+-- Left stick -> navigation flicks (the engine's own stick-to-dpad conversion
+-- is blanked by core along with the triggers). Same edge-trigger/hysteresis
+-- as the right stick: one flick = one step, centering re-arms.
+local NAV_AXIS_ACTIONS = {
+    up = "nav_up", down = "nav_down", left = "nav_left", right = "nav_right",
+}
+local _lstick_dir = nil
+local function update_left_stick(ctrl, pad)
+    local ok, x, y = pcall(function()
+        return pad:getGamepadAxis("leftx"), pad:getGamepadAxis("lefty")
+    end)
+    if not ok then return end
+    x, y = tonumber(x) or 0, tonumber(y) or 0
+    local ax, ay = math.abs(x), math.abs(y)
+    local mag = math.max(ax, ay)
+    local dir
+    if mag >= PRESS_AT then
+        if ay >= ax then dir = (y < 0) and "up" or "down"
+        else dir = (x < 0) and "left" or "right" end
+    elseif mag < RELEASE_AT then
+        dir = nil
+    else
+        dir = _lstick_dir
+    end
+    if dir ~= _lstick_dir then
+        _lstick_dir = dir
+        if dir then
+            local action = M.by_key[NAV_AXIS_ACTIONS[dir]]
+            if action and action.command and M.overlay_tick and M.dispatcher
+                and (M.dispatcher.engaged and M.dispatcher.engaged() or M.dispatcher.captures()) then
+                if M.silence then pcall(M.silence) end
+                local c = action.command
+                M.overlay_tick({ kind = c.kind, dir = c.dir, mods = {} })
+            end
         end
     end
 end
@@ -300,6 +340,7 @@ function M.update_pad_axes(ctrl)
     local pad = ctrl and ctrl.GAMEPAD and ctrl.GAMEPAD.object
     if not pad or not pad.getGamepadAxis then return end
     update_triggers(ctrl, pad)
+    update_left_stick(ctrl, pad)
     local ok, x, y = pcall(function()
         return pad:getGamepadAxis("rightx"), pad:getGamepadAxis("righty")
     end)
@@ -369,15 +410,24 @@ function M.init()
     reg("select",    "INPUT.SELECT",    { keys = { "return", "kpenter" }, command = { kind = "confirm" }, game_button = "a" })
     reg("grab",      "INPUT.GRAB",      { keys = { "space" }, command = { kind = "grab" } })
     reg("back",      "INPUT.BACK",      { keys = { "backspace", "lshift", "rshift" }, game_button = "b" })
+    -- Pause has no keyboard default (Escape stays native, deliberately
+    -- unbound); on pad it owns the Start button's engine behavior.
+    reg("pause",     "INPUT.PAUSE",     { keys = {}, game_button = "start" })
     reg("play_hand", "INPUT.PLAY_HAND", { keys = { "x" }, handler = function() local h = M.handlers.play_hand; if h then h() end end })
     reg("discard",   "INPUT.DISCARD",   { keys = { "c" }, handler = function() local h = M.handlers.discard; if h then h() end end })
     reg("sell",      "INPUT.SELL",      { keys = { "s" }, command = { kind = "sell" } })
     reg("use",       "INPUT.USE",       { keys = { "u" }, command = { kind = "use" } })
     reg("tab_left",  "INPUT.TAB_LEFT",  { keys = { "[" }, game_button = "leftshoulder" })
     reg("tab_right", "INPUT.TAB_RIGHT", { keys = { "]" }, game_button = "rightshoulder" })
-    reg("view_deck", "INPUT.VIEW_DECK", { keys = { "q" }, game_button = "triggerleft" })
-    reg("right_trigger", "INPUT.RIGHT_TRIGGER", { keys = { "e" }, game_button = "triggerright" })
-    reg("run_info",  "INPUT.RUN_INFO",  { keys = { "tab" }, game_button = "back" })
+    -- View Deck / Run Info are OWNED actions (handlers injected by core call
+    -- the game FUNCS directly — the old triggerleft fallback never opened the
+    -- deck view at all: natively that trigger is the visual-only hold-to-peek
+    -- deck preview). Pad access rides the trigger chords in
+    -- DEFAULT_PAD_ACTIONS (RT+RB deck, LT+LB run info).
+    reg("view_deck", "INPUT.VIEW_DECK", { keys = { "d" },
+        handler = function() local h = M.handlers.view_deck; if h then h() end end })
+    reg("run_info",  "INPUT.RUN_INFO",  { keys = { "tab" },
+        handler = function() local h = M.handlers.run_info; if h then h() end end })
 
     M.PAD_ACTIONS = {}
     for btn, key in pairs(DEFAULT_PAD_ACTIONS) do M.PAD_ACTIONS[btn] = key end
@@ -401,8 +451,9 @@ end
 
 -- Keymap-format version: bump when the default scheme changes meaning so that
 -- stale rebinds don't resurrect old semantics (e.g. Space was "select" in v1,
--- "grab" in v2 — a v1 save would shadow the new grab action).
-local BINDS_VERSION = 2
+-- "grab" in v2 — a v1 save would shadow the new grab action; v3 moved View
+-- Deck from Q to D and dropped the passthrough right_trigger action).
+local BINDS_VERSION = 3
 
 function M.save_bindings()
     local map = {}

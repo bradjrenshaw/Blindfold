@@ -124,6 +124,9 @@ do
         local Mirror = ba_require("overlays.menu_mirror")
         Overlays.register(ba_require("overlays.main_menu"))
         Overlays.register(Mirror.overlay)
+        -- The deck view is an overlay menu the mirror would otherwise claim;
+        -- registered above it, the bespoke layout wins while G.VIEWING_DECK.
+        Overlays.register(ba_require("overlays.deck_view"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).
@@ -152,6 +155,21 @@ do
         end
         Input.handlers.play_hand = direct(PlayOverlay.do_play)
         Input.handlers.discard = direct(PlayOverlay.do_discard)
+        -- View Deck / Run Info: direct FUNCS calls (both ignore their button
+        -- arg) — deterministic on owned screens instead of riding the game's
+        -- pip routing. Guarded to a live run with no menu already on top;
+        -- run_info advances the tutorial's listen step exactly like the pip
+        -- click used to.
+        local function info_screen(func_key, listen)
+            return function()
+                if not (G and G.STAGES and G.STAGE == G.STAGES.RUN
+                    and not G.OVERLAY_MENU and G.FUNCS and G.FUNCS[func_key]) then return end
+                if listen then pcall(PlayOverlay.tut_listen, listen) end
+                G.FUNCS[func_key]()
+            end
+        end
+        Input.handlers.view_deck = info_screen("deck_info")
+        Input.handlers.run_info = info_screen("run_info", "run_info")
 
         Scoring = ba_require("events.scoring")
         Scoring.say = speech.say
@@ -609,66 +627,56 @@ function BA.install()
         end
     end
 
-    -- 8) Physical gamepad -> the mod's own controller scheme. Wrapped at the
-    --    love callbacks, NOT Controller:button_press: the keyboard fallback
-    --    synthesizes button_press calls (brackets -> shoulders for menu tabs,
-    --    backspace -> b) that must keep their native meaning. Consumed presses
-    --    still register the gamepad + HID flags (controller detection, button
-    --    glyphs) exactly like the original callback; their releases are
-    --    swallowed symmetrically. Triggers arrive as axes elsewhere and stay
-    --    fully native (view deck / secondary).
-    -- 9) Trigger ownership: triggers are AXES the engine converts to button
-    --    presses itself (handle_axis_buttons). When a trigger is bound to a
-    --    mod action — or a rebind capture is listening — blank its pending
-    --    conversion so the native press never fires; the mod's own axis
-    --    polling (Input.update_pad_axes) dispatches it instead. Unbound
-    --    triggers stay fully native (hold LT = view deck), including via the
-    --    keyboard fallback's synthesized button presses.
+    -- 8) Physical gamepad -> the mod's own controller scheme, with TOTAL
+    --    ownership (see the love-callback wrap below). Wrapped at the love
+    --    callbacks, NOT Controller:button_press: the keyboard fallback and
+    --    on_pad_down's game_button branch synthesize button_press calls
+    --    (brackets -> shoulders for menu tabs, backspace/B -> b, Start ->
+    --    start) that must keep their native meaning.
+    -- 9) TOTAL AXIS OWNERSHIP: blank EVERY axis-to-button conversion (left
+    -- stick's dpad synthesis + both triggers) — the mod polls the axes
+    -- itself (update_pad_axes: triggers -> chords, left stick -> nav flicks,
+    -- right stick -> buffers). Blanking only .current lets an in-flight hold
+    -- release cleanly through .previous.
     local orig_axis_buttons = Controller.handle_axis_buttons
     function Controller:handle_axis_buttons()
-        if Input and Input.owns_trigger then
-            local ok, owns_l = pcall(Input.owns_trigger, "triggerleft")
-            local ok2, owns_r = pcall(Input.owns_trigger, "triggerright")
-            if ok and owns_l and self.axis_buttons and self.axis_buttons.l_trig then
-                self.axis_buttons.l_trig.current = ""
-            end
-            if ok2 and owns_r and self.axis_buttons and self.axis_buttons.r_trig then
-                self.axis_buttons.r_trig.current = ""
+        if Input and self.axis_buttons then
+            for _, k in ipairs({ "l_stick", "l_trig", "r_trig" }) do
+                if self.axis_buttons[k] then self.axis_buttons[k].current = "" end
             end
         end
         return orig_axis_buttons(self)
     end
 
+    -- TOTAL BUTTON OWNERSHIP (Brad): every physical press dispatches through
+    -- the mod's map or does NOTHING — no button ever reaches the engine's
+    -- context-overloaded native handling on its own. Engine behaviors we keep
+    -- (B, Start) are actions whose game_button on_pad_down presses
+    -- deliberately. Presses still register the gamepad + HID flags
+    -- (controller detection, button glyphs). Sole exception: an active text
+    -- input (seed/profile fields) keeps fully native input.
     if love and love.gamepadpressed and love.gamepadreleased then
         local orig_pad_down = love.gamepadpressed
         local orig_pad_up = love.gamepadreleased
         love.gamepadpressed = function(joystick, button)
             local mapped = (G.button_mapping and G.button_mapping[button]) or button
-            if Input then
-                local ok, consumed = pcall(Input.on_pad_down, G.CONTROLLER, mapped)
-                if ok and consumed then
-                    pcall(function()
-                        G.CONTROLLER:set_gamepad(joystick)
-                        G.CONTROLLER:set_HID_flags("button", mapped)
-                    end)
-                    return
-                end
+            if not Input then return orig_pad_down(joystick, button) end
+            if G.CONTROLLER and G.CONTROLLER.text_input_hook then
+                return orig_pad_down(joystick, button)
             end
-            return orig_pad_down(joystick, button)
+            pcall(function()
+                G.CONTROLLER:set_gamepad(joystick)
+                G.CONTROLLER:set_HID_flags("button", mapped)
+            end)
+            pcall(Input.on_pad_down, G.CONTROLLER, mapped)
         end
         love.gamepadreleased = function(joystick, button)
             local mapped = (G.button_mapping and G.button_mapping[button]) or button
-            if Input then
-                local ok, consumed = pcall(Input.on_pad_up, mapped)
-                if ok and consumed then
-                    pcall(function()
-                        G.CONTROLLER:set_gamepad(joystick)
-                        G.CONTROLLER:set_HID_flags("button", mapped)
-                    end)
-                    return
-                end
+            if not Input then return orig_pad_up(joystick, button) end
+            if G.CONTROLLER and G.CONTROLLER.text_input_hook then
+                return orig_pad_up(joystick, button)
             end
-            return orig_pad_up(joystick, button)
+            pcall(Input.on_pad_up, mapped, G.CONTROLLER)
         end
     end
 
