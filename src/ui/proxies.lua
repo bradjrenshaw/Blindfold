@@ -791,6 +791,29 @@ ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
 ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
+-- Collection modifier cards (the seals / enhancements screens) are built on
+-- the EMPTY card front — no rank or suit renders. Their identity is the
+-- modifier itself: the enhancement center's name, the seal, or the edition.
+-- Returns the label message plus which announcement slot it absorbed (that
+-- slot is skipped in get_focus_announcements to avoid an echo).
+local function faceless_identity(node)
+    local base = node.base
+    if base and base.value and base.value ~= "" and base.suit and base.suit ~= "" then
+        return nil
+    end
+    local c = node.config and node.config.center
+    if c and c.set == "Enhanced" and c.key ~= "c_base" then
+        local name = Proxy.center_name(c) or c.name
+        if name then return Message.maybe_raw(tostring(name)), "enhancement" end
+    end
+    if node.seal then
+        return Message.localized("SEAL." .. string.upper(tostring(node.seal))), "seal"
+    end
+    local ed = Proxy.edition_word(node)
+    if ed then return Message.maybe_raw(ed), "edition" end
+    return nil
+end
+
 function ProxyPlayingCard:get_label()
     local node = self.node
     -- Stone cards render NO rank or suit — the draw skips the front face
@@ -800,6 +823,8 @@ function ProxyPlayingCard:get_label()
         local name = Proxy.center_name(node.config and node.config.center)
         return Message.maybe_raw(name and tostring(name) or "Stone Card")
     end
+    local fl = faceless_identity(node)
+    if fl then return fl end
     local base = node.base
     if not base then return nil end
     local rank = Proxy.loc_str(base.value, "ranks") or tostring(base.value or "")
@@ -826,16 +851,21 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.ability and node.ability.forced_selection then
         anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
     end
+    -- A faceless card's label already carries one modifier; skip that slot.
+    local _, consumed = faceless_identity(node)
     local c = node.config and node.config.center
     -- Stone's enhancement IS the label (rankless/suitless), so don't repeat it.
     if c and c.set == "Enhanced" and c.key ~= "c_base"
+        and consumed ~= "enhancement"
         and not (node.ability and node.ability.effect == "Stone Card") then
         local name = Proxy.center_name(c) or c.name
         if name then anns[#anns + 1] = A.enhancement(tostring(name)) end
     end
     local ed = Proxy.edition_word(node)
-    if ed then anns[#anns + 1] = A.edition(ed) end
-    if node.seal then anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal)))) end
+    if ed and consumed ~= "edition" then anns[#anns + 1] = A.edition(ed) end
+    if node.seal and consumed ~= "seal" then
+        anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal))))
+    end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
@@ -1041,6 +1071,10 @@ local function blind_effect(cfg)
     return #parts > 0 and table.concat(parts, " ") or nil
 end
 
+-- Exported for the blinds collection gallery (works on raw P_BLINDS entries).
+Proxy.blind_name = blind_name
+Proxy.blind_effect = blind_effect
+
 -- A skip tag's description, via the game's own builder (mirrors a card's
 -- ability_UIBox_table). get_uibox_table populates it with the right loc vars.
 local function tag_description(tag)
@@ -1049,6 +1083,8 @@ local function tag_description(tag)
     if not ok or type(sprite) ~= "table" then return nil end
     return Proxy.card_description(sprite)
 end
+-- Exported for the tags collection gallery.
+Proxy.tag_description = tag_description
 
 local ProxyBlind = class(Proxy)
 ProxyBlind.new = ctor(ProxyBlind)

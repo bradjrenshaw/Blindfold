@@ -133,6 +133,8 @@ do
         -- Collection card screens: the game's grid rows (G.your_collection)
         -- become navigable rows instead of one long flat list.
         Overlays.register(ba_require("overlays.collection"))
+        -- Blinds collection: sprite chips the mirror's collector can't reach.
+        Overlays.register(ba_require("overlays.blind_gallery"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).

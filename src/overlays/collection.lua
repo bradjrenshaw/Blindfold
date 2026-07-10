@@ -14,8 +14,11 @@ local M = { id = "collection" }
 
 local function areas()
     local list = {}
-    if not (G and type(G.your_collection) == "table") then return list end
-    for _, a in ipairs(G.your_collection) do
+    local yc = G and G.your_collection
+    if type(yc) ~= "table" then return list end
+    -- The seals screen assigns ONE bare CardArea; every other screen a list.
+    if yc.cards then yc = { yc } end
+    for _, a in ipairs(yc) do
         if type(a) == "table" and not a.REMOVED and type(a.cards) == "table" then
             list[#list + 1] = a
         end
