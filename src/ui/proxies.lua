@@ -312,6 +312,25 @@ function Proxy.joker_rarity(card)
     return key and Message.localized("RARITY." .. key) or nil
 end
 
+-- Collection secrecy, mirroring Card:generate_UIBox_ability_table's own type
+-- flip (card.lua:714-724): a locked center reads "locked", an undiscovered
+-- Joker/Edition/consumable/Voucher/Booster reads "Not discovered" — the
+-- render is a "?" silhouette, so the name must not speak. Cards in your OWN
+-- joker/consumable areas are exempt, exactly like the game.
+function Proxy.center_hidden(card)
+    local center = card and card.config and card.config.center
+    if not center then return nil end
+    if center.unlocked == false and not card.bypass_lock then return "LOCKED" end
+    if not card.bypass_discovery_center and not center.discovered
+        and card.ability and (card.ability.set == "Joker" or card.ability.set == "Edition"
+            or card.ability.consumeable or card.ability.set == "Voucher"
+            or card.ability.set == "Booster")
+        and not (G and (card.area == G.jokers or card.area == G.consumeables)) then
+        return "NOT_DISCOVERED"
+    end
+    return nil
+end
+
 -- A card's position ("3 of 8"), for the position announcement. With explicit
 -- index/total the caller decides the unit (an owned overlay's ROW, which may
 -- span several CardAreas); the default is the card's own CardArea order.
@@ -849,6 +868,27 @@ local ProxyJoker = class(Proxy)
 ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "pinned", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
 
+-- The win-stake sticker (collection jokers: the badge for the best stake
+-- won with that joker). card.sticker is a stake colour from G.sticker_map;
+-- speak the localized stake name ("Gold Stake sticker"). Drawn on card
+-- BACKS too, so face-down cards keep it.
+local function win_sticker(node)
+    if type(node.sticker) ~= "string" then return nil end
+    local name = node.sticker
+    pcall(function()
+        for i, colour in ipairs(G.sticker_map or {}) do
+            if colour == node.sticker then
+                local center = G.P_CENTER_POOLS.Stake[i]
+                local ok, s = pcall(localize,
+                    { type = "name_text", set = "Stake", key = center.key })
+                if ok and type(s) == "string" and s ~= "" then name = s end
+                break
+            end
+        end
+    end)
+    return A.status(Message.localized("CARD.WIN_STICKER", { stake = name }))
+end
+
 -- What a face-down card legitimately shows, so a flipped joker (Amber Acorn)
 -- reads with the same tells a sighted player gets and nothing more:
 --   * geometry — Wee Joker is 0.7-scale, Square Joker is square (the game
@@ -879,6 +919,8 @@ local function face_down_label(node)
 end
 
 function ProxyJoker:get_label()
+    local hidden = Proxy.center_hidden(self.node)
+    if hidden then return Message.localized("LABELS." .. hidden) end
     if self.node.facing == "back" then return face_down_label(self.node) end
     local c = self.node.config and self.node.config.center
     local name = Proxy.center_name(c)
@@ -888,6 +930,17 @@ function ProxyJoker:get_label()
 end
 function ProxyJoker:get_focus_announcements()
     local node = self.node
+    -- Locked / undiscovered (collection): a "?" silhouette renders — just
+    -- the hidden state and the set's type word (the silhouette art is
+    -- per-set, so the type is visible).
+    local hidden = Proxy.center_hidden(node)
+    if hidden then
+        local anns = { A.label(Message.localized("LABELS." .. hidden)) }
+        local set = node.ability and node.ability.set
+        local tword = set and SET_TO_TYPE[set]
+        if tword then anns[#anns + 1] = A.type(tword) end
+        return anns
+    end
     -- Face down: identity hidden — no name, rarity, edition or price. The
     -- type word stays (the row already tells you it's a joker) and so does
     -- the selection state, mirroring the face-down playing-card readout.
@@ -900,6 +953,8 @@ function ProxyJoker:get_focus_announcements()
         -- Pinned stays spoken face down: the card visibly never leaves the
         -- left edge, so its position is public knowledge either way.
         if node.pinned then anns[#anns + 1] = A.pinned() end
+        local sticker = win_sticker(node)
+        if sticker then anns[#anns + 1] = sticker end
         return anns
     end
     local label = self:get_label()
@@ -915,6 +970,8 @@ function ProxyJoker:get_focus_announcements()
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     if node.pinned then anns[#anns + 1] = A.pinned() end
+    local sticker = win_sticker(node)
+    if sticker then anns[#anns + 1] = sticker end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
     return anns

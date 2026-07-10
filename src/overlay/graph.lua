@@ -146,8 +146,14 @@ local function build_menu(self)
         and self.start_id.key or self.rows[1].items[1].id.key
 
     for row_idx, row in ipairs(self.rows) do
+        local first_key = row.items[1].id.key
+        local last_key = row.items[#row.items].id.key
         for pos, item in ipairs(row.items) do
             local node = render.nodes[item.id.key]
+            -- Row metadata for Home/End: inside a multi-item row those jump
+            -- to ITS ends (innermost structure wins); also disambiguates
+            -- wrapped rows, whose transitions form an edgeless cycle.
+            node.row_edges = { first = first_key, last = last_key, size = #row.items }
             if row_idx > 1 then
                 local above = self.rows[row_idx - 1]
                 node.trans.up = { to = vertical_target(row, above, pos).key, label = above.label }

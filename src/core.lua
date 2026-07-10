@@ -130,6 +130,9 @@ do
         -- Challenge list + description: two side-by-side columns that read
         -- bottom-heavy in the mirror's flat order; bespoke, description first.
         Overlays.register(ba_require("overlays.challenges"))
+        -- Collection card screens: the game's grid rows (G.your_collection)
+        -- become navigable rows instead of one long flat list.
+        Overlays.register(ba_require("overlays.collection"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).

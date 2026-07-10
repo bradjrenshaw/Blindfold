@@ -160,25 +160,34 @@ function KeyGraph:move(ctx, dir)
     return true
 end
 
--- Move as far as possible in dir (home/end within the row or column), speaking
--- only the landing control. Returns true if focus moved. The visited guard
--- terminates on wrapping rows (which have no edge to stop at).
+-- Home/End: the INNERMOST structure wins (Brad) — inside a multi-item row,
+-- jump to its first/last item; anywhere else (vertical lists, single-item
+-- rows, raw graphs) jump to the graph's first/last node in the down-right
+-- order. Row membership comes from the builder's row_edges metadata, which
+-- also makes wrapped rows unambiguous (their transitions form an edgeless
+-- cycle that a directional walk could never terminate on meaningfully).
+-- Speaks only the landing control; returns true if focus moved.
 function KeyGraph:move_to_edge(ctx, dir)
     if not self:rerender(ctx) then return false end
     local cur = self.state.cur and self.state.cur.key
-    local moved = false
-    local seen = { [cur or false] = true }
-    while true do
-        local node = cur and self.current.nodes[cur]
-        if not node then break end
-        local t = node.trans[dir]
-        if not t or not self.current.nodes[t.to] or seen[t.to] then break end
-        cur = t.to
-        seen[cur] = true
-        moved = true
+    local node = cur and self.current.nodes[cur]
+    if not node then return false end
+    local target
+    if node.row_edges and node.row_edges.size > 1 then
+        target = (dir == "left") and node.row_edges.first or node.row_edges.last
+    else
+        local order = self.state.key_order
+        if not order or #order == 0 then order = KeyGraph.compute_order(self.current) end
+        target = (dir == "left") and order[1] or order[#order]
     end
-    if moved then self.state.cur = self.current.nodes[cur].id end
-    read_label_of(self, self.state.cur and self.state.cur.key, ctx)
+    local tnode = target and self.current.nodes[target]
+    if not tnode then
+        read_label_of(self, cur, ctx)
+        return false
+    end
+    local moved = target ~= cur
+    self.state.cur = tnode.id
+    read_label_of(self, target, ctx)
     return moved
 end
 

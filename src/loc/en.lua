@@ -24,7 +24,7 @@ return {
         TEXT_FIELD = "text field",
     },
     STATUS = { ON = "on", OFF = "off" },
-    LABELS = { LOCKED = "locked", EMPTY = "empty" },
+    LABELS = { LOCKED = "locked", EMPTY = "empty", NOT_DISCOVERED = "Not discovered" },
     -- Joker rarity, announced as a subtype ("common joker").
     RARITY = { COMMON = "common", UNCOMMON = "uncommon", RARE = "rare", LEGENDARY = "legendary" },
     POSITION = { OF = "{index} of {total}" },
@@ -84,6 +84,7 @@ return {
         CANT_SELL  = "cannot sell",
         PINNED     = "pinned",
         FORCED     = "forced",   -- Cerulean Bell's locked-in selection
+        WIN_STICKER = "{stake} sticker",   -- collection: best winning stake
         SELECTED   = "selected",
         DESELECTED = "deselected",
         TIP        = "{name}, {desc}",   -- keyword hover tip: "Foil, +50 chips"

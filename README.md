@@ -83,7 +83,7 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | Key | Action |
 | --- | --- |
 | Arrow keys | Move (mod-owned screens navigate by rows; sliders/cycles adjust) |
-| Home / End | Jump to the start / end of the row |
+| Home / End | Jump to the start / end of the current row, or of the whole screen when not in a row |
 | Enter | Select a card / activate a button (on a joker: pick up / place) |
 | Space | Pick up / place (reorder jokers or hand cards; hands score left-to-right) |
 | X / C | Play hand / Discard |
