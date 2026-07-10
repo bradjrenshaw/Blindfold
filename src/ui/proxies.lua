@@ -741,7 +741,15 @@ ProxyPlayingCard.type_key = "card"
 ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 function ProxyPlayingCard:get_label()
-    local base = self.node.base
+    local node = self.node
+    -- Stone cards render NO rank or suit — the draw skips the front face
+    -- entirely (card.lua: `ability.effect ~= 'Stone Card'`) and the game
+    -- treats them as rankless/suitless. Read the enhancement name instead.
+    if node.ability and node.ability.effect == "Stone Card" then
+        local name = Proxy.center_name(node.config and node.config.center)
+        return Message.maybe_raw(name and tostring(name) or "Stone Card")
+    end
+    local base = node.base
     if not base then return nil end
     local rank = Proxy.loc_str(base.value, "ranks") or tostring(base.value or "")
     local suit = Proxy.loc_str(base.suit, "suits_plural") or tostring(base.suit or "")
@@ -768,7 +776,9 @@ function ProxyPlayingCard:get_focus_announcements()
         anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
     end
     local c = node.config and node.config.center
-    if c and c.set == "Enhanced" and c.key ~= "c_base" then
+    -- Stone's enhancement IS the label (rankless/suitless), so don't repeat it.
+    if c and c.set == "Enhanced" and c.key ~= "c_base"
+        and not (node.ability and node.ability.effect == "Stone Card") then
         local name = Proxy.center_name(c) or c.name
         if name then anns[#anns + 1] = A.enhancement(tostring(name)) end
     end
