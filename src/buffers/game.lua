@@ -43,6 +43,11 @@ local function populate(self)
             self:add(line("GAME.SCORE", { score = num(g.chips), req = blind.chips }))
             local bname = blind.loc_name or blind.name
             if bname then self:add(line("GAME.BLIND", { name = tostring(bname) })) end
+            -- The boss effect the HUD shows all round (The Ox's even names
+            -- your most-played hand). Empty for small/big blinds.
+            if type(blind.loc_debuff_text) == "string" and blind.loc_debuff_text ~= "" then
+                self:add(blind.loc_debuff_text)
+            end
         end
     end
 

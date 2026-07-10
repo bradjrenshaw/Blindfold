@@ -111,6 +111,50 @@ function M.on_status(card, eval_type, amt, extra)
     }))
 end
 
+-- Hand level DOWN (The Arm). Level-UPS announce through the full hand-text
+-- panel, but level_up_hand's own piecemeal text updates carry no hand name,
+-- so a downgrade never reaches that path — core wraps the function itself
+-- and calls this for negative amounts. The hand table is already updated
+-- synchronously by the time the wrap runs.
+function M.on_level_down(hand)
+    if not setting("scoring.enabled", true) then return end
+    local h = G and G.GAME and G.GAME.hands and G.GAME.hands[hand]
+    if not h then return end
+    local name = hand
+    local ok, n = pcall(localize, hand, "poker_hands")
+    if ok and type(n) == "string" and n ~= "" then name = n end
+    local line = loc("SCORING.HAND_LEVEL_DOWN",
+        { name = name, level = h.level, chips = h.chips, mult = h.mult })
+    if G.E_MANAGER and Event then
+        G.E_MANAGER:add_event(Event({
+            trigger = "immediate",
+            func = function() speak(line); return true end,
+        }))
+    else
+        speak(line)
+    end
+end
+
+-- Play-area banner: vanilla uses it only for "Not Allowed!" — The Eye / The
+-- Mouth rejecting a repeated / wrong hand type (chips and mult forced to 0,
+-- cards wasted). Not gated behind the scoring toggle: it's the only signal
+-- of WHY the hand scored nothing. Queued like every scoring line so it lands
+-- on the popup's beat, not ahead of the whole sequence.
+function M.on_play_area_status(text)
+    if type(text) ~= "string" or text == "" then return end
+    if not (G and G.E_MANAGER and Event) then
+        speak(text)
+        return
+    end
+    G.E_MANAGER:add_event(Event({
+        trigger = "immediate",
+        func = function()
+            speak(text)
+            return true
+        end,
+    }))
+end
+
 -- The hand name + base chips/mult on the play, and the final score.
 function M.on_hand_text(config, vals)
     if not vals then return end

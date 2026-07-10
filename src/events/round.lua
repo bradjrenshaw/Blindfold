@@ -6,8 +6,18 @@
 -- actually changed (so a no-op press stays silent).
 local require = ...
 local Message = require("ui.message")
+local Factory = require("ui.factory")
 
 local M = { say = nil, settings = nil }
+
+local function card_name(card)
+    local ok, name = pcall(function()
+        local proxy = Factory.create(card)
+        local m = proxy and proxy.get_label and proxy:get_label()
+        return m and m:resolve() or nil
+    end)
+    return (ok and name) or nil
+end
 
 local function speak(text)
     if M.say and type(text) == "string" and text ~= "" then M.say(text) end
@@ -63,6 +73,55 @@ end
 function M.on_discard(hook)
     if hook then return end
     announce("ROUND.DISCARDED", "discards_left")
+end
+
+-- ---- Boss-blind effects that are rendered but otherwise silent ----
+-- These are not gated behind round.actions: they're involuntary state
+-- changes, and the animation is their only other signal.
+
+-- The Hook's forced discard: name the stolen cards (sighted players watch
+-- them fly out). Called from core's wrap BEFORE the game's discard runs,
+-- while the victims still sit in G.hand.highlighted; the count announcement
+-- above stays skipped for hook discards.
+function M.on_hook_discard()
+    local highlighted = G and G.hand and G.hand.highlighted
+    if type(highlighted) ~= "table" or #highlighted == 0 then return end
+    local names = {}
+    for _, c in ipairs(highlighted) do
+        local n = card_name(c)
+        if n and n ~= "" then names[#names + 1] = n end
+    end
+    if #names == 0 then return end
+    speak(loc("ROUND.HOOK_DISCARD", { cards = table.concat(names, ", ") }))
+end
+
+-- Crimson Heart moves its debuff to a random joker on every draw (the X
+-- visibly jumps). `before` maps card -> its debuff flag prior to the move;
+-- only the newly debuffed joker is spoken (the old one recovering is
+-- implied).
+function M.on_joker_debuffs(before)
+    for _, c in ipairs((G and G.jokers and G.jokers.cards) or {}) do
+        if c.debuff and before[c] == false then
+            local n = card_name(c)
+            if n and n ~= "" then speak(loc("ROUND.JOKER_DEBUFFED", { name = n })) end
+        end
+    end
+end
+
+-- The Ox: playing your most-played hand drains the money counter to $0.
+function M.on_blind_hand(blind, check)
+    if check or not blind then return end
+    if blind.name == "The Ox" and blind.triggered then
+        speak(loc("ROUND.OX"))
+    end
+end
+
+-- The Tooth: $1 pulses away per played card as each one juices.
+function M.on_blind_played(blind)
+    if blind and blind.name == "The Tooth" and blind.triggered then
+        local n = (G and G.play and G.play.cards and #G.play.cards) or 0
+        if n > 0 then speak(loc("ROUND.TOOTH", { amount = n })) end
+    end
 end
 
 return M

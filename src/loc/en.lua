@@ -72,6 +72,15 @@ return {
         PLAYING    = "{rank} of {suit}",
         DEBUFFED   = "debuffed",
         FACE_DOWN  = "face down",
+        -- Visible tells on a face-down card (Amber Acorn): odd geometry and
+        -- the red back that copied jokers wear on non-red decks.
+        TELL_SMALL    = "small card",
+        TELL_SQUARE   = "square card",
+        TELL_RED_BACK = "red back",
+        SELL       = "sell ${amount}",
+        CANT_SELL  = "cannot sell",
+        PINNED     = "pinned",
+        FORCED     = "forced",   -- Cerulean Bell's locked-in selection
         SELECTED   = "selected",
         DESELECTED = "deselected",
         TIP        = "{name}, {desc}",   -- keyword hover tip: "Foil, +50 chips"
@@ -131,6 +140,7 @@ return {
         REWARD      = "reward {dollars} dollars",
         SKIP        = "skip",
         NOT_CURRENT = "Not the current blind",
+        REROLL_USED = "Already rerolled this ante",
     },
 
     -- The owned play screen (overlays/play.lua): its button row, card
@@ -148,6 +158,7 @@ return {
         PICKED_UP   = "Picked up, {name}",
         PICKUP_CANCELLED = "Cancelled",
         MOVED       = "Moved",
+        PINNED_CANT_MOVE = "Pinned, cannot move",
         PLACE_LEFT    = "place left of {name}",
         PLACE_BETWEEN = "place between {left} and {right}",
         PLACE_RIGHT   = "place right of {name}",
@@ -163,6 +174,11 @@ return {
     ROUND = {
         HAND_PLAYED = "Hand played, {count} hands remaining",
         DISCARDED   = "Discarded, {count} discards remaining",
+        -- Boss-blind effects (rendered, otherwise silent).
+        HOOK_DISCARD   = "The Hook discards {cards}",
+        JOKER_DEBUFFED = "{name} debuffed",
+        OX    = "Money set to $0",
+        TOOTH = "Lost ${amount}",
     },
 
     -- Shop prices (buy cost on shop items; sell value on your cards in the
@@ -199,6 +215,7 @@ return {
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
         HAND_LEVEL = "{name} upgraded to level {level}, {chips} chips, {mult} mult",
+        HAND_LEVEL_DOWN = "{name} down to level {level}, {chips} chips, {mult} mult",
         CHIPS   = "{amt} chips",
         MULT    = "plus {amt} mult",
         XMULT   = "times {amt} mult",
@@ -220,6 +237,7 @@ return {
         ROUND_ACTIONS   = "Announce plays and discards",
         KEYBINDS        = "Keybindings",
         ANNOUNCEMENTS   = "Announcements",
+        TUTORIAL        = "Play Tutorial",
         PRESS_KEY       = "Press a key or controller button for {action}",
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",

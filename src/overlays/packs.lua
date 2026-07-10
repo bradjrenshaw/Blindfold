@@ -99,6 +99,7 @@ local function pick_click(card)
                 return
             end
         end
+        Play.tut_listen("use_card")
         G.FUNCS.use_card({ config = { ref_table = card } })
     end
 end

@@ -319,10 +319,27 @@ function Proxy.card_position(card, index, total)
     return Message.localized("POSITION.OF", { index = idx, total = #area.cards })
 end
 
+-- Sell info for a card the player owns (jokers / consumables — nothing else
+-- is sellable): its sell value, or "cannot sell" for an eternal — spoken
+-- INSTEAD of a value, like the game's greyed-out sell button. Face down the
+-- value is hidden (the game itself shows "?") but "cannot sell" still reads:
+-- the greyed button is visible on a flipped card, and probing with S would
+-- otherwise SELL a non-eternal (S works mid-blind too).
+function Proxy.card_sell_message(card)
+    if not (G and card and (card.area == G.jokers or card.area == G.consumeables)) then return nil end
+    if card.ability and card.ability.eternal then
+        return Message.localized("CARD.CANT_SELL"):resolve()
+    end
+    if card.facing == "back" then return nil end
+    local cost = card.sell_cost
+    if type(cost) ~= "number" then return nil end
+    return Message.localized("CARD.SELL", { amount = cost }):resolve()
+end
+
 -- Deferred follow-up for a focused card: its description (gated by the
--- descriptions toggle) THEN its position (gated by the position toggle) — so the
--- position reads AFTER the description, not before it. Both guarded for
--- face-down cards via card_description (no identity leak; position still reads).
+-- descriptions toggle), THEN its sell info, THEN its position (gated by the
+-- position toggle). Description guards face-down cards via card_description
+-- (no identity leak; position still reads).
 -- index/total override the position's unit (see card_position).
 function Proxy.card_deferred(card, index, total)
     local parts = {}
@@ -330,6 +347,8 @@ function Proxy.card_deferred(card, index, total)
         local d = Proxy.card_description(card)
         if d then parts[#parts + 1] = d end
     end
+    local sell = Proxy.card_sell_message(card)
+    if sell then parts[#parts + 1] = sell end
     if Proxy.announce_enabled("position") then
         local p = Proxy.card_position(card, index, total)
         if p then parts[#parts + 1] = p:resolve() end
@@ -735,12 +754,19 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.facing == "back" then
         local anns = { A.label(Message.localized("CARD.FACE_DOWN")), A.type(self.type_key) }
         if node.highlighted then anns[#anns + 1] = A.selected() end
+        -- Cerulean Bell's forced card is visibly raised even when face down.
+        if node.ability and node.ability.forced_selection then
+            anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
+        end
         return anns
     end
     local label = self:get_label()
     if not label then return {} end
     local anns = { A.label(label), A.type(self.type_key) }
     if node.highlighted then anns[#anns + 1] = A.selected() end
+    if node.ability and node.ability.forced_selection then
+        anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
+    end
     local c = node.config and node.config.center
     if c and c.set == "Enhanced" and c.key ~= "c_base" then
         local name = Proxy.center_name(c) or c.name
@@ -778,9 +804,40 @@ local SET_TO_TYPE = {
 }
 local ProxyJoker = class(Proxy)
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "price" }
+ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "pinned", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
+
+-- What a face-down card legitimately shows, so a flipped joker (Amber Acorn)
+-- reads with the same tells a sighted player gets and nothing more:
+--   * geometry — Wee Joker is 0.7-scale, Square Joker is square (the game
+--     only resizes them once discovered, so the gate rides along free);
+--   * a mismatched back — copy_card omits the deck's bypass_back, so Ankh /
+--     Invisible Joker copies wear the red deck's back, a tell only when the
+--     run's deck isn't red.
+-- Editions are NOT visible (their shaders only draw on the front face), and
+-- the game hides the sell price ("?"), so neither is spoken.
+local function face_down_label(node)
+    local parts = { Message.localized("CARD.FACE_DOWN"):resolve() }
+    local T = node.T
+    if T and G and G.CARD_W and G.CARD_H then
+        if T.w < G.CARD_W * 0.85 then
+            parts[#parts + 1] = Message.localized("CARD.TELL_SMALL"):resolve()
+        elseif math.abs(T.h - T.w) < 0.001 then
+            parts[#parts + 1] = Message.localized("CARD.TELL_SQUARE"):resolve()
+        end
+    end
+    if not node.playing_card and not (node.params and node.params.bypass_back) then
+        local deck = G and G.GAME and G.GAME.selected_back
+        local key = deck and deck.effect and deck.effect.center and deck.effect.center.key
+        if key and key ~= "b_red" then
+            parts[#parts + 1] = Message.localized("CARD.TELL_RED_BACK"):resolve()
+        end
+    end
+    return Message.raw(table.concat(parts, ", "))
+end
+
 function ProxyJoker:get_label()
+    if self.node.facing == "back" then return face_down_label(self.node) end
     local c = self.node.config and self.node.config.center
     local name = Proxy.center_name(c)
         or (self.node.ability and self.node.ability.name)
@@ -788,9 +845,23 @@ function ProxyJoker:get_label()
     return Message.maybe_raw(name and tostring(name))
 end
 function ProxyJoker:get_focus_announcements()
+    local node = self.node
+    -- Face down: identity hidden — no name, rarity, edition or price. The
+    -- type word stays (the row already tells you it's a joker) and so does
+    -- the selection state, mirroring the face-down playing-card readout.
+    if node.facing == "back" then
+        local anns = { A.label(face_down_label(node)) }
+        local set = node.ability and node.ability.set
+        local tword = set and SET_TO_TYPE[set]
+        if tword then anns[#anns + 1] = A.type(tword) end
+        if node.highlighted then anns[#anns + 1] = A.selected() end
+        -- Pinned stays spoken face down: the card visibly never leaves the
+        -- left edge, so its position is public knowledge either way.
+        if node.pinned then anns[#anns + 1] = A.pinned() end
+        return anns
+    end
     local label = self:get_label()
     if not label then return {} end
-    local node = self.node
     local anns = { A.label(label) }
     local rar = Proxy.joker_rarity(node)
     if rar then anns[#anns + 1] = A.subtype(rar) end
@@ -801,6 +872,7 @@ function ProxyJoker:get_focus_announcements()
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
+    if node.pinned then anns[#anns + 1] = A.pinned() end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
     return anns
@@ -812,6 +884,8 @@ function ProxyJoker:fill_buffer(buf)
     local desc = Proxy.card_description(self.node)
     if desc then buf:add(desc) end
     for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
+    local sell = Proxy.card_sell_message(self.node)
+    if sell then buf:add(sell) end
     local pos = Proxy.card_position(self.node)
     if pos then buf:add(pos:resolve()) end
 end

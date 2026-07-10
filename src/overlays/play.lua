@@ -122,6 +122,10 @@ end
 -- between <its left neighbor> and it".
 local function place_hint(card, area)
     if not carry_valid() or carry.area ~= area or carry.card == card then return nil end
+    -- No slot before a pinned card: align_cards re-sorts pinned to the left
+    -- edge, so "before it" doesn't exist. The card reads normally (its label
+    -- announces "pinned"), and the drop is refused in grab_handler.
+    if card.pinned then return nil end
     local rest = cards_sans_carry(area)
     for i, c in ipairs(rest) do
         if c == card then
@@ -139,6 +143,12 @@ local function grab_handler(card, area)
     return function(ctx)
         if not carry_valid() then carry = nil end
         if not carry then
+            -- A pinned card is locked to the left edge by the challenge; the
+            -- engine would snap it straight back, so refuse honestly.
+            if card.pinned then
+                say(ctx, "PLAY.PINNED_CANT_MOVE")
+                return
+            end
             carry = { card = card, area = area }
             ctx.message:fragment(Message.localized("PLAY.PICKED_UP", { name = card_name(card) }))
             return
@@ -148,7 +158,7 @@ local function grab_handler(card, area)
             say(ctx, "PLAY.PICKUP_CANCELLED")
             return
         end
-        if carry.area ~= area then
+        if carry.area ~= area or card.pinned then
             say(ctx, "PLAY.CANT_MOVE_HERE")   -- carry kept; navigate back to its row
             return
         end
@@ -240,6 +250,7 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
     if opts and opts.actions then
         vtable.on_sell = function(ctx)
             if card.can_sell_card and card:can_sell_card() then
+                M.tut_listen("sell_card")
                 G.FUNCS.sell_card({ config = { ref_table = card } })
                 say(ctx, "PLAY.SOLD")
             else
@@ -249,6 +260,7 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
         if card.ability and card.ability.consumeable then
             vtable.on_use = function(ctx)
                 if card.can_use_consumeable and card:can_use_consumeable() then
+                    M.tut_listen("use_card")
                     G.FUNCS.use_card({ config = { ref_table = card } })
                     say(ctx, "PLAY.USED")
                 elseif type(card.ability.consumeable) == "table"
@@ -306,6 +318,17 @@ function M.property_row(b)
     b:end_row()
 end
 
+-- The tutorial's action-listening steps advance inside UIElement:click
+-- (engine ui.lua:975: button_listen == config.button -> tut_next). Actions we
+-- fire by calling G.FUNCS directly bypass that click, so mirror the check
+-- before invoking the same func. No-op outside the tutorial.
+function M.tut_listen(button)
+    if G and G.OVERLAY_TUTORIAL and G.OVERLAY_TUTORIAL.button_listen == button
+        and G.FUNCS and G.FUNCS.tut_next then
+        G.FUNCS.tut_next()
+    end
+end
+
 -- --- Play / discard ------------------------------------------------------------
 --
 -- Shared by the button-row nodes AND the direct X / C key handlers (wired in
@@ -319,6 +342,10 @@ function M.do_play()
         return "PLAY.NO_CARDS"
     end
     if G.play and G.play.cards[1] then return nil end   -- mid-play; the FUNCS would no-op
+    -- Boss-blind intro: block_play holds while the debuff banner animates in
+    -- (the native Play button greys out for it; discard is NOT blocked).
+    if G.GAME and G.GAME.blind and G.GAME.blind.block_play then return nil end
+    M.tut_listen("play_cards_from_highlighted")
     G.FUNCS.play_cards_from_highlighted()
     return nil
 end
@@ -333,6 +360,7 @@ function M.do_discard()
     if not cr or (cr.discards_left or 0) <= 0 then
         return "PLAY.NO_DISCARDS"
     end
+    M.tut_listen("discard_cards_from_highlighted")
     G.FUNCS.discard_cards_from_highlighted()
     return nil
 end
@@ -349,6 +377,7 @@ end
 
 local function sort_click(func_key, spoken_key)
     return function(ctx)
+        M.tut_listen(func_key)
         if G.FUNCS and G.FUNCS[func_key] then G.FUNCS[func_key]() end
         say(ctx, spoken_key)
     end

@@ -128,6 +128,9 @@ do
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).
         Overlays.register(ba_require("overlays.game_over"))
+        -- Tutorial (topmost): Jimbo's Next-button steps override whatever
+        -- screen sits underneath; action-listening steps yield to it.
+        Overlays.register(ba_require("overlays.tutorial"))
         BA.overlays = Overlays
         Input.dispatcher = Overlays
         Input.overlay_tick = function(cmd)
@@ -491,6 +494,15 @@ function BA.install()
                 pcall(Scoring.on_hand_text, config, vals)
             end
         end
+        -- The play-area banner ("Not Allowed!" from The Eye / The Mouth).
+        -- Speech queued before the original for the same reason as above.
+        if play_area_status_text then
+            local orig_pas = play_area_status_text
+            function play_area_status_text(text, silent, delay)
+                pcall(Scoring.on_play_area_status, text)
+                return orig_pas(text, silent, delay)
+            end
+        end
     end
 
     -- 6) Announce play / discard actions with the hands / discards remaining, by
@@ -507,8 +519,81 @@ function BA.install()
         if G.FUNCS.discard_cards_from_highlighted then
             local orig_discard = G.FUNCS.discard_cards_from_highlighted
             G.FUNCS.discard_cards_from_highlighted = function(e, hook)
+                -- The Hook's forced discard: name the victims BEFORE the game
+                -- consumes the highlight.
+                if hook then pcall(Round.on_hook_discard) end
                 orig_discard(e, hook)
                 pcall(Round.on_discard, hook)
+            end
+        end
+        -- Boss-blind effects that are only rendered (The Hook is the wrap
+        -- above): Crimson Heart's roaming joker debuff, The Ox's money wipe,
+        -- The Tooth's per-card drain.
+        if Blind then
+            if Blind.drawn_to_hand then
+                local orig_dth = Blind.drawn_to_hand
+                function Blind:drawn_to_hand()
+                    local before = {}
+                    for _, c in ipairs((G.jokers and G.jokers.cards) or {}) do
+                        before[c] = c.debuff and true or false
+                    end
+                    local r = orig_dth(self)
+                    pcall(Round.on_joker_debuffs, before)
+                    return r
+                end
+            end
+            if Blind.debuff_hand then
+                local orig_dbh = Blind.debuff_hand
+                function Blind:debuff_hand(cards, hand, handname, check)
+                    local r = orig_dbh(self, cards, hand, handname, check)
+                    pcall(Round.on_blind_hand, self, check)
+                    return r
+                end
+            end
+            if Blind.press_play then
+                local orig_bpp = Blind.press_play
+                function Blind:press_play()
+                    local r = orig_bpp(self)
+                    pcall(Round.on_blind_played, self)
+                    return r
+                end
+            end
+        end
+        -- The Arm's hand level-down: level_up_hand's piecemeal hand-text
+        -- updates carry no hand name, so the upgrade announcements never see
+        -- a downgrade — announce from the function itself.
+        if BA.scoring and level_up_hand then
+            local orig_lvl = level_up_hand
+            function level_up_hand(card, hand, instant, amount)
+                orig_lvl(card, hand, instant, amount)
+                if (amount or 1) < 0 then pcall(BA.scoring.on_level_down, hand) end
+            end
+        end
+    end
+
+    -- 6b) Jimbo's dialogue (tutorial guidance, win/loss quips): every bubble
+    --     funnels through Card_Character:add_speech_bubble — tutorial keys,
+    --     'wq_*' win quips, 'lq_*' loss quips, and the demo's literal-table
+    --     text all render into the same UIBox, so scraping the built bubble
+    --     (static text + DynaText) covers them uniformly. The bubble turns
+    --     visible a beat later (say_stuff's 0.1s reveal), so speaking on add
+    --     lands with it.
+    if Card_Character and Card_Character.add_speech_bubble then
+        local okp, ProxyMod = pcall(ba_require, "ui.proxies")
+        local P = okp and ProxyMod and ProxyMod.Proxy or nil
+        if P then
+            local orig_bubble = Card_Character.add_speech_bubble
+            function Card_Character:add_speech_bubble(text_key, align, loc_vars)
+                local r = orig_bubble(self, text_key, align, loc_vars)
+                pcall(function()
+                    local bubble = self.children and self.children.speech_bubble
+                    local root = bubble and bubble.UIRoot
+                    local text = root and P.all_text(root)
+                    if type(text) == "string" and text ~= "" then
+                        speech.say(text)
+                    end
+                end)
+                return r
             end
         end
     end

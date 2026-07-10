@@ -106,6 +106,7 @@ local function buy_click(card)
             say(ctx, "SHOP.NO_ROOM")
             return
         end
+        Play.tut_listen("buy_from_shop")
         G.FUNCS.buy_from_shop({ config = { ref_table = card } })
         say(ctx, "SHOP.BOUGHT")
         suggest_next(ctx, card)
@@ -122,6 +123,7 @@ local function buy_and_use(card)
             say(ctx, "PLAY.CANT_USE")
             return
         end
+        Play.tut_listen("buy_from_shop")
         G.FUNCS.buy_from_shop({ config = { ref_table = card, id = "buy_and_use" } })
         say(ctx, "SHOP.BOUGHT_USED")
         suggest_next(ctx, card)
@@ -139,6 +141,7 @@ local function use_card_click(card, spoken_key, suggest)
             say(ctx, "SHOP.CANT_AFFORD")
             return
         end
+        Play.tut_listen("use_card")
         G.FUNCS.use_card({ config = { ref_table = card } })
         if spoken_key then say(ctx, spoken_key) end
         if suggest then suggest_next(ctx, card) end

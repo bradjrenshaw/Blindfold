@@ -26,12 +26,16 @@ local M = { id = "blinds" }
 local TYPES = { "Small", "Big", "Boss" }
 local BOX_KEYS = { Small = "small", Big = "big", Boss = "boss" }
 
-local function find_button(node, button, depth)
+-- Find by config.func, NOT config.button: the game's per-frame button funcs
+-- STRIP config.button while a button is disabled (greyed out) — matching on
+-- it made the reroll button vanish for us exactly when a sighted player sees
+-- it greyed (can't afford $10 / Director's Cut already used this ante).
+local function find_by_func(node, func, depth)
     if type(node) ~= "table" or (depth or 0) > 16 then return nil end
-    if node.config and node.config.button == button then return node end
+    if node.config and node.config.func == func then return node end
     if node.children then
         for _, ch in ipairs(node.children) do
-            local hit = find_button(ch, button, (depth or 0) + 1)
+            local hit = find_by_func(ch, func, (depth or 0) + 1)
             if hit then return hit end
         end
     end
@@ -118,15 +122,28 @@ function M:build(b)
     -- Jokers + consumables, one row.
     Play.property_row(b)
 
-    -- Reroll Boss, when the voucher grants it (the game's func disables the
-    -- button by clearing config.button when it can't fire, which also drops it
-    -- from this graph — same as native).
+    -- Reroll Boss, when a voucher grants it. The node exists whenever Retcon
+    -- or Director's Cut is redeemed; the game GREYS it (strips config.button)
+    -- when it can't fire — keep it in the graph like the visual, and speak
+    -- WHY on activation instead of vanishing.
     local reroll = G.blind_prompt_box and G.blind_prompt_box.UIRoot
-        and find_button(G.blind_prompt_box.UIRoot, "reroll_boss")
+        and find_by_func(G.blind_prompt_box.UIRoot, "reroll_boss_button")
     if reroll then
         b:add_clickable(Id.referenced(reroll, "reroll"),
             proxy_label(reroll),
-            function(ctx) reroll:click() end)
+            function(ctx)
+                if reroll.config and reroll.config.button then
+                    reroll:click()
+                    return
+                end
+                -- Mirror reroll_boss_button's own conditions: $10, and
+                -- Director's Cut is once per ante (Retcon is unlimited).
+                if ((G.GAME.dollars or 0) - (G.GAME.bankrupt_at or 0)) < 10 then
+                    ctx.message:fragment(Message.localized("SHOP.CANT_AFFORD"))
+                else
+                    ctx.message:fragment(Message.localized("BLIND.REROLL_USED"))
+                end
+            end)
     end
 
     -- The blind columns: every visible panel, current or not (the others read
