@@ -9,6 +9,8 @@ use crate::core::{detect, github, install, uninstall};
 struct State {
     release: Option<github::ReleaseInfo>,
     all_releases: Vec<github::ReleaseInfo>,
+    /// Short SHA of the tip of main, for dev-channel update checks.
+    main_sha: Option<String>,
 }
 
 pub fn run() {
@@ -85,7 +87,11 @@ pub fn run() {
         uninstall_btn.enable(false);
 
         // Shared state
-        let state = Rc::new(RefCell::new(State { release: None, all_releases: Vec::new() }));
+        let state = Rc::new(RefCell::new(State {
+            release: None,
+            all_releases: Vec::new(),
+            main_sha: None,
+        }));
 
         // Auto-detect game path
         if let Some(detected) = detect::detect_game_path() {
@@ -101,6 +107,7 @@ pub fn run() {
         }
 
         // Fetch release info (before showing window, so no visible delay)
+        state.borrow_mut().main_sha = github::fetch_main_commit_sha().ok();
         match github::fetch_all_releases() {
             Ok(releases) => {
                 // First non-prerelease is the "latest"
@@ -377,10 +384,34 @@ pub fn run() {
                 }
 
                 // Best effort: label the install with the commit it came from
-                let version = match github::fetch_main_commit_sha() {
-                    Ok(sha) => format!("main@{}", sha),
-                    Err(_) => "main".to_string(),
+                // (fetched now — main may have moved since the installer opened)
+                let sha = github::fetch_main_commit_sha().ok();
+                if let Some(ref s) = sha {
+                    state_c.borrow_mut().main_sha = Some(s.clone());
+                }
+                let version = match sha {
+                    Some(s) => format!("main@{}", s),
+                    None => "main".to_string(),
                 };
+
+                if detect::is_mod_installed()
+                    && install::get_installed_version().as_deref() == Some(&version)
+                {
+                    let again = MessageDialog::builder(
+                        &frame_c,
+                        &format!(
+                            "You already have the latest dev build ({}). Reinstall anyway?",
+                            version
+                        ),
+                        "Already Up to Date",
+                    )
+                    .with_style(MessageDialogStyle::YesNo | MessageDialogStyle::IconQuestion)
+                    .build()
+                    .show_modal();
+                    if again != ID_YES {
+                        return;
+                    }
+                }
 
                 install_btn_c.enable(false);
                 install_file_btn_c.enable(false);
@@ -620,6 +651,47 @@ fn update_state(
     }
 
     let borrow = state.borrow();
+
+    // Dev channel: installed from main, so update-check against main's tip
+    // instead of release tags. The release Install button stays available as
+    // the way back onto the stable channel.
+    if mod_installed
+        && installed_version
+            .as_deref()
+            .is_some_and(install::is_dev_version)
+    {
+        let installed = installed_version.as_deref().unwrap_or("main");
+        if borrow.release.is_some() {
+            install_btn.set_label("Install release");
+            install_btn.enable(has_valid_path);
+        }
+        match (install::dev_sha(installed), borrow.main_sha.as_deref()) {
+            (Some(inst), Some(latest)) if inst == latest => {
+                dev_build_btn.set_label("Install dev build");
+                status.set_label(&format!(
+                    "Dev build is up to date ({}).",
+                    installed
+                ));
+            }
+            (_, Some(latest)) => {
+                dev_build_btn.set_label("Update dev build");
+                status.set_label(&format!(
+                    "Dev build update available: {} → main@{}",
+                    installed, latest
+                ));
+            }
+            (_, None) => {
+                dev_build_btn.set_label("Install dev build");
+                status.set_label(&format!(
+                    "Dev build {} installed (couldn't check main for updates).",
+                    installed
+                ));
+            }
+        }
+        return;
+    }
+    dev_build_btn.set_label("Install dev build");
+
     if let Some(info) = borrow.release.as_ref() {
         let latest = &info.tag_name;
         if !has_valid_path {

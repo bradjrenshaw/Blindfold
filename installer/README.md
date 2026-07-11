@@ -18,7 +18,10 @@ What it does:
      never leave stale files; settings live outside and survive)
 3. Tracks the installed version in `Mods\Blindfold\version` and offers
    Update when GitHub has a newer tag (semver compare). Dev builds are
-   recorded as `main@<sha>`; any release then shows as an available update.
+   recorded as `main@<sha>` and update-check against the tip of main
+   instead — "Update dev build" appears whenever main has moved, so dev
+   users can stay on that channel; the Install button ("Install release")
+   remains the way back to stable.
 4. Uninstall removes the mod folder and optionally `version.dll` (left alone
    if other Lovely mods are present) and the user files
    (`blindfold_settings.lua`, `blindfold_keybinds.lua`, `blindfold.log`).

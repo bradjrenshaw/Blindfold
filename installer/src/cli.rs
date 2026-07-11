@@ -203,6 +203,14 @@ fn install_dev_build(game_path: &PathBuf) {
         Err(_) => "main".to_string(),
     };
 
+    if detect::is_mod_installed() && install::get_installed_version().as_deref() == Some(&version)
+    {
+        let response = prompt("You already have the latest dev build. Reinstall anyway? (y/N): ");
+        if response != "y" && response != "yes" {
+            return;
+        }
+    }
+
     println!("Downloading the latest development build...");
 
     match install::download_and_install_repo(

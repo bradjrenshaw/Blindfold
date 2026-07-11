@@ -10,6 +10,17 @@ pub fn get_installed_version() -> Option<String> {
     fs::read_to_string(vf).ok().map(|s| s.trim().to_string())
 }
 
+/// Installed-version strings are either a release tag (vX.Y.Z, compared by
+/// semver against GitHub releases) or a dev build from main ("main@<sha>",
+/// compared by commit against the tip of main).
+pub fn is_dev_version(v: &str) -> bool {
+    v == "main" || v.starts_with("main@")
+}
+
+pub fn dev_sha(v: &str) -> Option<&str> {
+    v.strip_prefix("main@")
+}
+
 pub fn save_installed_version(version: &str) -> Result<(), String> {
     let dir = mod_dir();
     fs::create_dir_all(&dir).map_err(|e| format!("Failed to create directory: {}", e))?;
@@ -406,6 +417,16 @@ mod tests {
         assert!(err.contains("git pull"));
         // The link target is untouched
         assert!(target.exists());
+    }
+
+    #[test]
+    fn dev_version_detection() {
+        assert!(is_dev_version("main"));
+        assert!(is_dev_version("main@abc1234"));
+        assert!(!is_dev_version("v0.1.0"));
+        assert_eq!(dev_sha("main@abc1234"), Some("abc1234"));
+        assert_eq!(dev_sha("main"), None);
+        assert_eq!(dev_sha("v0.1.0"), None);
     }
 
     #[test]
