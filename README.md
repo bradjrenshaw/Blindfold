@@ -43,7 +43,7 @@ src/            the mod itself (this folder is what gets linked into Mods/)
   input/        rebindable InputActions (keyboard-first; persisted rebinds)
   settings/     settings registry + the native Blindfold tab in Options
   loc/          localization manager + per-language string tables (en.lua)
-  lib/          drop the x64 Tolk DLLs here (gitignored) — see lib/README.md
+  lib/          the bundled x64 speech DLLs (Tolk + clients) — see lib/README.md
 scripts/
   deploy.ps1    junctions src/ into %APPDATA%/Balatro/Mods/Blindfold
 game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
