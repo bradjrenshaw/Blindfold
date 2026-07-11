@@ -1,107 +1,94 @@
 # Blindfold
 
-A screen-reader accessibility mod for **Balatro**, built on the
-[Lovely Injector](https://github.com/ethangreen-dev/lovely-injector) only (no
-Steamodded). The mod owns its own keyboard-driven UI: game screens are
-re-presented as navigable rows of spoken controls (an overlay "key graph",
-after Factorio Access), and the mod drives the game's own functions to act.
-Screens not yet owned fall back to speaking the game's native focus.
+An accessibility mod for **Balatro** that provides screen reader support for
+blind players. Every screen in the game — menus, the play table, the shop,
+booster packs, the collection — is re-presented as rows of spoken controls
+you navigate with the arrow keys or a controller, with play-by-play
+announcements for scoring, blinds, and shop events.
 
-What works today:
-- **The play screen is mod-owned**: jokers / consumables / played / hand as
-  predictable rows plus a button row; select, pick-up/place reordering (jokers
-  and hand — scoring order is left-to-right), sell / use, play / discard with
-  proper guards and spoken feedback.
-- **Speech via Tolk** (LuaJIT FFI), with a log fallback when Tolk isn't present.
-- **Menus are mod-owned via a generic mirror**: the main menu, run setup (New
-  Run / Continue / Challenges), the whole Options tree, run info, and deck view
-  are re-presented as one flat vertical list in reading order — up/down moves,
-  Enter activates, left/right adjusts the focused slider / cycle / tab. Values,
-  tooltips, and inline option-info are spoken as before.
-- **Cards**: playing cards (rank + suit, plus enhancement / edition / seal /
-  debuff) and jokers / consumables (name + kind + edition, then the full ability
-  description). **Review buffers** (Ctrl+arrows) hold the full detail.
-- **Announcements**: scoring play-by-play, plays/discards with counts, shop
-  prices, blind select, cash-out breakdown, screen changes — with per-
-  announcement toggles in a native settings tab (Options → Blindfold).
-- **Localization** layer with game-language detection and English fallback.
+For discussion of Blindfold, as well as my other modding projects, I have a
+[Discord](https://discord.gg/Dz8u2Pr9py/).
 
-## Layout
+If you would like to support my modding work, I also have a
+[Patreon](https://www.patreon.com/bradjrenshaw/).
 
-```
-src/            the mod itself (this folder is what gets linked into Mods/)
-  lovely.toml   Lovely patches: register modules + boot after the Controller exists
-  core.lua      entry point: hooks, per-frame tick, overlay/input wiring
-  speech.lua    Tolk (FFI) speech with a log fallback
-  overlay/      the owned-UI framework: key graph, builder, dispatcher,
-                message builder (port of Tanglebeep / Factorio Access)
-  overlays/     one module per owned screen (play.lua so far)
-  ui/           proxy elements + announcement system for the native-focus
-                fallback (ported from SayTheSpire2); also labels overlay cards
-  buffers/      review cursors (game status + per-entity detail, Ctrl+arrows)
-  events/       spoken game events: scoring sequence, plays/discards, cash-out
-  input/        rebindable InputActions (keyboard-first; persisted rebinds)
-  settings/     settings registry + the native Blindfold tab in Options
-  loc/          localization manager + per-language string tables (en.lua)
-  lib/          the bundled x64 speech DLLs (Tolk + clients) — see lib/README.md
-scripts/
-  deploy.ps1    junctions src/ into %APPDATA%/Balatro/Mods/Blindfold
-game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
-```
+## Features
 
-## Install
+- Full text-to-speech for the whole game: runs, menus, shop, booster packs,
+  deck view, challenges, the collection, stats, the tutorial, and more
+- Full keyboard and controller support, all rebindable — one key, one meaning
+- Play-by-play scoring announcements, with per-announcement toggles
+- Status hotkeys for the numbers you need mid-hand (hands, discards, score,
+  money, joker slots)
+- Review buffers for re-reading detail at your own pace
+- Ships translations for all of Balatro's languages
+- Speech via NVDA, JAWS, or SAPI (Tolk); a log file mirrors every
+  announcement
 
-**Easiest — the installer:** download `BlindfoldInstaller.exe` from the
-[latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest)
-and run it. It finds your Steam install of Balatro, downloads the mod, and
-installs everything (Lovely Injector next to `Balatro.exe`, the mod into
-`%APPDATA%\Balatro\Mods\Blindfold`). Run it again any time to update — it
-tells you when a new version is out — or to uninstall. Prefer a console?
-Run it as `BlindfoldInstaller.exe --cli`.
+## Installation
 
-**From a checkout (developers and testers):** everything needed is bundled
-(Lovely Injector, speech DLLs) — one script does it:
+1. Download `BlindfoldInstaller.exe` from the
+   [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest).
+2. Run it. It finds your Steam install of Balatro automatically (use
+   Browse... if you keep the game somewhere unusual) and shows one row of
+   buttons: press **Install**.
 
-1. Clone this repo anywhere and keep it (the install links to it).
-2. Run the deploy script from a PowerShell in the repo folder:
+   Windows SmartScreen may warn about an unrecognized app the first time:
+   choose "More info", then "Run anyway".
+3. Launch Balatro through Steam. You should hear **"Blindfold loaded."**
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
-   ```
+The installer puts the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
+next to `Balatro.exe` and the mod (speech libraries included) into
+`%APPDATA%\Balatro\Mods\Blindfold` — nothing else on your system is touched.
+Prefer a console? Run `BlindfoldInstaller.exe --cli` for the same flows as a
+menu.
 
-   It finds your Steam install of Balatro, installs the bundled Lovely
-   Injector (`version.dll`) next to `Balatro.exe`, and links this repo's
-   `src/` into `%APPDATA%\Balatro\Mods\Blindfold`.
+**Updating:** run the installer again. It tells you when a newer version is
+out and the Install button becomes **Update**. "Install dev build" instead
+installs the very latest work-in-progress code from this repository — ahead
+of any release, updated the same way ("Update dev build" appears whenever
+there's something new).
 
-   - Balatro somewhere unusual? `... deploy.ps1 -GameDir "D:\Games\Balatro"`
-   - "Couldn't write into the game folder": re-run from an **elevated**
-     PowerShell (the game lives under Program Files on some machines).
-3. **Launch Balatro through Steam.** You should hear "Blindfold loaded."
+**Uninstalling:** the installer's Uninstall button removes the mod and
+offers to also remove the Lovely Injector and Blindfold's settings. Your
+game saves are never touched.
 
-**Updating:** `git pull`, then restart Balatro — the install is a link into
-this repo, so pulling *is* updating. (The installer recognizes this linked
-setup: it won't install over it, and its Uninstall removes just the link,
-never your checkout.)
+## Getting started
 
-**Uninstalling:** `scripts\deploy.ps1 -Uninstall` (removes the mod link;
-delete the game folder's `version.dll` too if you want Lovely gone).
+Start Balatro through Steam and wait for "Blindfold loaded." From there:
 
-**Cutting a release (maintainer):** `scripts\build_release.ps1` builds
-`Blindfold.zip` (the payload the installer extracts) and
-`BlindfoldInstaller.exe`; publish both with
-`gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe ...`.
+- **Arrow keys** (or d-pad / left stick) move between controls; each speaks
+  as you land on it. Screens are laid out as rows: up/down switches rows,
+  left/right moves within one.
+- **Enter** (or A) activates the focused control.
+- The **play screen** reads top to bottom: your jokers and consumables, the
+  blind, played cards, your hand, then the action buttons. Select cards in
+  your hand with Enter, then press **X** to play or **C** to discard.
+- **Space** picks up the focused card so you can reorder: move to where it
+  should go and press Space again to place it ("place between X and Y" tells
+  you where a drop lands). Works on jokers, consumables, and hand cards —
+  hands score left to right.
+- **S sells / U uses** the focused joker or consumable.
+- **Ctrl+letter chords** answer the common questions instantly: Ctrl+X hands
+  left, Ctrl+C discards left, Ctrl+S score and goal, Ctrl+M money, Ctrl+J
+  joker slots.
+- **Ctrl+arrows** open the review buffers: Left/Right switch buffers (game
+  status, card detail), Up/Down step through their lines — for re-reading
+  anything at your own pace.
+- Announcement toggles, speech options, and rebinding all live in
+  **Options → Blindfold**.
 
-## Controls
+## Keyboard bindings
 
-Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
-(Options → Blindfold → Keybindings).
+All rebindable in Options → Blindfold → Keybindings: activate an action's
+row, then press the new key or controller button (Escape cancels).
 
 | Key | Action |
 | --- | --- |
-| Arrow keys | Move (mod-owned screens navigate by rows; sliders/cycles adjust) |
-| Home / End | Jump to the start / end of the current row, or of the whole screen when not in a row |
+| Arrow keys | Move (sliders and tab strips adjust with left/right) |
+| Home / End | Jump to the start / end of the current row (innermost structure wins) |
 | Enter | Select a card / activate a button (on a joker or consumable: pick up / place) |
-| Space | Pick up / place (reorder jokers, consumables, or hand cards; hands score left-to-right) |
+| Space | Pick up / place (reorder jokers, consumables, or hand cards) |
 | X / C | Play hand / Discard |
 | S / U | Sell / Use the focused joker or consumable |
 | `[` / `]` | Previous / next tab (menus) |
@@ -112,14 +99,16 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | Ctrl + X / Ctrl + C | Read hands / discards remaining |
 | Ctrl + S | Read score and goal (e.g. "3000 of 80000") |
 | Ctrl + J / Ctrl + M | Read joker slots (e.g. "3 of 5 jokers") / money |
-| Escape | (unchanged — game's pause / back) |
-| F8 | Debug: dump the owned overlay graph (or the focused UI tree) to the log |
+| Escape | Game's own pause / back (deliberately left native) |
+| F8 | Debug: dump the current screen's controls to the log |
 
-### Controller
+## Controller bindings
 
-The mod has its own controller scheme mirroring the keyboard actions (the
-game's native scheme reuses buttons contextually and doesn't drive the mod's
-navigation):
+The mod fully owns the controller: every button goes through its map (all
+rebindable — hold a trigger while pressing a button to bind a chord), and
+unmapped buttons do nothing rather than something surprising. The left
+trigger layer covers the current blind; the right trigger layer covers
+run-wide info.
 
 | Button | Action |
 | --- | --- |
@@ -128,7 +117,7 @@ navigation):
 | B | Back / deselect all |
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
-| LT + A | Pick up / place the focused card — jokers, consumables, and hand cards (on jokers/consumables, plain A also grabs) |
+| LT + A | Pick up / place the focused card (jokers, consumables, hand) |
 | LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
 | LT + LB | Run info |
 | RT + X / Y | Read money / joker slots |
@@ -136,17 +125,6 @@ navigation):
 | Back | Run info |
 | Start | Pause |
 | Right stick | Review buffers: left/right switch buffer, up/down browse |
-
-Nothing passes through to the game's own controller scheme: every button
-dispatches through the mod's map (all of the above are rebindable), and
-unmapped buttons do nothing.
-
-Keyboard keys and controller buttons are both rebindable in Options →
-Blindfold → Keybindings: activate an action's row, then press the key OR
-controller button you want — Ctrl combos and trigger chords included (Escape
-cancels). Holding a trigger while pressing a button binds the chord; pressing
-and releasing a trigger alone binds the bare trigger. An unbound trigger
-keeps its native role. The right stick's buffer navigation is fixed.
 
 ## Languages
 
@@ -161,16 +139,42 @@ very welcome: the strings live in `src/loc/<code>.lua` (sparse — any key
 you delete falls back to English), one file per language, and a PR or
 issue with better wording is all it takes.
 
-## Verifying without a screen reader
+## Troubleshooting
 
-Every announcement is appended to `%APPDATA%/Balatro/blindfold.log`. Tail it
-while navigating to confirm announcements are firing:
+- **No speech, game otherwise fine:** every announcement is also written to
+  `%APPDATA%\Balatro\blindfold.log` — if lines appear there while you
+  navigate, speech output is the problem (is your screen reader running?).
+  Tail it live with:
 
-```powershell
-Get-Content "$env:APPDATA\Balatro\blindfold.log" -Wait -Tail 20
-```
+  ```powershell
+  Get-Content "$env:APPDATA\Balatro\blindfold.log" -Wait -Tail 20
+  ```
 
-## Re-extracting game source
+- **No "Blindfold loaded" at all:** Lovely isn't loading — make sure you
+  launch through Steam, and that `version.dll` sits next to `Balatro.exe`
+  (re-run the installer).
+- Anything else: ask on the [Discord](https://discord.gg/Dz8u2Pr9py/) or
+  open a GitHub issue.
 
-`game_src/` is the game's Lua, used as reference. It's a zip appended to
-`Balatro.exe`; re-extract anytime with 7-Zip (`7z x Balatro.exe -ogame_src -ir!*.lua`).
+## For developers
+
+The mod is pure Lua on the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
+(no Steamodded). `src/` is the mod: an owned-UI overlay framework (key
+graph + dispatcher, after Factorio Access) in `overlay/`, one module per
+owned screen in `overlays/`, speech via Tolk FFI in `speech.lua`, plus
+proxies/buffers/events/input/settings/loc. Everything needed is committed,
+speech DLLs and Lovely included.
+
+- **Dev install:** clone the repo and run
+  `powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1` — it links
+  `src/` into `%APPDATA%\Balatro\Mods\Blindfold` as a junction, so
+  `git pull` (plus a game restart) is the whole update. `-Uninstall`
+  removes the link; the installer recognizes the junction and won't touch
+  it.
+- **Releases:** `scripts\build_release.ps1` builds `Blindfold.zip` and
+  `BlindfoldInstaller.exe` (the installer is a Rust/wxWidgets project in
+  `installer/` — see its README); publish both with
+  `gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe ...`.
+- **Game source reference:** the game's Lua is a zip appended to
+  `Balatro.exe`; extract to `game_src/` (gitignored) with 7-Zip:
+  `7z x Balatro.exe -ogame_src -ir!*.lua`.
