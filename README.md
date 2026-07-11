@@ -100,8 +100,8 @@ Keyboard-first, one key one meaning, all rebindable in the Keybindings screen
 | --- | --- |
 | Arrow keys | Move (mod-owned screens navigate by rows; sliders/cycles adjust) |
 | Home / End | Jump to the start / end of the current row, or of the whole screen when not in a row |
-| Enter | Select a card / activate a button (on a joker: pick up / place) |
-| Space | Pick up / place (reorder jokers or hand cards; hands score left-to-right) |
+| Enter | Select a card / activate a button (on a joker or consumable: pick up / place) |
+| Space | Pick up / place (reorder jokers, consumables, or hand cards; hands score left-to-right) |
 | X / C | Play hand / Discard |
 | S / U | Sell / Use the focused joker or consumable |
 | `[` / `]` | Previous / next tab (menus) |
@@ -124,11 +124,11 @@ navigation):
 | Button | Action |
 | --- | --- |
 | D-pad or left stick | Move |
-| A | Select a card / activate a button (on a joker: pick up / place) |
+| A | Select a card / activate a button (on a joker or consumable: pick up / place) |
 | B | Back / deselect all |
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
-| LT + A | Pick up / place the focused card — jokers and hand cards (on a joker, plain A also grabs) |
+| LT + A | Pick up / place the focused card — jokers, consumables, and hand cards (on jokers/consumables, plain A also grabs) |
 | LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
 | LT + LB | Run info |
 | RT + X / Y | Read money / joker slots |

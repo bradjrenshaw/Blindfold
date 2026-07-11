@@ -313,8 +313,12 @@ function M.property_row(b)
     end
     M.add_place_slot(b, G.jokers)   -- sits between the jokers and consumables
     for _, card in ipairs(cons) do
-        add_card(b, card, G.consumeables, { actions = true })
+        -- Consumables reorder by drag exactly like jokers: G.consumeables is a
+        -- type='joker' CardArea (game.lua:2239) and that align_cards branch
+        -- re-sorts by x (cardarea.lua:528) — so grab works here too.
+        add_card(b, card, G.consumeables, { actions = true, grab = true })
     end
+    M.add_place_slot(b, G.consumeables)
     b:end_row()
 end
 
@@ -433,7 +437,7 @@ end
 function M:build(b)
     b:capture_input()
     card_row(b, G.jokers, "CONTAINER.JOKERS", { actions = true, grab = true })
-    card_row(b, G.consumeables, "CONTAINER.CONSUMABLES", { actions = true })
+    card_row(b, G.consumeables, "CONTAINER.CONSUMABLES", { actions = true, grab = true })
     card_row(b, G.play, "CONTAINER.PLAYED", nil)
     card_row(b, G.hand, "CONTAINER.HAND", { selectable = true, wrap = true, grab = true })
 
