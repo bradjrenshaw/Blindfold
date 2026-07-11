@@ -339,6 +339,90 @@ local function vtable_for(node)
     return vt
 end
 
+-- --- Unlock overlays ---------------------------------------------------------
+--
+-- create_UIBox_card_unlock / create_UIBox_deck_unlock (UI_definitions.lua:4143)
+-- put everything that matters in pure renders: the "<name> Unlocked!" headline
+-- is a DynaText behind UIT.O, the criteria/description are plain text rows,
+-- and the unlocked card sits in a CardArea with clicking disabled — so the
+-- control walk sees nothing but the Continue button. Detected via that
+-- button's func (continue_unlock), the whole overlay is scraped in visual
+-- order into one readable summary item instead.
+
+local function dyna_string(obj)
+    if type(obj.strings) == "table" then
+        local e = obj.strings[obj.focused_string or 1]
+        local s = type(e) == "table" and e.string or nil
+        if type(s) == "string" then return s end
+    end
+    return type(obj.string) == "string" and obj.string or nil
+end
+
+-- The card unlock's reveal animation keeps a dissolving "locked" placeholder
+-- card in the area (and hides the real one until it materializes); name the
+-- FINAL state the animation lands on, never the placeholder.
+local LOCKED_CENTERS = { j_locked = true, v_locked = true }
+
+local function card_display_name(card)
+    local center = card.config and card.config.center
+    if card.facing == "back" or LOCKED_CENTERS[center and center.key or ""] then return nil end
+    local ok, name = pcall(function()
+        local proxy = Factory.create(card)
+        local m = proxy and proxy.get_label and proxy:get_label()
+        return m and m:resolve() or nil
+    end)
+    return ok and name or nil
+end
+
+local function unlock_text(root)
+    local parts = {}
+    local function visit(node, depth)
+        if type(node) ~= "table" or depth > 30 then return end
+        if node.states and node.states.visible == false then return end
+        if Proxy.node_is_control(node) then return end   -- the Continue button
+        local c = node.config
+        if c then
+            if G.UIT and node.UIT == G.UIT.T then
+                local t = (type(c.text) == "string" and c.text)
+                    or (type(c.text) == "number" and tostring(c.text)) or nil
+                if not t and type(c.ref_table) == "table" and c.ref_value ~= nil then
+                    local v = c.ref_table[c.ref_value]
+                    t = v ~= nil and tostring(v) or nil
+                end
+                if t and t ~= "" then parts[#parts + 1] = t end
+            end
+            local obj = c.object
+            if obj then
+                if obj.is and CardArea and obj:is(CardArea) then
+                    for _, card in ipairs(obj.cards or {}) do
+                        local name = card_display_name(card)
+                        if name then parts[#parts + 1] = name end
+                    end
+                elseif obj.is and UIBox and obj:is(UIBox) then
+                    visit(obj.UIRoot, depth + 1)
+                else
+                    local s = dyna_string(obj)
+                    if s and s ~= "" then parts[#parts + 1] = s end
+                end
+            end
+        end
+        if node.children then
+            each_child(node.children, function(ch) visit(ch, depth + 1) end)
+        end
+    end
+    visit(root, 0)
+    return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+local function is_unlock_overlay(items)
+    for _, n in ipairs(items) do
+        if type(n) == "table" and n.config and n.config.button == "continue_unlock" then
+            return true
+        end
+    end
+    return false
+end
+
 -- Gather the focusable controls from a list of sources, in order: UIBoxes
 -- (walked via UIRoot) and/or CardAreas (inlined).
 local function gather(sources)
@@ -429,7 +513,20 @@ local function make(id, get_sources, is_active)
         b:capture_input()
         local ok, sources = pcall(get_sources)
         if not ok or type(sources) ~= "table" then return end
-        for i, n in ipairs(gather(sources)) do
+        local items = gather(sources)
+        -- Unlock overlays carry their payload in pure renders; lead with the
+        -- scraped summary so opening one announces what was unlocked, with
+        -- Continue one step away.
+        if is_unlock_overlay(items) then
+            local root = sources[1]
+            b:add_item(Id.structural("unlock_summary"), {
+                label = function(ctx)
+                    local ok2, text = pcall(unlock_text, root.UIRoot or root)
+                    if ok2 and text then ctx.message:fragment(text) end
+                end,
+            })
+        end
+        for i, n in ipairs(items) do
             b:add_item(Id.referenced(n, "m:" .. i), vtable_for(n))
         end
     end
