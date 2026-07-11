@@ -22,8 +22,8 @@ If you would like to support my modding work, I also have a
   money, joker slots)
 - Review buffers for re-reading detail at your own pace
 - Ships translations for all of Balatro's languages
-- Speech via NVDA, JAWS, or SAPI (Tolk); a log file mirrors every
-  announcement
+- Speech via NVDA, JAWS, SAPI, or OneCore ([Prism](https://github.com/ethindp/prism));
+  a log file mirrors every announcement
 
 ## Installation
 
@@ -146,7 +146,7 @@ issue with better wording is all it takes.
 The mod is pure Lua on the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
 (no Steamodded). `src/` is the mod: an owned-UI overlay framework (key
 graph + dispatcher, after Factorio Access) in `overlay/`, one module per
-owned screen in `overlays/`, speech via Tolk FFI in `speech.lua`, plus
+owned screen in `overlays/`, speech via Prism FFI in `speech.lua`, plus
 proxies/buffers/events/input/settings/loc. Everything needed is committed,
 speech DLLs and Lovely included.
 

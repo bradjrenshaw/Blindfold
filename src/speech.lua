@@ -1,41 +1,41 @@
 -- speech.lua — screen-reader output for Blindfold.
 --
--- Primary backend is Tolk (NVDA/JAWS/SAPI bridge) loaded via LuaJIT FFI. A log
--- fallback always runs too, so the mod is testable BEFORE Tolk.dll is dropped
--- in (focus changes show up in %APPDATA%/Balatro/blindfold.log).
+-- Primary backend is Prism (https://github.com/ethindp/prism, MPL-2.0): one
+-- native library abstracting over screen readers and TTS engines (NVDA, JAWS,
+-- SAPI, OneCore, ...), loaded via LuaJIT FFI. Prism talks to the screen
+-- readers directly — no client DLLs — and takes plain UTF-8. A log fallback
+-- always runs too, so the mod is testable BEFORE prism.dll is dropped in
+-- (focus changes show up in %APPDATA%/Balatro/blindfold.log).
 --
--- Tolk takes UTF-16 (wchar_t*), so we convert UTF-8 -> UTF-16 via the Win32
--- MultiByteToWideChar. Balatro is 64-bit, so Tolk.dll and its screen-reader
--- client DLLs must be the x64 builds.
+-- Binding ported from wotr-access's PrismHandler/PrismNative (C#): acquire
+-- the best available backend once at init; prefer prism_backend_output (which
+-- drives braille too where supported) and fall back to prism_backend_speak.
 
 local ffi = require("ffi")
+local bit = require("bit")
 
-local M = { loaded = false, tolk = nil }
+local M = { loaded = false, prism = nil, ctx = nil, backend = nil }
 
 ffi.cdef([[
-    int  MultiByteToWideChar(unsigned int CodePage, unsigned long dwFlags,
-                             const char* lpMultiByteStr, int cbMultiByte,
-                             wchar_t* lpWideCharStr, int cchWideChar);
-    int  SetDllDirectoryW(const wchar_t* lpPathName);
+    typedef struct prism_ctx prism_ctx;
+    typedef struct prism_backend prism_backend;
 
-    void Tolk_Load();
-    void Tolk_Unload();
-    bool Tolk_IsLoaded();
-    bool Tolk_Output(const wchar_t* str, bool interrupt);
-    bool Tolk_Silence();
+    prism_ctx*     prism_init(void* config);
+    void           prism_shutdown(prism_ctx* ctx);
+    prism_backend* prism_registry_create_best(prism_ctx* ctx);
+    void           prism_backend_free(prism_backend* backend);
+    uint64_t       prism_backend_get_features(prism_backend* backend);
+    const char*    prism_backend_name(prism_backend* backend);
+    int            prism_backend_speak(prism_backend* backend, const char* text_utf8, bool interrupt);
+    int            prism_backend_output(prism_backend* backend, const char* text_utf8, bool interrupt);
+    int            prism_backend_stop(prism_backend* backend);
 ]])
 
-local C = ffi.C
-local CP_UTF8 = 65001
-
--- UTF-8 Lua string -> null-terminated UTF-16LE wchar_t buffer.
-local function to_wide(s)
-    local n = C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
-    if n <= 0 then return nil end
-    local buf = ffi.new("wchar_t[?]", n)
-    C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
-    return buf
-end
+-- prism_error values the binding reacts to (the rest just mean "didn't work").
+local OK = 0
+local NOT_IMPLEMENTED = 9
+-- prism_backend_get_features bit: backend supports prism_backend_output.
+local SUPPORTS_OUTPUT = 0x20
 
 local function log(text)
     -- Lands at %APPDATA%/Balatro/blindfold.log
@@ -45,23 +45,27 @@ local function log(text)
 end
 M.log = log
 
--- Load Tolk from the mod's lib/ folder. mod_dir is the deployed mod path.
+-- Load Prism from the mod's lib/ folder and acquire the best available
+-- backend (prism's own preference order). mod_dir is the deployed mod path.
 function M.init(mod_dir)
     local lib_dir = (mod_dir .. "/lib"):gsub("/", "\\")
     local ok, err = pcall(function()
-        -- So Tolk's own LoadLibrary calls find nvdaControllerClient64.dll etc.
-        local wdir = to_wide(lib_dir)
-        if wdir then C.SetDllDirectoryW(wdir) end
-        M.tolk = ffi.load(lib_dir .. "\\Tolk.dll")
-        M.tolk.Tolk_Load()
-        M.loaded = M.tolk.Tolk_IsLoaded()
+        M.prism = ffi.load(lib_dir .. "\\prism.dll")
+        M.ctx = M.prism.prism_init(nil)
+        assert(M.ctx ~= nil, "prism_init returned null")
+        M.backend = M.prism.prism_registry_create_best(M.ctx)
+        assert(M.backend ~= nil, "no usable speech backend on this machine")
+        M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(M.backend)) or 0,
+            SUPPORTS_OUTPUT) ~= 0
+        M.loaded = true
     end)
-    if ok and M.loaded then
-        log("Tolk loaded.")
+    if M.loaded then
+        local name = M.prism.prism_backend_name(M.backend)
+        log("Prism loaded (backend: " .. (name ~= nil and ffi.string(name) or "unknown") .. ").")
     else
-        log("Tolk NOT loaded (" .. tostring(err) ..
-            "). Drop the x64 Tolk.dll + screen-reader client DLLs into " ..
-            lib_dir .. " . Running with log output only.")
+        log("Prism NOT loaded (" .. tostring(err) ..
+            "). Drop the x64 prism.dll into " .. lib_dir ..
+            " . Running with log output only.")
     end
     return M.loaded
 end
@@ -71,14 +75,25 @@ end
 function M.say(text, interrupt)
     if type(text) ~= "string" or text == "" then return end
     log(text)
-    if M.loaded and M.tolk then
-        local w = to_wide(text)
-        if w then M.tolk.Tolk_Output(w, interrupt == true) end
-    end
+    if not M.loaded then return end
+    local cut = interrupt == true
+    pcall(function()
+        -- output drives speech AND braille where the backend supports it;
+        -- anything but a clean OK falls through to plain speak so we still
+        -- produce audio (mirrors the wotr-access handler).
+        if M.supports_output then
+            local e = M.prism.prism_backend_output(M.backend, text, cut)
+            if e == OK then return end
+            if e ~= NOT_IMPLEMENTED then
+                log("prism output error " .. tostring(e) .. ", falling back to speak")
+            end
+        end
+        M.prism.prism_backend_speak(M.backend, text, cut)
+    end)
 end
 
 function M.silence()
-    if M.loaded and M.tolk then pcall(function() M.tolk.Tolk_Silence() end) end
+    if M.loaded then pcall(function() M.prism.prism_backend_stop(M.backend) end) end
 end
 
 return M

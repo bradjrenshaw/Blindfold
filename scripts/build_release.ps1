@@ -28,12 +28,10 @@ $lovely = Join-Path $repo 'third_party\lovely\version.dll'
 if (-not (Test-Path $lovely)) {
     throw "Bundled Lovely missing at '$lovely'."
 }
-foreach ($dll in 'Tolk.dll', 'nvdaControllerClient64.dll', 'SAAPI64.dll') {
-    if (-not (Test-Path (Join-Path $src "lib\$dll"))) {
-        throw "Missing src\lib\$dll - a release without speech DLLs would be log-only. Aborting."
-    }
+if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
+    throw "Missing src\lib\prism.dll - a release without the speech library would be log-only. Aborting."
 }
-Write-Host "   Lovely + speech DLLs present"
+Write-Host "   Lovely + Prism present"
 
 # --- Stage and zip ---------------------------------------------------------------
 Write-Step "Building Blindfold.zip"

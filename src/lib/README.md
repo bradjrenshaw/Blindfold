@@ -1,16 +1,19 @@
-# Speech libraries (bundled)
+# Speech library (bundled)
 
-The **64-bit** Tolk runtime, committed so a plain clone speaks out of the box
+The **64-bit** Prism runtime, committed so a plain clone speaks out of the box
 (Balatro is x64 - x86 builds will not load):
 
-- `Tolk.dll` - [Tolk](https://github.com/dkager/tolk), the screen-reader
-  abstraction layer (LGPL v3). Built from the upstream source's x64 output.
-- `nvdaControllerClient64.dll` - NVDA controller client (LGPL 2.1), NVDA support.
-- `SAAPI64.dll` - JAWS support, redistributed as part of the Tolk bundle.
+- `prism.dll` - [Prism](https://github.com/ethindp/prism), a unified native
+  abstraction over screen readers and TTS engines (NVDA, JAWS, SAPI, OneCore,
+  ...). **Mozilla Public License 2.0**, redistributed unmodified; Prism in
+  turn incorporates simdutf (Apache-2.0), the NVDA controller client RPC
+  definitions (relicensed MPL-2.0 with permission), and SAPI-bridge helpers
+  credited to the NVGT project. Full license texts live in the Prism
+  repository's `LICENSES/` directory.
 
-Optional (not bundled): `dolapi64.dll` for Dolphin/SystemAccess - drop it in
-here if you need it.
+Prism talks to the screen readers directly, so no separate client DLLs
+(nvdaControllerClient64, SAAPI64, ...) are needed.
 
-If `Tolk.dll` is missing or fails to load, the mod still runs and writes every
-announcement to `%APPDATA%/Balatro/blindfold.log`, so behavior can be verified
-without speech.
+If `prism.dll` is missing or fails to load, the mod still runs and writes
+every announcement to `%APPDATA%/Balatro/blindfold.log`, so behavior can be
+verified without speech.

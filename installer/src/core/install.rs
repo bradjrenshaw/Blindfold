@@ -275,7 +275,7 @@ mod tests {
             ("version.dll", b"lovely"),
             ("Blindfold/lovely.toml", b"[manifest]"),
             ("Blindfold/core.lua", b"-- core"),
-            ("Blindfold/lib/Tolk.dll", b"tolk"),
+            ("Blindfold/lib/prism.dll", b"prism"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
         let md = mods.path().join("Blindfold");
         assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
-        assert_eq!(fs::read(md.join("lib").join("Tolk.dll")).unwrap(), b"tolk");
+        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
         // Nothing but the DLL lands in the game folder
         assert!(!game.path().join("Blindfold").exists());
     }
@@ -297,7 +297,7 @@ mod tests {
         let zip = make_zip(&[
             ("version.dll", b"lovely"),
             ("Blindfold\\lovely.toml", b"[manifest]"),
-            ("Blindfold\\lib\\Tolk.dll", b"tolk"),
+            ("Blindfold\\lib\\prism.dll", b"prism"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
@@ -305,7 +305,7 @@ mod tests {
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
         let md = mods.path().join("Blindfold");
         assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
-        assert_eq!(fs::read(md.join("lib").join("Tolk.dll")).unwrap(), b"tolk");
+        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
     }
 
     #[test]
@@ -317,7 +317,7 @@ mod tests {
             ("Blindfold-main/README.md", b"docs"),
             ("Blindfold-main/src/lovely.toml", b"[manifest]"),
             ("Blindfold-main/src/core.lua", b"-- core"),
-            ("Blindfold-main/src/lib/Tolk.dll", b"tolk"),
+            ("Blindfold-main/src/lib/prism.dll", b"prism"),
             ("Blindfold-main/third_party/lovely/version.dll", b"lovely"),
             ("Blindfold-main/scripts/deploy.ps1", b"# script"),
         ]);
@@ -328,7 +328,7 @@ mod tests {
         let md = mods.path().join("Blindfold");
         assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
         assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
-        assert_eq!(fs::read(md.join("lib").join("Tolk.dll")).unwrap(), b"tolk");
+        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
         // Repo files outside src/ stay out of the install
         assert!(!md.join("README.md").exists());
         assert!(!md.join("scripts").exists());

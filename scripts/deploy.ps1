@@ -110,16 +110,12 @@ if ($needCopy) {
     }
 }
 
-# --- 3. Speech libraries sanity check --------------------------------------------
-Write-Step "Checking speech libraries"
-$missing = @()
-foreach ($dll in 'Tolk.dll', 'nvdaControllerClient64.dll', 'SAAPI64.dll') {
-    if (-not (Test-Path (Join-Path $src "lib\$dll"))) { $missing += $dll }
-}
-if ($missing.Count -gt 0) {
-    Write-Warning ("Missing from src\lib: " + ($missing -join ', ') + " - the mod will run LOG-ONLY (no speech).")
+# --- 3. Speech library sanity check --------------------------------------------
+Write-Step "Checking speech library"
+if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
+    Write-Warning "Missing src\lib\prism.dll - the mod will run LOG-ONLY (no speech)."
 } else {
-    Write-Host "   Tolk + screen-reader clients present"
+    Write-Host "   Prism present"
 }
 
 # --- 4. Mod link ------------------------------------------------------------------
