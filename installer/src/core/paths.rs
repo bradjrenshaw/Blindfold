@@ -42,6 +42,23 @@ pub fn version_file() -> PathBuf {
     mod_dir().join("version")
 }
 
+/// Open the Mods folder in the file manager, creating it first so Explorer
+/// doesn't fall back to Documents on a missing path.
+pub fn open_mods_folder() -> Result<(), String> {
+    let mods = mods_dir();
+    std::fs::create_dir_all(&mods)
+        .map_err(|e| format!("Failed to create Mods folder: {}", e))?;
+    #[cfg(target_os = "windows")]
+    let opener = "explorer";
+    #[cfg(not(target_os = "windows"))]
+    let opener = "xdg-open";
+    std::process::Command::new(opener)
+        .arg(&mods)
+        .spawn()
+        .map_err(|e| format!("Failed to open {}: {}", mods.display(), e))?;
+    Ok(())
+}
+
 /// Steam roots to probe, best first: the registry-configured install (like
 /// scripts/deploy.ps1 uses), then the stock location.
 pub fn steam_defaults() -> Vec<PathBuf> {

@@ -24,17 +24,19 @@ pub fn run() {
         println!("  1. Install / Update from GitHub");
         println!("  2. Install from local zip file");
         println!("  3. Uninstall");
-        println!("  4. Exit");
+        println!("  4. Open Mods folder");
+        println!("  5. Exit");
         println!();
 
-        let choice = prompt("Choose an option (1-4): ");
+        let choice = prompt("Choose an option (1-5): ");
 
         println!();
         match choice.as_str() {
             "1" => install_from_github(&game_path),
             "2" => install_from_file(&game_path),
             "3" => do_uninstall(&game_path),
-            "4" => return,
+            "4" => open_mods_folder(),
+            "5" => return,
             _ => println!("Invalid option."),
         }
         println!();
@@ -236,6 +238,13 @@ fn do_uninstall(game_path: &PathBuf) {
     }
 
     println!("Uninstall complete. Game saves were not touched.");
+}
+
+fn open_mods_folder() {
+    match crate::core::paths::open_mods_folder() {
+        Ok(_) => println!("Opened {}", crate::core::paths::mods_dir().display()),
+        Err(e) => println!("Error: {}", e),
+    }
 }
 
 fn prompt(msg: &str) -> String {

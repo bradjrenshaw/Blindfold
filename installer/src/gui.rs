@@ -56,11 +56,15 @@ pub fn run() {
         let uninstall_btn = Button::builder(&panel)
             .with_label("Uninstall")
             .build();
+        let mods_folder_btn = Button::builder(&panel)
+            .with_label("Open Mods folder")
+            .build();
 
         btn_sizer.add_stretch_spacer(1);
         btn_sizer.add(&install_btn, 0, SizerFlag::All, 4);
         btn_sizer.add(&install_file_btn, 0, SizerFlag::All, 4);
         btn_sizer.add(&uninstall_btn, 0, SizerFlag::All, 4);
+        btn_sizer.add(&mods_folder_btn, 0, SizerFlag::All, 4);
 
         // Layout
         main_sizer.add(&status, 0, SizerFlag::Expand | SizerFlag::All, 8);
@@ -328,6 +332,20 @@ pub fn run() {
                             .build()
                             .show_modal();
                     }
+                }
+            });
+        }
+
+        // Open Mods folder button
+        {
+            let log_c = log.clone();
+            mods_folder_btn.on_click(move |_| {
+                match crate::core::paths::open_mods_folder() {
+                    Ok(_) => log_append(
+                        &log_c,
+                        &format!("Opened {}", crate::core::paths::mods_dir().display()),
+                    ),
+                    Err(e) => log_append(&log_c, &format!("Error: {}", e)),
                 }
             });
         }
