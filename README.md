@@ -128,7 +128,7 @@ navigation):
 | B | Back / deselect all |
 | X / Y | Play hand / Discard |
 | LB / RB | Sell / Use |
-| LT + A | Pick up / place a hand card (jokers use A) |
+| LT + A | Pick up / place the focused card — jokers and hand cards (on a joker, plain A also grabs) |
 | LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
 | LT + LB | Run info |
 | RT + X / Y | Read money / joker slots |
