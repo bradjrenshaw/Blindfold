@@ -53,6 +53,9 @@ pub fn run() {
         let install_file_btn = Button::builder(&panel)
             .with_label("Install from file...")
             .build();
+        let dev_build_btn = Button::builder(&panel)
+            .with_label("Install dev build")
+            .build();
         let uninstall_btn = Button::builder(&panel)
             .with_label("Uninstall")
             .build();
@@ -63,6 +66,7 @@ pub fn run() {
         btn_sizer.add_stretch_spacer(1);
         btn_sizer.add(&install_btn, 0, SizerFlag::All, 4);
         btn_sizer.add(&install_file_btn, 0, SizerFlag::All, 4);
+        btn_sizer.add(&dev_build_btn, 0, SizerFlag::All, 4);
         btn_sizer.add(&uninstall_btn, 0, SizerFlag::All, 4);
         btn_sizer.add(&mods_folder_btn, 0, SizerFlag::All, 4);
 
@@ -77,6 +81,7 @@ pub fn run() {
         // Disable action buttons initially
         install_btn.enable(false);
         install_file_btn.enable(false);
+        dev_build_btn.enable(false);
         uninstall_btn.enable(false);
 
         // Shared state
@@ -87,7 +92,7 @@ pub fn run() {
             path_input.set_value(&detected.to_string_lossy());
             log_append(&log, &format!("Game directory: {}", detected.display()));
             update_state(
-                &status, &install_btn, &install_file_btn, &uninstall_btn,
+                &status, &install_btn, &install_file_btn, &dev_build_btn, &uninstall_btn,
                 &detected, &state, &log,
             );
         } else {
@@ -111,7 +116,7 @@ pub fn run() {
                 let path = PathBuf::from(path_input.get_value());
                 if detect::validate_game_path(&path) {
                     update_state(
-                        &status, &install_btn, &install_file_btn, &uninstall_btn,
+                        &status, &install_btn, &install_file_btn, &dev_build_btn, &uninstall_btn,
                         &path, &state, &log,
                     );
                 }
@@ -129,6 +134,7 @@ pub fn run() {
             let status_c = status.clone();
             let install_btn_c = install_btn.clone();
             let install_file_btn_c = install_file_btn.clone();
+            let dev_build_btn_c = dev_build_btn.clone();
             let uninstall_btn_c = uninstall_btn.clone();
             let log_c = log.clone();
             let state_c = state.clone();
@@ -147,7 +153,7 @@ pub fn run() {
                         path_input_c.set_value(&path.to_string_lossy());
                         log_append(&log_c, &format!("Game directory: {}", path.display()));
                         update_state(
-                            &status_c, &install_btn_c, &install_file_btn_c,
+                            &status_c, &install_btn_c, &install_file_btn_c, &dev_build_btn_c,
                             &uninstall_btn_c, &path, &state_c, &log_c,
                         );
                     }
@@ -162,6 +168,7 @@ pub fn run() {
             let status_c = status.clone();
             let install_btn_c = install_btn.clone();
             let install_file_btn_c = install_file_btn.clone();
+            let dev_build_btn_c = dev_build_btn.clone();
             let uninstall_btn_c = uninstall_btn.clone();
             let browse_btn_c = browse_btn.clone();
             let log_c = log.clone();
@@ -226,6 +233,7 @@ pub fn run() {
                 // Disable buttons during download
                 install_btn_c.enable(false);
                 install_file_btn_c.enable(false);
+                dev_build_btn_c.enable(false);
                 uninstall_btn_c.enable(false);
                 browse_btn_c.enable(false);
                 log_append(&log_c, "Downloading...");
@@ -235,6 +243,7 @@ pub fn run() {
 
                 install_btn_c.enable(true);
                 install_file_btn_c.enable(true);
+                dev_build_btn_c.enable(true);
                 uninstall_btn_c.enable(true);
                 browse_btn_c.enable(true);
 
@@ -248,7 +257,7 @@ pub fn run() {
                             &format!("Successfully installed version {}.", version),
                         );
                         update_state(
-                            &status_c, &install_btn_c, &install_file_btn_c,
+                            &status_c, &install_btn_c, &install_file_btn_c, &dev_build_btn_c,
                             &uninstall_btn_c, &game_path, &state_c, &log_c,
                         );
 
@@ -283,6 +292,7 @@ pub fn run() {
             let status_c = status.clone();
             let install_btn_c = install_btn.clone();
             let install_file_btn_c = install_file_btn.clone();
+            let dev_build_btn_c = dev_build_btn.clone();
             let uninstall_btn_c = uninstall_btn.clone();
             let log_c = log.clone();
             let state_c = state.clone();
@@ -312,7 +322,7 @@ pub fn run() {
                             ),
                         );
                         update_state(
-                            &status_c, &install_btn_c, &install_file_btn_c,
+                            &status_c, &install_btn_c, &install_file_btn_c, &dev_build_btn_c,
                             &uninstall_btn_c, &game_path, &state_c, &log_c,
                         );
 
@@ -328,6 +338,100 @@ pub fn run() {
                     Err(e) => {
                         log_append(&log_c, &format!("Error: {}", e));
                         MessageDialog::builder(&frame_c, &e, "Error")
+                            .with_style(MessageDialogStyle::OK | MessageDialogStyle::IconError)
+                            .build()
+                            .show_modal();
+                    }
+                }
+            });
+        }
+
+        // Install dev build button — latest commit on main, no release needed
+        {
+            let frame_c = frame.clone();
+            let path_input_c = path_input.clone();
+            let status_c = status.clone();
+            let install_btn_c = install_btn.clone();
+            let install_file_btn_c = install_file_btn.clone();
+            let dev_build_btn_c = dev_build_btn.clone();
+            let uninstall_btn_c = uninstall_btn.clone();
+            let browse_btn_c = browse_btn.clone();
+            let log_c = log.clone();
+            let state_c = state.clone();
+
+            dev_build_btn.on_click(move |_| {
+                let game_path = PathBuf::from(path_input_c.get_value());
+
+                let dialog = MessageDialog::builder(
+                    &frame_c,
+                    "Install the latest development version (the newest commit on \
+                     the main branch)?\n\nThis is the freshest code, ahead of any \
+                     release — but it may not have been tested yet. Releases are \
+                     the stable option.",
+                    "Install Development Build",
+                )
+                .with_style(MessageDialogStyle::YesNo | MessageDialogStyle::IconQuestion)
+                .build();
+                if dialog.show_modal() != ID_YES {
+                    return;
+                }
+
+                // Best effort: label the install with the commit it came from
+                let version = match github::fetch_main_commit_sha() {
+                    Ok(sha) => format!("main@{}", sha),
+                    Err(_) => "main".to_string(),
+                };
+
+                install_btn_c.enable(false);
+                install_file_btn_c.enable(false);
+                dev_build_btn_c.enable(false);
+                uninstall_btn_c.enable(false);
+                browse_btn_c.enable(false);
+                log_append(&log_c, "Downloading the latest development build...");
+                status_c.set_label("Downloading...");
+
+                let result = install::download_and_install_repo(
+                    crate::core::paths::GITHUB_MAIN_ZIP_URL,
+                    &game_path,
+                    |_pct| {},
+                );
+
+                install_btn_c.enable(true);
+                install_file_btn_c.enable(true);
+                dev_build_btn_c.enable(true);
+                uninstall_btn_c.enable(true);
+                browse_btn_c.enable(true);
+
+                match result {
+                    Ok(_) => {
+                        if let Err(e) = install::save_installed_version(&version) {
+                            log_append(&log_c, &format!("Warning: {}", e));
+                        }
+                        log_append(
+                            &log_c,
+                            &format!("Successfully installed development build {}.", version),
+                        );
+                        update_state(
+                            &status_c, &install_btn_c, &install_file_btn_c, &dev_build_btn_c,
+                            &uninstall_btn_c, &game_path, &state_c, &log_c,
+                        );
+
+                        MessageDialog::builder(
+                            &frame_c,
+                            &format!(
+                                "Blindfold development build {} installed successfully!\n\n\
+                                 Launch Balatro through Steam — you should hear \"Blindfold loaded.\"",
+                                version
+                            ),
+                            "Installation Complete",
+                        )
+                        .with_style(MessageDialogStyle::OK | MessageDialogStyle::IconInformation)
+                        .build()
+                        .show_modal();
+                    }
+                    Err(e) => {
+                        log_append(&log_c, &format!("Error: {}", e));
+                        MessageDialog::builder(&frame_c, &e, "Installation Failed")
                             .with_style(MessageDialogStyle::OK | MessageDialogStyle::IconError)
                             .build()
                             .show_modal();
@@ -357,6 +461,7 @@ pub fn run() {
             let status_c = status.clone();
             let install_btn_c = install_btn.clone();
             let install_file_btn_c = install_file_btn.clone();
+            let dev_build_btn_c = dev_build_btn.clone();
             let uninstall_btn_c = uninstall_btn.clone();
             let log_c = log.clone();
             let state_c = state.clone();
@@ -450,7 +555,7 @@ pub fn run() {
 
                 log_append(&log_c, "Uninstall complete.");
                 update_state(
-                    &status_c, &install_btn_c, &install_file_btn_c,
+                    &status_c, &install_btn_c, &install_file_btn_c, &dev_build_btn_c,
                     &uninstall_btn_c, &game_path, &state_c, &log_c,
                 );
 
@@ -474,6 +579,7 @@ fn update_state(
     status: &StaticText,
     install_btn: &Button,
     install_file_btn: &Button,
+    dev_build_btn: &Button,
     uninstall_btn: &Button,
     game_path: &std::path::Path,
     state: &Rc<RefCell<State>>,
@@ -487,6 +593,7 @@ fn update_state(
     if dev_link {
         install_btn.enable(false);
         install_file_btn.enable(false);
+        dev_build_btn.enable(false);
         uninstall_btn.enable(true);
         status.set_label("Developer install detected — update with 'git pull'.");
         log_append(
@@ -499,6 +606,7 @@ fn update_state(
     }
 
     install_file_btn.enable(has_valid_path);
+    dev_build_btn.enable(has_valid_path);
     uninstall_btn.enable(mod_installed);
 
     if mod_installed {

@@ -9,13 +9,16 @@ What it does:
 1. Finds the Balatro install (Steam registry → `libraryfolders.vdf` → default
    path; Browse... as fallback) and validates it by `Balatro.exe`.
 2. Downloads a chosen release of `Blindfold.zip` from GitHub (or installs from
-   a local zip) and extracts it, routed:
+   a local zip, or — "Install dev build" — the latest commit on main via the
+   branch zipball, remapping `src/**` and `third_party/lovely/version.dll` to
+   the same destinations) and extracts it, routed:
    - `version.dll` → the game folder (Lovely Injector; skipped if identical,
      so updates don't demand elevation for a no-op)
    - `Blindfold/**` → `%APPDATA%\Balatro\Mods` (replaced wholesale, so updates
      never leave stale files; settings live outside and survive)
 3. Tracks the installed version in `Mods\Blindfold\version` and offers
-   Update when GitHub has a newer tag (semver compare).
+   Update when GitHub has a newer tag (semver compare). Dev builds are
+   recorded as `main@<sha>`; any release then shows as an available update.
 4. Uninstall removes the mod folder and optionally `version.dll` (left alone
    if other Lovely mods are present) and the user files
    (`blindfold_settings.lua`, `blindfold_keybinds.lua`, `blindfold.log`).

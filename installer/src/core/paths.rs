@@ -5,6 +5,11 @@ pub const GITHUB_API_URL: &str =
 pub const GITHUB_RELEASES_URL: &str =
     "https://api.github.com/repos/bradjrenshaw/Blindfold/releases";
 pub const GAME_DIR_NAME: &str = "Balatro";
+/// Zipball of the latest commit on main, for development installs.
+pub const GITHUB_MAIN_ZIP_URL: &str =
+    "https://github.com/bradjrenshaw/Blindfold/archive/refs/heads/main.zip";
+pub const GITHUB_MAIN_COMMIT_URL: &str =
+    "https://api.github.com/repos/bradjrenshaw/Blindfold/commits/main";
 pub const USER_AGENT: &str = "BlindfoldInstaller";
 
 /// The Lovely Injector proxy DLL, installed next to Balatro.exe.

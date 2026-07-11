@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::paths::{GITHUB_API_URL, GITHUB_RELEASES_URL, USER_AGENT};
+use super::paths::{GITHUB_API_URL, GITHUB_MAIN_COMMIT_URL, GITHUB_RELEASES_URL, USER_AGENT};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ReleaseInfo {
@@ -53,6 +53,28 @@ pub fn fetch_all_releases() -> Result<Vec<ReleaseInfo>, String> {
 
     resp.json::<Vec<ReleaseInfo>>()
         .map_err(|e| format!("Failed to parse releases: {}", e))
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitInfo {
+    sha: String,
+}
+
+/// Short SHA of the latest commit on main, for labeling development installs.
+pub fn fetch_main_commit_sha() -> Result<String, String> {
+    let resp = client()?
+        .get(GITHUB_MAIN_COMMIT_URL)
+        .send()
+        .map_err(|e| format!("Failed to connect to GitHub: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API returned status {}", resp.status()));
+    }
+
+    let info = resp
+        .json::<CommitInfo>()
+        .map_err(|e| format!("Failed to parse commit info: {}", e))?;
+    Ok(info.sha.chars().take(7).collect())
 }
 
 pub fn find_zip_asset(assets: &[Asset]) -> Option<&Asset> {

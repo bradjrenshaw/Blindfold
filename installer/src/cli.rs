@@ -23,20 +23,22 @@ pub fn run() {
         println!("Options:");
         println!("  1. Install / Update from GitHub");
         println!("  2. Install from local zip file");
-        println!("  3. Uninstall");
-        println!("  4. Open Mods folder");
-        println!("  5. Exit");
+        println!("  3. Install latest development build (main branch)");
+        println!("  4. Uninstall");
+        println!("  5. Open Mods folder");
+        println!("  6. Exit");
         println!();
 
-        let choice = prompt("Choose an option (1-5): ");
+        let choice = prompt("Choose an option (1-6): ");
 
         println!();
         match choice.as_str() {
             "1" => install_from_github(&game_path),
             "2" => install_from_file(&game_path),
-            "3" => do_uninstall(&game_path),
-            "4" => open_mods_folder(),
-            "5" => return,
+            "3" => install_dev_build(&game_path),
+            "4" => do_uninstall(&game_path),
+            "5" => open_mods_folder(),
+            "6" => return,
             _ => println!("Invalid option."),
         }
         println!();
@@ -184,6 +186,45 @@ fn install_from_file(game_path: &PathBuf) {
             );
         }
         Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn install_dev_build(game_path: &PathBuf) {
+    println!("This installs the newest commit on the main branch - the freshest");
+    println!("code, ahead of any release, but it may not have been tested yet.");
+    let confirm = prompt("Proceed? (y/N): ");
+    if confirm != "y" && confirm != "yes" {
+        return;
+    }
+
+    // Best effort: label the install with the commit it came from
+    let version = match github::fetch_main_commit_sha() {
+        Ok(sha) => format!("main@{}", sha),
+        Err(_) => "main".to_string(),
+    };
+
+    println!("Downloading the latest development build...");
+
+    match install::download_and_install_repo(
+        crate::core::paths::GITHUB_MAIN_ZIP_URL,
+        game_path,
+        |pct| {
+            print!("\rProgress: {}%   ", pct);
+            io::stdout().flush().ok();
+        },
+    ) {
+        Ok(_) => {
+            println!();
+            if let Err(e) = install::save_installed_version(&version) {
+                println!("Warning: Failed to save version: {}", e);
+            }
+            println!("Successfully installed development build {}.", version);
+            println!("Launch Balatro through Steam — you should hear \"Blindfold loaded.\"");
+        }
+        Err(e) => {
+            println!();
+            println!("Error: {}", e);
+        }
     }
 }
 

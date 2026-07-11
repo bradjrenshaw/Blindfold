@@ -16,11 +16,7 @@ pub fn save_installed_version(version: &str) -> Result<(), String> {
     fs::write(version_file(), version).map_err(|e| format!("Failed to write version: {}", e))
 }
 
-pub fn download_and_extract(
-    url: &str,
-    game_path: &Path,
-    progress: impl Fn(u32),
-) -> Result<(), String> {
+pub fn download(url: &str, progress: impl Fn(u32)) -> Result<Vec<u8>, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent(super::paths::USER_AGENT)
         .timeout(std::time::Duration::from_secs(120))
@@ -56,7 +52,26 @@ pub fn download_and_extract(
         }
     }
 
-    install_zip(&buffer, game_path)
+    Ok(buffer)
+}
+
+pub fn download_and_extract(
+    url: &str,
+    game_path: &Path,
+    progress: impl Fn(u32),
+) -> Result<(), String> {
+    let data = download(url, progress)?;
+    install_zip(&data, game_path)
+}
+
+/// Download and install the latest commit on main (GitHub branch zipball).
+pub fn download_and_install_repo(
+    url: &str,
+    game_path: &Path,
+    progress: impl Fn(u32),
+) -> Result<(), String> {
+    let data = download(url, progress)?;
+    install_repo_zip(&data, game_path)
 }
 
 pub fn install_from_file(zip_path: &Path, game_path: &Path) -> Result<(), String> {
@@ -64,33 +79,87 @@ pub fn install_from_file(zip_path: &Path, game_path: &Path) -> Result<(), String
     install_zip(&data, game_path)
 }
 
-pub fn install_zip(data: &[u8], game_path: &Path) -> Result<(), String> {
-    install_zip_to(data, game_path, &mods_dir())
+/// Where a zip entry belongs.
+enum Route {
+    /// The Lovely Injector proxy -> next to Balatro.exe
+    LovelyDll,
+    /// A mod file -> Mods\Blindfold\<path>
+    Mod(String),
+    Skip,
 }
 
-/// Extract a Blindfold release zip, routing by entry name:
-///   version.dll   -> the game folder (Lovely Injector proxy)
-///   Blindfold/**  -> the Mods folder (the mod payload)
-/// Anything else in the zip is ignored. The existing Blindfold folder is
-/// replaced wholesale so updates never leave stale files behind; user
-/// settings live outside it (%APPDATA%\Balatro) and are untouched.
+/// A release zip (scripts\build_release.ps1): version.dll at the root,
+/// payload under Blindfold/.
+fn route_release(name: &str) -> Route {
+    if name == LOVELY_DLL {
+        Route::LovelyDll
+    } else if let Some(rest) = name.strip_prefix("Blindfold/") {
+        Route::Mod(rest.to_string())
+    } else {
+        Route::Skip
+    }
+}
+
+/// A GitHub branch zipball: everything under one top-level folder
+/// (e.g. Blindfold-main/), with the mod at src/ and Lovely at
+/// third_party/lovely/version.dll — the same layout scripts/deploy.ps1
+/// installs from.
+fn route_repo(name: &str) -> Route {
+    let Some((_top, rest)) = name.split_once('/') else {
+        return Route::Skip;
+    };
+    if rest == "third_party/lovely/version.dll" {
+        Route::LovelyDll
+    } else if let Some(mod_path) = rest.strip_prefix("src/") {
+        Route::Mod(mod_path.to_string())
+    } else {
+        Route::Skip
+    }
+}
+
+pub fn install_zip(data: &[u8], game_path: &Path) -> Result<(), String> {
+    extract_routed(data, game_path, &mods_dir(), route_release, "a Blindfold release")
+}
+
+pub fn install_repo_zip(data: &[u8], game_path: &Path) -> Result<(), String> {
+    extract_routed(data, game_path, &mods_dir(), route_repo, "a Blindfold repository")
+}
+
+#[cfg(test)]
 pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result<(), String> {
+    extract_routed(data, game_path, mods_root, route_release, "a Blindfold release")
+}
+
+#[cfg(test)]
+pub fn install_repo_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result<(), String> {
+    extract_routed(data, game_path, mods_root, route_repo, "a Blindfold repository")
+}
+
+/// Extract a zip, sending each entry where its route says. The existing
+/// Blindfold folder is replaced wholesale so updates never leave stale files
+/// behind; user settings live outside it (%APPDATA%\Balatro) and are
+/// untouched. An identical version.dll is skipped: rewriting it needs write
+/// access to the game folder (Program Files on some machines), so don't
+/// demand elevation for a no-op.
+fn extract_routed(
+    data: &[u8],
+    game_path: &Path,
+    mods_root: &Path,
+    route: impl Fn(&str) -> Route,
+    expected: &str,
+) -> Result<(), String> {
     let cursor = Cursor::new(data);
     let mut archive =
         zip::ZipArchive::new(cursor).map_err(|e| format!("Failed to open zip: {}", e))?;
 
-    let payload_prefix = format!("{}/", MOD_ZIP_DIR);
     let has_payload = (0..archive.len()).any(|i| {
         archive
             .by_index(i)
-            .map(|f| f.name().replace('\\', "/").starts_with(&payload_prefix))
+            .map(|f| matches!(route(&f.name().replace('\\', "/")), Route::Mod(_)))
             .unwrap_or(false)
     });
     if !has_payload {
-        return Err(format!(
-            "This zip has no {}/ folder — it doesn't look like a Blindfold release.",
-            MOD_ZIP_DIR
-        ));
+        return Err(format!("This zip doesn't look like {}.", expected));
     }
 
     let target_mod_dir = mods_root.join(MOD_ZIP_DIR);
@@ -117,12 +186,15 @@ pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result
             return Err(format!("Unsafe path in zip: {}", name));
         }
 
-        let dest = if name == LOVELY_DLL {
-            game_path.join(LOVELY_DLL)
-        } else if name.starts_with(&payload_prefix) {
-            mods_root.join(&name)
-        } else {
-            continue;
+        let (dest, is_dll) = match route(&name) {
+            Route::LovelyDll => (game_path.join(LOVELY_DLL), true),
+            Route::Mod(rest) => {
+                if rest.is_empty() {
+                    continue;
+                }
+                (target_mod_dir.join(&rest), false)
+            }
+            Route::Skip => continue,
         };
 
         if name.ends_with('/') {
@@ -140,10 +212,7 @@ pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result
         file.read_to_end(&mut contents)
             .map_err(|e| format!("Failed to read {}: {}", name, e))?;
 
-        // Skip an identical version.dll: rewriting it needs write access to
-        // the game folder (Program Files on some machines), so don't demand
-        // elevation for a no-op.
-        if name == LOVELY_DLL {
+        if is_dll {
             if let Ok(existing) = fs::read(&dest) {
                 if existing == contents {
                     continue;
@@ -152,7 +221,7 @@ pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result
         }
 
         fs::write(&dest, &contents).map_err(|e| {
-            if name == LOVELY_DLL {
+            if is_dll {
                 format!(
                     "Couldn't write {} into the game folder: {}. \
                      Re-run this installer as administrator (the game may live \
@@ -228,6 +297,42 @@ mod tests {
         let md = mods.path().join("Blindfold");
         assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
         assert_eq!(fs::read(md.join("lib").join("Tolk.dll")).unwrap(), b"tolk");
+    }
+
+    #[test]
+    fn install_repo_zip_routes_src_and_lovely() {
+        // GitHub zipball layout: one top-level folder named <repo>-<branch>
+        let game = tempfile::tempdir().unwrap();
+        let mods = tempfile::tempdir().unwrap();
+        let zip = make_zip(&[
+            ("Blindfold-main/README.md", b"docs"),
+            ("Blindfold-main/src/lovely.toml", b"[manifest]"),
+            ("Blindfold-main/src/core.lua", b"-- core"),
+            ("Blindfold-main/src/lib/Tolk.dll", b"tolk"),
+            ("Blindfold-main/third_party/lovely/version.dll", b"lovely"),
+            ("Blindfold-main/scripts/deploy.ps1", b"# script"),
+        ]);
+
+        install_repo_zip_to(&zip, game.path(), mods.path()).unwrap();
+
+        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
+        let md = mods.path().join("Blindfold");
+        assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+        assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
+        assert_eq!(fs::read(md.join("lib").join("Tolk.dll")).unwrap(), b"tolk");
+        // Repo files outside src/ stay out of the install
+        assert!(!md.join("README.md").exists());
+        assert!(!md.join("scripts").exists());
+        assert!(!mods.path().join("README.md").exists());
+    }
+
+    #[test]
+    fn install_repo_zip_rejects_non_repo() {
+        let game = tempfile::tempdir().unwrap();
+        let mods = tempfile::tempdir().unwrap();
+        let zip = make_zip(&[("Blindfold-main/README.md", b"no src here")]);
+        let err = install_repo_zip_to(&zip, game.path(), mods.path()).unwrap_err();
+        assert!(err.contains("repository"));
     }
 
     #[test]
