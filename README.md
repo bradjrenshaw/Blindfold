@@ -80,7 +80,8 @@ Run it as `BlindfoldInstaller.exe --cli`.
 
 **Updating:** `git pull`, then restart Balatro — the install is a link into
 this repo, so pulling *is* updating. (The installer recognizes this linked
-setup and leaves it alone.)
+setup: it won't install over it, and its Uninstall removes just the link,
+never your checkout.)
 
 **Uninstalling:** `scripts\deploy.ps1 -Uninstall` (removes the mod link;
 delete the game folder's `version.dll` too if you want Lovely gone).

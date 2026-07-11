@@ -346,9 +346,16 @@ pub fn run() {
             uninstall_btn.on_click(move |_| {
                 let game_path = PathBuf::from(path_input_c.get_value());
 
+                let confirm_msg = if detect::is_dev_link() {
+                    "Remove the Blindfold mod?\n\n\
+                     Mods\\Blindfold is a link into a development checkout: only the \
+                     link is removed, the checkout itself is left alone."
+                } else {
+                    "Remove the Blindfold mod?"
+                };
                 let dialog = MessageDialog::builder(
                     &frame_c,
-                    "Remove the Blindfold mod?",
+                    confirm_msg,
                     "Confirm Uninstall",
                 )
                 .with_style(MessageDialogStyle::YesNo | MessageDialogStyle::IconQuestion)
@@ -359,8 +366,16 @@ pub fn run() {
                 }
 
                 match uninstall::uninstall_mod() {
-                    Ok(true) => log_append(&log_c, "Removed the mod folder."),
-                    Ok(false) => log_append(&log_c, "Mod folder not found; nothing to remove."),
+                    Ok(uninstall::UninstallOutcome::RemovedFolder) => {
+                        log_append(&log_c, "Removed the mod folder.")
+                    }
+                    Ok(uninstall::UninstallOutcome::RemovedLink) => log_append(
+                        &log_c,
+                        "Removed the developer link; the checkout it pointed at is untouched.",
+                    ),
+                    Ok(uninstall::UninstallOutcome::NotInstalled) => {
+                        log_append(&log_c, "Mod folder not found; nothing to remove.")
+                    }
                     Err(e) => {
                         log_append(&log_c, &format!("Error: {}", e));
                         MessageDialog::builder(&frame_c, &e, "Uninstall Failed")
@@ -454,12 +469,13 @@ fn update_state(
     if dev_link {
         install_btn.enable(false);
         install_file_btn.enable(false);
-        uninstall_btn.enable(false);
+        uninstall_btn.enable(true);
         status.set_label("Developer install detected — update with 'git pull'.");
         log_append(
             log,
-            "Mods\\Blindfold is a link into a development checkout (scripts\\deploy.ps1); \
-             this installer won't touch it.",
+            "Mods\\Blindfold is a link into a development checkout (scripts\\deploy.ps1). \
+             Update with 'git pull', or Uninstall to remove the link (the checkout \
+             itself is left alone) and install a release instead.",
         );
         return;
     }

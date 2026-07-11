@@ -97,8 +97,8 @@ pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result
     if is_reparse_point(&target_mod_dir) {
         return Err(format!(
             "'{}' is a link into a development checkout (scripts\\deploy.ps1). \
-             Update with 'git pull' instead, or remove the link \
-             (scripts\\deploy.ps1 -Uninstall) before using this installer.",
+             Update with 'git pull' instead, or Uninstall first to remove the \
+             link (the checkout is left alone).",
             target_mod_dir.display()
         ));
     }

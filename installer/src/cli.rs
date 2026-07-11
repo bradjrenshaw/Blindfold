@@ -79,7 +79,8 @@ fn get_game_path() -> Option<PathBuf> {
 fn show_status() {
     if detect::is_dev_link() {
         println!("Developer install detected (Mods\\Blindfold is a link into a checkout).");
-        println!("Update with 'git pull'; this installer won't touch it.");
+        println!("Update with 'git pull', or uninstall to remove the link (the checkout");
+        println!("itself is left alone) and install a release instead.");
     } else if detect::is_mod_installed() {
         let version = install::get_installed_version().unwrap_or_else(|| "unknown".to_string());
         println!("Blindfold is installed (version: {}).", version);
@@ -185,14 +186,23 @@ fn install_from_file(game_path: &PathBuf) {
 }
 
 fn do_uninstall(game_path: &PathBuf) {
+    if detect::is_dev_link() {
+        println!("Mods\\Blindfold is a link into a development checkout: only the link");
+        println!("is removed, the checkout itself is left alone.");
+    }
     let confirm = prompt("Remove the Blindfold mod? (y/N): ");
     if confirm != "y" && confirm != "yes" {
         return;
     }
 
     match uninstall::uninstall_mod() {
-        Ok(true) => println!("Removed the mod folder."),
-        Ok(false) => println!("Mod folder not found; nothing to remove."),
+        Ok(uninstall::UninstallOutcome::RemovedFolder) => println!("Removed the mod folder."),
+        Ok(uninstall::UninstallOutcome::RemovedLink) => {
+            println!("Removed the developer link; the checkout it pointed at is untouched.")
+        }
+        Ok(uninstall::UninstallOutcome::NotInstalled) => {
+            println!("Mod folder not found; nothing to remove.")
+        }
         Err(e) => {
             println!("Error: {}", e);
             return;

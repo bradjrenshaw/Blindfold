@@ -2,24 +2,35 @@ use std::fs;
 use std::path::Path;
 
 use super::detect::is_reparse_point;
-use super::paths::{balatro_data_dir, mod_dir, mods_dir, LOVELY_DLL, MOD_ZIP_DIR, USER_FILES};
+use super::paths::{balatro_data_dir, mods_dir, LOVELY_DLL, MOD_ZIP_DIR, USER_FILES};
 
-/// Remove Mods\Blindfold. Returns Ok(true) if it was removed, Ok(false) if it
-/// wasn't there; refuses to touch a developer link.
-pub fn uninstall_mod() -> Result<bool, String> {
-    let dir = mod_dir();
-    if !dir.exists() {
-        return Ok(false);
-    }
+#[derive(Debug, PartialEq)]
+pub enum UninstallOutcome {
+    NotInstalled,
+    RemovedFolder,
+    /// A deploy.ps1 junction was unlinked; the development checkout it
+    /// pointed at is untouched.
+    RemovedLink,
+}
+
+/// Remove Mods\Blindfold — a real folder is deleted, a developer junction is
+/// just unlinked (the checkout behind it is never touched).
+pub fn uninstall_mod() -> Result<UninstallOutcome, String> {
+    uninstall_mod_at(&mods_dir())
+}
+
+pub fn uninstall_mod_at(mods_root: &Path) -> Result<UninstallOutcome, String> {
+    let dir = mods_root.join(MOD_ZIP_DIR);
     if is_reparse_point(&dir) {
-        return Err(format!(
-            "'{}' is a link into a development checkout. \
-             Remove it with scripts\\deploy.ps1 -Uninstall instead.",
-            dir.display()
-        ));
+        // remove_dir on a junction deletes the link itself, never the target
+        fs::remove_dir(&dir).map_err(|e| format!("Failed to remove mod link: {}", e))?;
+        return Ok(UninstallOutcome::RemovedLink);
+    }
+    if !dir.exists() {
+        return Ok(UninstallOutcome::NotInstalled);
     }
     fs::remove_dir_all(&dir).map_err(|e| format!("Failed to remove mod folder: {}", e))?;
-    Ok(true)
+    Ok(UninstallOutcome::RemovedFolder)
 }
 
 /// Other entries in the Mods folder — other Lovely mods that still need
@@ -79,5 +90,53 @@ mod tests {
         fs::write(dir.path().join("version.dll"), "").unwrap();
         assert_eq!(remove_lovely(dir.path()).unwrap(), true);
         assert!(!dir.path().join("version.dll").exists());
+    }
+
+    #[test]
+    fn uninstall_missing_reports_not_installed() {
+        let mods = tempfile::tempdir().unwrap();
+        assert_eq!(
+            uninstall_mod_at(mods.path()).unwrap(),
+            UninstallOutcome::NotInstalled
+        );
+    }
+
+    #[test]
+    fn uninstall_removes_real_folder() {
+        let mods = tempfile::tempdir().unwrap();
+        let dir = mods.path().join("Blindfold");
+        fs::create_dir_all(dir.join("loc")).unwrap();
+        fs::write(dir.join("lovely.toml"), "").unwrap();
+
+        assert_eq!(
+            uninstall_mod_at(mods.path()).unwrap(),
+            UninstallOutcome::RemovedFolder
+        );
+        assert!(!dir.exists());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn uninstall_unlinks_junction_without_touching_checkout() {
+        let mods = tempfile::tempdir().unwrap();
+        let checkout = mods.path().join("checkout");
+        fs::create_dir(&checkout).unwrap();
+        fs::write(checkout.join("core.lua"), "-- kept").unwrap();
+        let link = mods.path().join("Blindfold");
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&link)
+            .arg(&checkout)
+            .status()
+            .unwrap();
+        assert!(status.success());
+
+        assert_eq!(
+            uninstall_mod_at(mods.path()).unwrap(),
+            UninstallOutcome::RemovedLink
+        );
+        assert!(!link.exists());
+        // The checkout and its contents survive
+        assert_eq!(fs::read(checkout.join("core.lua")).unwrap(), b"-- kept");
     }
 }

@@ -21,8 +21,9 @@ What it does:
    (`blindfold_settings.lua`, `blindfold_keybinds.lua`, `blindfold.log`).
 
 If `Mods\Blindfold` is a junction — a developer install made by
-`scripts\deploy.ps1` — the installer refuses to touch it and says to use
-`git pull`.
+`scripts\deploy.ps1` — Install is disabled (updates come from `git pull`),
+but Uninstall still works: it removes just the link, never the checkout
+behind it, after which a release can be installed normally.
 
 Build: `cargo build --release` (or `scripts\build_release.ps1` at the repo
 root, which also assembles `Blindfold.zip`). Tests: `cargo test`.
