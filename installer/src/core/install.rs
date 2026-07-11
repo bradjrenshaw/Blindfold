@@ -149,9 +149,7 @@ pub fn install_repo_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> R
 /// Extract a zip, sending each entry where its route says. The existing
 /// Blindfold folder is replaced wholesale so updates never leave stale files
 /// behind; user settings live outside it (%APPDATA%\Balatro) and are
-/// untouched. An identical version.dll is skipped: rewriting it needs write
-/// access to the game folder (Program Files on some machines), so don't
-/// demand elevation for a no-op.
+/// untouched. An existing version.dll is never overwritten (see below).
 fn extract_routed(
     data: &[u8],
     game_path: &Path,
@@ -223,12 +221,12 @@ fn extract_routed(
         file.read_to_end(&mut contents)
             .map_err(|e| format!("Failed to read {}: {}", name, e))?;
 
-        if is_dll {
-            if let Ok(existing) = fs::read(&dest) {
-                if existing == contents {
-                    continue;
-                }
-            }
+        // An existing version.dll is left alone entirely: the user may run
+        // other Lovely mods with a newer injector than our bundled one, and
+        // overwriting would downgrade their whole setup. Only a missing DLL
+        // is written (also keeps updates elevation-free).
+        if is_dll && dest.exists() {
+            continue;
         }
 
         fs::write(&dest, &contents).map_err(|e| {
@@ -384,10 +382,27 @@ mod tests {
     }
 
     #[test]
-    fn install_skips_identical_dll() {
+    fn install_leaves_existing_dll_alone() {
+        // A user's existing Lovely (possibly newer, shared with other mods)
+        // must never be overwritten.
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
-        fs::write(game.path().join("version.dll"), b"lovely").unwrap();
+        fs::write(game.path().join("version.dll"), b"newer lovely").unwrap();
+        let zip = make_zip(&[
+            ("version.dll", b"bundled lovely"),
+            ("Blindfold/lovely.toml", b"ok"),
+        ]);
+        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        assert_eq!(
+            fs::read(game.path().join("version.dll")).unwrap(),
+            b"newer lovely"
+        );
+    }
+
+    #[test]
+    fn install_writes_missing_dll() {
+        let game = tempfile::tempdir().unwrap();
+        let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[
             ("version.dll", b"lovely"),
             ("Blindfold/lovely.toml", b"ok"),
