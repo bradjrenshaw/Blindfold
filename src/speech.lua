@@ -22,7 +22,12 @@ ffi.cdef([[
 
     prism_ctx*     prism_init(void* config);
     void           prism_shutdown(prism_ctx* ctx);
+    size_t         prism_registry_count(prism_ctx* ctx);
+    uint64_t       prism_registry_id_at(prism_ctx* ctx, size_t index);
+    const char*    prism_registry_name(prism_ctx* ctx, uint64_t id);
+    prism_backend* prism_registry_create(prism_ctx* ctx, uint64_t id);
     prism_backend* prism_registry_create_best(prism_ctx* ctx);
+    int            prism_backend_initialize(prism_backend* backend);
     void           prism_backend_free(prism_backend* backend);
     uint64_t       prism_backend_get_features(prism_backend* backend);
     const char*    prism_backend_name(prism_backend* backend);
@@ -33,9 +38,11 @@ ffi.cdef([[
 
 -- prism_error values the binding reacts to (the rest just mean "didn't work").
 local OK = 0
+local ALREADY_INITIALIZED = 1
 local NOT_IMPLEMENTED = 9
--- prism_backend_get_features bit: backend supports prism_backend_output.
-local SUPPORTS_OUTPUT = 0x20
+-- prism_backend_get_features bits.
+local SUPPORTED_AT_RUNTIME = 0x1   -- engine actually present on this machine
+local SUPPORTS_OUTPUT = 0x20       -- backend supports prism_backend_output
 
 local function log(text)
     -- Lands at %APPDATA%/Balatro/blindfold.log
@@ -57,6 +64,7 @@ function M.init(mod_dir)
         assert(M.backend ~= nil, "no usable speech backend on this machine")
         M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(M.backend)) or 0,
             SUPPORTS_OUTPUT) ~= 0
+        M.current_backend = "auto"
         M.loaded = true
     end)
     if M.loaded then
@@ -68,6 +76,94 @@ function M.init(mod_dir)
             " . Running with log output only.")
     end
     return M.loaded
+end
+
+-- Adopt a freshly-acquired backend as the active one and cache its features
+-- (the query does real work per call on some backends).
+local function adopt(backend, requested)
+    M.backend = backend
+    M.current_backend = requested
+    M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(backend)) or 0,
+        SUPPORTS_OUTPUT) ~= 0
+    local n = M.prism.prism_backend_name(backend)
+    log("Prism backend: " .. (n ~= nil and ffi.string(n) or "unknown")
+        .. " (requested " .. tostring(requested) .. ")")
+end
+
+-- Names of the backends actually usable on this machine (engine present),
+-- enumerated once — the registry probe costs a native round-trip per entry.
+function M.backends()
+    if M._backends then return M._backends end
+    local names = {}
+    if M.loaded then
+        pcall(function()
+            local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
+            for i = 0, count - 1 do
+                local id = M.prism.prism_registry_id_at(M.ctx, i)
+                local name = M.prism.prism_registry_name(M.ctx, id)
+                if name ~= nil then
+                    local b = M.prism.prism_registry_create(M.ctx, id)
+                    if b ~= nil then
+                        local feat = tonumber(M.prism.prism_backend_get_features(b)) or 0
+                        if bit.band(feat, SUPPORTED_AT_RUNTIME) ~= 0 then
+                            names[#names + 1] = ffi.string(name)
+                        end
+                        M.prism.prism_backend_free(b)
+                    end
+                end
+            end
+        end)
+    end
+    M._backends = names
+    return names
+end
+
+-- Build a ready-to-use backend for the preference: the named backend if it can
+-- be acquired (create + initialize), otherwise the best available. nil only
+-- when nothing at all works. Does not touch M.backend.
+local function acquire(name)
+    if name and name ~= "auto" then
+        local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
+        for i = 0, count - 1 do
+            local id = M.prism.prism_registry_id_at(M.ctx, i)
+            local n = M.prism.prism_registry_name(M.ctx, id)
+            if n ~= nil and ffi.string(n) == name then
+                local b = M.prism.prism_registry_create(M.ctx, id)
+                if b ~= nil then
+                    local e = M.prism.prism_backend_initialize(b)
+                    if e == OK or e == ALREADY_INITIALIZED then return b end
+                    M.prism.prism_backend_free(b)
+                end
+                break
+            end
+        end
+        log("Prism backend '" .. name .. "' unavailable; falling back to best available.")
+    end
+    local b = M.prism.prism_registry_create_best(M.ctx)
+    if b ~= nil then return b end
+    return nil
+end
+
+-- Switch backends (the settings menu's Speech backend cycle; "auto" = best
+-- available). Acquire the replacement BEFORE tearing down the current backend,
+-- so a choice that can't be acquired never leaves us silent — never strand a
+-- blind user with no voice (wotr-access rule).
+function M.set_backend(name)
+    if not M.loaded then return end
+    name = name or "auto"
+    if name == M.current_backend then return end
+    pcall(function()
+        local replacement = acquire(name)
+        if replacement == nil then
+            log("Prism: nothing acquirable for '" .. name .. "'; keeping current backend.")
+            return
+        end
+        if M.backend ~= nil and replacement ~= M.backend then
+            M.prism.prism_backend_stop(M.backend)
+            M.prism.prism_backend_free(M.backend)
+        end
+        adopt(replacement, name)
+    end)
 end
 
 -- Speak text. interrupt defaults to false to honor the SayTheSpire2 preference

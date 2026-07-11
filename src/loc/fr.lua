@@ -271,5 +271,7 @@ return {
         PATREON         = "Soutenir sur Patreon",
         OPENING_DISCORD = "Ouverture de Discord dans le navigateur.",
         OPENING_PATREON = "Ouverture de Patreon dans le navigateur.",
+        SPEECH_BACKEND  = "Moteur vocal",
+        BACKEND_AUTO    = "Auto (meilleur disponible)",
     },
 }

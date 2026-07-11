@@ -271,5 +271,7 @@ return {
         PATREON         = "在Patreon上支持我们",
         OPENING_DISCORD = "正在浏览器中打开Discord。",
         OPENING_PATREON = "正在浏览器中打开Patreon。",
+        SPEECH_BACKEND  = "语音后端",
+        BACKEND_AUTO    = "自动（最佳可用）",
     },
 }

@@ -271,5 +271,7 @@ return {
         PATREON         = "Dukung di Patreon",
         OPENING_DISCORD = "Membuka Discord di browser.",
         OPENING_PATREON = "Membuka Patreon di browser.",
+        SPEECH_BACKEND  = "Backend suara",
+        BACKEND_AUTO    = "Otomatis (terbaik yang tersedia)",
     },
 }

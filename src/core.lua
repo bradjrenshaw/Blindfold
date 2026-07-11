@@ -217,7 +217,22 @@ do
         Settings.register{ key = "announce.position.enabled",    type = "bool", label_key = "SET.ANN_POSITION",    default = true, category = "announce" }
         Settings.register{ key = "announce.container.enabled",   type = "bool", label_key = "SET.ANN_CONTAINER",   default = true, category = "announce" }
         Settings.register{ key = "announce.screen.enabled",      type = "bool", label_key = "SET.ANN_SCREEN",      default = true, category = "announce" }
+
+        -- Speech backend picker: "auto" plus whatever Prism says is usable on
+        -- this machine. Product names (NVDA, JAWS...) are not translated —
+        -- only the auto option carries a loc label.
+        local backend_options = { "auto" }
+        for _, name in ipairs(speech.backends and speech.backends() or {}) do
+            backend_options[#backend_options + 1] = name
+        end
+        Settings.register{ key = "speech.backend", type = "choice",
+            label_key = "SET.SPEECH_BACKEND", default = "auto", category = "speech",
+            options = backend_options, labels = { "SET.BACKEND_AUTO" },
+            apply = function(v) speech.set_backend(v) end }
+
         Settings.load()
+        -- A saved non-auto backend takes effect now (set_backend no-ops on auto).
+        speech.set_backend(Settings.value("speech.backend"))
         BA.settings = Settings
         Scoring.settings = Settings
         Round.settings = Settings

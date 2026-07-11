@@ -271,5 +271,7 @@ return {
         PATREON         = "Поддержать на Patreon",
         OPENING_DISCORD = "Discord открывается в браузере.",
         OPENING_PATREON = "Patreon открывается в браузере.",
+        SPEECH_BACKEND  = "Речевой движок",
+        BACKEND_AUTO    = "Авто (лучший доступный)",
     },
 }

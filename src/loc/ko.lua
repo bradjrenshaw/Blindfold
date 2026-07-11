@@ -271,5 +271,7 @@ return {
         PATREON         = "Patreon에서 후원하기",
         OPENING_DISCORD = "브라우저에서 Discord를 여는 중입니다.",
         OPENING_PATREON = "브라우저에서 Patreon을 여는 중입니다.",
+        SPEECH_BACKEND  = "음성 백엔드",
+        BACKEND_AUTO    = "자동(사용 가능한 최적)",
     },
 }

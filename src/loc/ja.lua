@@ -271,5 +271,7 @@ return {
         PATREON         = "Patreonで支援する",
         OPENING_DISCORD = "ブラウザでDiscordを開いています。",
         OPENING_PATREON = "ブラウザでPatreonを開いています。",
+        SPEECH_BACKEND  = "音声バックエンド",
+        BACKEND_AUTO    = "自動（利用可能な最適）",
     },
 }

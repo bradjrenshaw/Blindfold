@@ -66,6 +66,7 @@ local function build_main()
         -- out of the shipped menu — uncomment to re-test.
         -- nav_button("SET.TUTORIAL", "start_tutorial"),
     }
+    for _, c in ipairs(controls("speech")) do nodes[#nodes + 1] = c end
     for _, c in ipairs(controls("scoring")) do nodes[#nodes + 1] = c end
     -- Community links, opened in the browser (spoken confirmation in core).
     nodes[#nodes + 1] = nav_button("SET.DISCORD", "blindfold_discord")
