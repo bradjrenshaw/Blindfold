@@ -36,11 +36,17 @@ pub fn uninstall_mod_at(mods_root: &Path) -> Result<UninstallOutcome, String> {
 /// Other entries in the Mods folder — other Lovely mods that still need
 /// version.dll if the user has any.
 pub fn other_mods_present() -> bool {
-    let mods = mods_dir();
-    match fs::read_dir(&mods) {
-        Ok(entries) => entries
-            .flatten()
-            .any(|e| e.file_name().to_string_lossy() != MOD_ZIP_DIR),
+    other_mods_present_in(&mods_dir())
+}
+
+pub fn other_mods_present_in(mods_root: &Path) -> bool {
+    match fs::read_dir(mods_root) {
+        Ok(entries) => entries.flatten().any(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            // "lovely" is the injector's own log/dump folder, and Lovely
+            // skips dot-prefixed folders when loading — neither is a mod.
+            name != MOD_ZIP_DIR && !name.eq_ignore_ascii_case("lovely") && !name.starts_with('.')
+        }),
         Err(_) => false,
     }
 }
@@ -90,6 +96,17 @@ mod tests {
         fs::write(dir.path().join("version.dll"), "").unwrap();
         assert_eq!(remove_lovely(dir.path()).unwrap(), true);
         assert!(!dir.path().join("version.dll").exists());
+    }
+
+    #[test]
+    fn lovely_folder_is_not_another_mod() {
+        let mods = tempfile::tempdir().unwrap();
+        fs::create_dir(mods.path().join("lovely")).unwrap();
+        fs::create_dir(mods.path().join(".git")).unwrap();
+        assert!(!other_mods_present_in(mods.path()));
+
+        fs::create_dir(mods.path().join("SomeOtherMod")).unwrap();
+        assert!(other_mods_present_in(mods.path()));
     }
 
     #[test]
