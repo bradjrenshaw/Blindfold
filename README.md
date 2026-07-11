@@ -51,7 +51,16 @@ game_src/       extracted Balatro Lua, REFERENCE ONLY (gitignored)
 
 ## Install
 
-Everything needed is bundled (Lovely Injector, speech DLLs) — one script does it:
+**Easiest — the installer:** download `BlindfoldInstaller.exe` from the
+[latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest)
+and run it. It finds your Steam install of Balatro, downloads the mod, and
+installs everything (Lovely Injector next to `Balatro.exe`, the mod into
+`%APPDATA%\Balatro\Mods\Blindfold`). Run it again any time to update — it
+tells you when a new version is out — or to uninstall. Prefer a console?
+Run it as `BlindfoldInstaller.exe --cli`.
+
+**From a checkout (developers and testers):** everything needed is bundled
+(Lovely Injector, speech DLLs) — one script does it:
 
 1. Clone this repo anywhere and keep it (the install links to it).
 2. Run the deploy script from a PowerShell in the repo folder:
@@ -70,10 +79,16 @@ Everything needed is bundled (Lovely Injector, speech DLLs) — one script does 
 3. **Launch Balatro through Steam.** You should hear "Blindfold loaded."
 
 **Updating:** `git pull`, then restart Balatro — the install is a link into
-this repo, so pulling *is* updating.
+this repo, so pulling *is* updating. (The installer recognizes this linked
+setup and leaves it alone.)
 
 **Uninstalling:** `scripts\deploy.ps1 -Uninstall` (removes the mod link;
 delete the game folder's `version.dll` too if you want Lovely gone).
+
+**Cutting a release (maintainer):** `scripts\build_release.ps1` builds
+`Blindfold.zip` (the payload the installer extracts) and
+`BlindfoldInstaller.exe`; publish both with
+`gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe ...`.
 
 ## Controls
 

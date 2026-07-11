@@ -1,0 +1,74 @@
+# build_release.ps1 — assemble the release artifacts for a Blindfold release.
+#
+# Produces at the repo root:
+#   Blindfold.zip            what the installer downloads/extracts:
+#                              version.dll     (bundled Lovely Injector -> game folder)
+#                              Blindfold/**    (src\ payload -> %APPDATA%\Balatro\Mods)
+#   BlindfoldInstaller.exe   the installer itself (skip with -NoInstaller)
+#
+# Then publish both as assets on a GitHub release, e.g.:
+#   gh release create v0.1.0 Blindfold.zip BlindfoldInstaller.exe --title v0.1.0 --notes "..."
+# The installer reads releases via the GitHub API, so the tag (vX.Y.Z) is the
+# version users see and update-checks compare against.
+
+param(
+    [switch]$NoInstaller
+)
+
+$ErrorActionPreference = 'Stop'
+
+$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$src  = Join-Path $repo 'src'
+
+function Write-Step($msg) { Write-Host "== $msg" }
+
+# --- Preflight: everything the zip must ship -----------------------------------
+Write-Step "Checking release contents"
+$lovely = Join-Path $repo 'third_party\lovely\version.dll'
+if (-not (Test-Path $lovely)) {
+    throw "Bundled Lovely missing at '$lovely'."
+}
+foreach ($dll in 'Tolk.dll', 'nvdaControllerClient64.dll', 'SAAPI64.dll') {
+    if (-not (Test-Path (Join-Path $src "lib\$dll"))) {
+        throw "Missing src\lib\$dll - a release without speech DLLs would be log-only. Aborting."
+    }
+}
+Write-Host "   Lovely + speech DLLs present"
+
+# --- Stage and zip ---------------------------------------------------------------
+Write-Step "Building Blindfold.zip"
+$stage = Join-Path $env:TEMP "blindfold_release_$PID"
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+New-Item -ItemType Directory -Path $stage | Out-Null
+try {
+    Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
+    Copy-Item $lovely (Join-Path $stage 'version.dll')
+
+    $zip = Join-Path $repo 'Blindfold.zip'
+    if (Test-Path $zip) { Remove-Item $zip -Force }
+    Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
+    Write-Host "   $zip"
+} finally {
+    Remove-Item $stage -Recurse -Force
+}
+
+# --- Installer ---------------------------------------------------------------------
+if (-not $NoInstaller) {
+    Write-Step "Building the installer (cargo release)"
+    Push-Location (Join-Path $repo 'installer')
+    try {
+        # cargo writes progress to stderr; route through cmd so PowerShell 5.1
+        # doesn't promote those lines to errors under ErrorActionPreference Stop.
+        & cmd /c "cargo build --release 2>&1"
+        if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
+    } finally {
+        Pop-Location
+    }
+    Copy-Item (Join-Path $repo 'installer\target\release\blindfold-installer.exe') `
+              (Join-Path $repo 'BlindfoldInstaller.exe') -Force
+    Write-Host "   $(Join-Path $repo 'BlindfoldInstaller.exe')"
+}
+
+Write-Host ""
+Write-Host "Done. Publish with:"
+Write-Host '  gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe --title vX.Y.Z --notes "..."'

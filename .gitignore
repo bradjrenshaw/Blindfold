@@ -4,6 +4,10 @@ game_src/
 
 # Packaged mod build output
 *.zip
+BlindfoldInstaller.exe
+
+# Rust build output
+installer/target/
 
 # Runtime log
 *.log
