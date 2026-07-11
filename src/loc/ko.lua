@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "위치 읽기",
         ANN_CONTAINER   = "영역 읽기",
         ANN_SCREEN      = "화면 전환 읽기",
+        DISCORD         = "Discord 방문",
+        PATREON         = "Patreon에서 후원하기",
+        OPENING_DISCORD = "브라우저에서 Discord를 여는 중입니다.",
+        OPENING_PATREON = "브라우저에서 Patreon을 여는 중입니다.",
     },
 }

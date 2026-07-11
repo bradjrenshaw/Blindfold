@@ -67,6 +67,9 @@ local function build_main()
         -- nav_button("SET.TUTORIAL", "start_tutorial"),
     }
     for _, c in ipairs(controls("scoring")) do nodes[#nodes + 1] = c end
+    -- Community links, opened in the browser (spoken confirmation in core).
+    nodes[#nodes + 1] = nav_button("SET.DISCORD", "blindfold_discord")
+    nodes[#nodes + 1] = nav_button("SET.PATREON", "blindfold_patreon")
     return { n = G.UIT.ROOT, config = { align = "cm", padding = 0.1, colour = G.C.CLEAR }, nodes = nodes }
 end
 

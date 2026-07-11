@@ -298,5 +298,9 @@ return {
         ANN_POSITION    = "Announce position",
         ANN_CONTAINER   = "Announce container",
         ANN_SCREEN      = "Announce screen changes",
+        DISCORD         = "Visit Discord",
+        PATREON         = "Support on Patreon",
+        OPENING_DISCORD = "Opening Discord in browser.",
+        OPENING_PATREON = "Opening Patreon in browser.",
     },
 }

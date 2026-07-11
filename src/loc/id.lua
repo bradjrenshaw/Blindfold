@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "Bacakan posisi",
         ANN_CONTAINER   = "Bacakan area",
         ANN_SCREEN      = "Bacakan pergantian layar",
+        DISCORD         = "Kunjungi Discord",
+        PATREON         = "Dukung di Patreon",
+        OPENING_DISCORD = "Membuka Discord di browser.",
+        OPENING_PATREON = "Membuka Patreon di browser.",
     },
 }

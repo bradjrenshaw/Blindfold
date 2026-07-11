@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "Озвучивать позицию",
         ANN_CONTAINER   = "Озвучивать область",
         ANN_SCREEN      = "Озвучивать смену экрана",
+        DISCORD         = "Наш Discord",
+        PATREON         = "Поддержать на Patreon",
+        OPENING_DISCORD = "Discord открывается в браузере.",
+        OPENING_PATREON = "Patreon открывается в браузере.",
     },
 }

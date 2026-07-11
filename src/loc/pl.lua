@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "Ogłaszaj pozycję",
         ANN_CONTAINER   = "Ogłaszaj obszar",
         ANN_SCREEN      = "Ogłaszaj zmiany ekranu",
+        DISCORD         = "Odwiedź Discorda",
+        PATREON         = "Wesprzyj na Patreonie",
+        OPENING_DISCORD = "Otwieranie Discorda w przeglądarce.",
+        OPENING_PATREON = "Otwieranie Patreona w przeglądarce.",
     },
 }

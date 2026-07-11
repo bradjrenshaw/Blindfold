@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "Positie aankondigen",
         ANN_CONTAINER   = "Gebied aankondigen",
         ANN_SCREEN      = "Schermwissels aankondigen",
+        DISCORD         = "Bezoek de Discord",
+        PATREON         = "Steun op Patreon",
+        OPENING_DISCORD = "Discord wordt geopend in de browser.",
+        OPENING_PATREON = "Patreon wordt geopend in de browser.",
     },
 }

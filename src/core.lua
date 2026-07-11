@@ -242,6 +242,15 @@ do
             G.FUNCS.overlay_menu{ definition = Menu.announcements_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.ANNOUNCEMENTS" end
         end
+        -- Community links (the game opens its own links the same way).
+        G.FUNCS.blindfold_discord = function()
+            speech.say(Message.localized("SET.OPENING_DISCORD"):resolve())
+            love.system.openURL("https://discord.gg/Dz8u2Pr9py")
+        end
+        G.FUNCS.blindfold_patreon = function()
+            speech.say(Message.localized("SET.OPENING_PATREON"):resolve())
+            love.system.openURL("https://www.patreon.com/bradjrenshaw")
+        end
         -- Tag the credits overlay for its bespoke reader (nothing structural
         -- identifies it: anonymous tab closures, raw-string tab labels).
         if G.FUNCS.show_credits then

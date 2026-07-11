@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "Position ansagen",
         ANN_CONTAINER   = "Bereich ansagen",
         ANN_SCREEN      = "Bildschirmwechsel ansagen",
+        DISCORD         = "Discord besuchen",
+        PATREON         = "Auf Patreon unterstützen",
+        OPENING_DISCORD = "Discord wird im Browser geöffnet.",
+        OPENING_PATREON = "Patreon wird im Browser geöffnet.",
     },
 }

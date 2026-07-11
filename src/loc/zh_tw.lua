@@ -267,5 +267,9 @@ return {
         ANN_POSITION    = "朗讀位置",
         ANN_CONTAINER   = "朗讀區域",
         ANN_SCREEN      = "朗讀畫面切換",
+        DISCORD         = "造訪Discord",
+        PATREON         = "在Patreon上支持我們",
+        OPENING_DISCORD = "正在瀏覽器中開啟Discord。",
+        OPENING_PATREON = "正在瀏覽器中開啟Patreon。",
     },
 }
