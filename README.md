@@ -16,7 +16,7 @@ If you would like to support my modding work, I also have a
 
 - Full text-to-speech for the whole game: runs, menus, shop, booster packs,
   deck view, challenges, the collection, stats, the tutorial, and more
-- Full keyboard and controller support, all rebindable — one key, one meaning
+- Full keyboard and controller support, all rebindable
 - Play-by-play scoring announcements, with per-announcement toggles
 - Status hotkeys for the numbers you need mid-hand (hands, discards, score,
   money, joker slots)
@@ -63,68 +63,53 @@ Start Balatro through Steam and wait for "Blindfold loaded." From there:
 - **Enter** (or A) activates the focused control.
 - The **play screen** reads top to bottom: your jokers and consumables, the
   blind, played cards, your hand, then the action buttons. Select cards in
-  your hand with Enter, then press **X** to play or **C** to discard.
-- **Space** picks up the focused card so you can reorder: move to where it
-  should go and press Space again to place it ("place between X and Y" tells
-  you where a drop lands). Works on jokers, consumables, and hand cards —
-  hands score left to right.
-- **S sells / U uses** the focused joker or consumable.
-- **Ctrl+letter chords** answer the common questions instantly: Ctrl+X hands
-  left, Ctrl+C discards left, Ctrl+S score and goal, Ctrl+M money, Ctrl+J
-  joker slots.
-- **Ctrl+arrows** open the review buffers: Left/Right switch buffers (game
-  status, card detail), Up/Down step through their lines — for re-reading
-  anything at your own pace.
+  your hand with Enter (controller A), then press **X to play** or **C to
+  discard** (controller X / Y).
+- **Space** (controller LT + A) picks up the focused card so you can
+  reorder: move to where it should go and press it again to place ("place
+  between X and Y" tells you where a drop lands). Works on jokers,
+  consumables, and hand cards — hands score left to right.
+- **S sells / U uses** the focused joker or consumable (controller LB / RB).
+- **Status chords** answer the common questions instantly: hands left
+  (Ctrl+X, controller LT+X), discards left (Ctrl+C, LT+Y), score and goal
+  (Ctrl+S, LT+B), money (Ctrl+M, RT+X), joker slots (Ctrl+J, RT+Y).
+- **Ctrl+arrows** (controller right stick) open the review buffers:
+  Left/Right switch buffers (game status, card detail), Up/Down step through
+  their lines — for re-reading anything at your own pace.
 - Announcement toggles, speech options, and rebinding all live in
   **Options → Blindfold**.
 
-## Keyboard bindings
+## Controls
 
-All rebindable in Options → Blindfold → Keybindings: activate an action's
-row, then press the new key or controller button (Escape cancels).
+Everything is rebindable in Options → Blindfold → Keybindings: activate an
+action's row, then press the new key or controller button — hold a trigger
+while pressing a button to bind a chord (Escape cancels). The mod fully owns
+the controller: every button goes through its map, and unmapped buttons do
+nothing rather than something surprising. The left trigger layer reads
+current-blind info; the right trigger layer reads run-wide info.
 
-| Key | Action |
-| --- | --- |
-| Arrow keys | Move (sliders and tab strips adjust with left/right) |
-| Home / End | Jump to the start / end of the current row (innermost structure wins) |
-| Enter | Select a card / activate a button (on a joker or consumable: pick up / place) |
-| Space | Pick up / place (reorder jokers, consumables, or hand cards) |
-| X / C | Play hand / Discard |
-| S / U | Sell / Use the focused joker or consumable |
-| `[` / `]` | Previous / next tab (menus) |
-| D | View deck |
-| Tab | Run info |
-| Backspace or Shift | Back / deselect all |
-| Ctrl + arrows | Review buffers: Left/Right switch buffer, Up/Down browse |
-| Ctrl + X / Ctrl + C | Read hands / discards remaining |
-| Ctrl + S | Read score and goal (e.g. "3000 of 80000") |
-| Ctrl + J / Ctrl + M | Read joker slots (e.g. "3 of 5 jokers") / money |
-| Escape | Game's own pause / back (deliberately left native) |
-| F8 | Debug: dump the current screen's controls to the log |
-
-## Controller bindings
-
-The mod fully owns the controller: every button goes through its map (all
-rebindable — hold a trigger while pressing a button to bind a chord), and
-unmapped buttons do nothing rather than something surprising. The left
-trigger layer covers the current blind; the right trigger layer covers
-run-wide info.
-
-| Button | Action |
-| --- | --- |
-| D-pad or left stick | Move |
-| A | Select a card / activate a button (on a joker or consumable: pick up / place) |
-| B | Back / deselect all |
-| X / Y | Play hand / Discard |
-| LB / RB | Sell / Use |
-| LT + A | Pick up / place the focused card (jokers, consumables, hand) |
-| LT + X / Y / B | Read hands remaining / discards remaining / score and goal |
-| LT + LB | Run info |
-| RT + X / Y | Read money / joker slots |
-| RT + RB | View deck |
-| Back | Run info |
-| Start | Pause |
-| Right stick | Review buffers: left/right switch buffer, up/down browse |
+| Action | Keyboard | Controller |
+| --- | --- | --- |
+| Move (sliders and tab strips adjust with left/right) | Arrow keys | D-pad or left stick |
+| Jump to the start / end of the current row | Home / End | — |
+| Select a card / activate a button (on a joker or consumable: pick up / place) | Enter | A |
+| Pick up / place (reorder jokers, consumables, or hand cards) | Space | LT + A |
+| Play hand | X | X |
+| Discard | C | Y |
+| Sell the focused joker or consumable | S | LB |
+| Use the focused consumable | U | RB |
+| Previous / next tab (menus) | `[` / `]` | left/right on the tab strip |
+| View deck | D | RT + RB |
+| Run info | Tab | Back, or LT + LB |
+| Back / deselect all | Backspace or Shift | B |
+| Pause / game menu | Escape (left native) | Start |
+| Review buffers (switch buffer / browse its lines) | Ctrl + Left/Right, Ctrl + Up/Down | Right stick |
+| Read hands remaining | Ctrl + X | LT + X |
+| Read discards remaining | Ctrl + C | LT + Y |
+| Read score and goal (e.g. "3000 of 80000") | Ctrl + S | LT + B |
+| Read money | Ctrl + M | RT + X |
+| Read joker slots (e.g. "3 of 5 jokers") | Ctrl + J | RT + Y |
+| Debug: dump the current screen's controls to the log | F8 | — |
 
 ## Languages
 
