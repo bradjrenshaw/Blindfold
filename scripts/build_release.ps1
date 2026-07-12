@@ -21,8 +21,10 @@ param(
     [switch]$NoInstaller
 )
 
-if ($Version -notmatch '^v\d+\.\d+(\.\d+)?$') {
-    throw "Version must look like v0.1.0 (got '$Version')."
+# Full vX.Y.Z, not vX.Y: the installer's update check parses release tags
+# with Rust's semver crate, which requires all three components.
+if ($Version -notmatch '^v\d+\.\d+\.\d+$') {
+    throw "Version must look like v0.1.0 - a leading v and all three of major.minor.patch (got '$Version')."
 }
 
 $ErrorActionPreference = 'Stop'
