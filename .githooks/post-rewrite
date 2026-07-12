@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refresh the mod's version stamp whenever HEAD moves (see post-merge).
+printf 'main@%s' "$(git rev-parse --short=7 HEAD)" > src/version
