@@ -43,7 +43,7 @@ there's something new).
 ### Manual installation
 
 Prefer to place files yourself? Each release also ships `Blindfold.zip`
-(the same instructions are in its `INSTALL.txt`):
+(this README is included in it):
 
 1. Copy `version.dll` from the zip into Balatro's game folder, next to
    `Balatro.exe` (Steam: right-click Balatro → Manage → Browse local
