@@ -1,10 +1,7 @@
 # Blindfold
 
 An accessibility mod for **Balatro** that provides screen reader support for
-blind players. Every screen in the game — menus, the play table, the shop,
-booster packs, the collection — is re-presented as rows of spoken controls
-you navigate with the arrow keys or a controller, with play-by-play
-announcements for scoring, blinds, and shop events.
+blind players. 
 
 For discussion of Blindfold, as well as my other modding projects, I have a
 [Discord](https://discord.gg/Dz8u2Pr9py/).
@@ -14,8 +11,7 @@ If you would like to support my modding work, I also have a
 
 ## Features
 
-- Full text-to-speech for the whole game: runs, menus, shop, booster packs,
-  deck view, challenges, the collection, stats, the tutorial, and more
+- Screenreader output for all game screens and events
 - Full keyboard and controller support, all rebindable
 - Play-by-play scoring announcements, with per-announcement toggles
 - Status hotkeys for the numbers you need mid-hand (hands, discards, score,
@@ -76,12 +72,7 @@ Start Balatro through Steam and wait for "Blindfold loaded." From there:
 
 ## Controls
 
-Everything is rebindable in Options → Blindfold → Keybindings: activate an
-action's row, then press the new key or controller button — hold a trigger
-while pressing a button to bind a chord (Escape cancels). The mod fully owns
-the controller: every button goes through its map, and unmapped buttons do
-nothing rather than something surprising. The left trigger layer reads
-current-blind info; the right trigger layer reads run-wide info.
+Everything is rebindable in Options → Blindfold → Keybindings.
 
 | Action | Keyboard | Controller |
 | --- | --- | --- |
@@ -110,51 +101,5 @@ current-blind info; the right trigger layer reads run-wide info.
 
 The mod follows the game's language setting and ships translations for all
 of Balatro's languages (German, French, Spanish, Italian, Portuguese,
-Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). Everything
-the game itself localizes — card names, descriptions, blind effects — is
-read from the game's own translations; the mod's ~250 phrases were
-**machine translated** with terminology anchored to the game's official
-localization. If anything reads wrong in your language, corrections are
-very welcome: the strings live in `src/loc/<code>.lua` (sparse — any key
-you delete falls back to English), one file per language, and a PR or
-issue with better wording is all it takes.
+Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). These are machine translations, so please let me know if anything is incorrect.
 
-## Troubleshooting
-
-- **No speech, game otherwise fine:** every announcement is also written to
-  `%APPDATA%\Balatro\blindfold.log` — if lines appear there while you
-  navigate, speech output is the problem (is your screen reader running?).
-  Tail it live with:
-
-  ```powershell
-  Get-Content "$env:APPDATA\Balatro\blindfold.log" -Wait -Tail 20
-  ```
-
-- **No "Blindfold loaded" at all:** Lovely isn't loading — make sure you
-  launch through Steam, and that `version.dll` sits next to `Balatro.exe`
-  (re-run the installer).
-- Anything else: ask on the [Discord](https://discord.gg/Dz8u2Pr9py/) or
-  open a GitHub issue.
-
-## For developers
-
-The mod is pure Lua on the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
-(no Steamodded). `src/` is the mod: an owned-UI overlay framework (key
-graph + dispatcher, after Factorio Access) in `overlay/`, one module per
-owned screen in `overlays/`, speech via Prism FFI in `speech.lua`, plus
-proxies/buffers/events/input/settings/loc. Everything needed is committed,
-speech DLLs and Lovely included.
-
-- **Dev install:** clone the repo and run
-  `powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1` — it links
-  `src/` into `%APPDATA%\Balatro\Mods\Blindfold` as a junction, so
-  `git pull` (plus a game restart) is the whole update. `-Uninstall`
-  removes the link; the installer recognizes the junction and won't touch
-  it.
-- **Releases:** `scripts\build_release.ps1 -Version vX.Y.Z` builds `Blindfold.zip` and
-  `BlindfoldInstaller.exe` (the installer is a Rust/wxWidgets project in
-  `installer/` — see its README); publish both with
-  `gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe ...`.
-- **Game source reference:** the game's Lua is a zip appended to
-  `Balatro.exe`; extract to `game_src/` (gitignored) with 7-Zip:
-  `7z x Balatro.exe -ogame_src -ir!*.lua`.
