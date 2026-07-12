@@ -1,5 +1,7 @@
 # build_release.ps1 — assemble the release artifacts for a Blindfold release.
 #
+# Usage: scripts\build_release.ps1 -Version v0.1.0
+#
 # Produces at the repo root:
 #   Blindfold.zip            what the installer downloads/extracts:
 #                              version.dll     (bundled Lovely Injector -> game folder)
@@ -12,8 +14,16 @@
 # version users see and update-checks compare against.
 
 param(
+    # The release tag (vX.Y.Z) — stamped into Blindfold/version inside the zip
+    # so the mod announces it and update-checks against the releases channel.
+    [Parameter(Mandatory = $true)]
+    [string]$Version,
     [switch]$NoInstaller
 )
+
+if ($Version -notmatch '^v\d+\.\d+(\.\d+)?$') {
+    throw "Version must look like v0.1.0 (got '$Version')."
+}
 
 $ErrorActionPreference = 'Stop'
 
@@ -41,6 +51,8 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 try {
     Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
     Copy-Item $lovely (Join-Path $stage 'version.dll')
+    # Overwrite any local dev stamp with the release tag.
+    Set-Content -Path (Join-Path $stage 'Blindfold\version') -Value $Version -Encoding Ascii -NoNewline
 
     $zip = Join-Path $repo 'Blindfold.zip'
     if (Test-Path $zip) { Remove-Item $zip -Force }
@@ -69,4 +81,4 @@ if (-not $NoInstaller) {
 
 Write-Host ""
 Write-Host "Done. Publish with:"
-Write-Host '  gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe --title vX.Y.Z --notes "..."'
+Write-Host "  gh release create $Version Blindfold.zip BlindfoldInstaller.exe --title $Version --notes `"...`""

@@ -4,6 +4,9 @@ game_src/
 
 # Packaged mod build output
 *.zip
+
+# Local version stamp (deploy.ps1 / post-merge hook / build_release.ps1)
+/src/version
 BlindfoldInstaller.exe
 
 # Rust build output

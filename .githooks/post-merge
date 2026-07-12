@@ -1,0 +1,5 @@
+#!/bin/sh
+# Refresh the mod's version stamp after a git pull, so the in-game update
+# check compares the right commit. Installed by scripts/deploy.ps1 via
+# `git config core.hooksPath .githooks`.
+printf 'main@%s' "$(git rev-parse --short=7 HEAD)" > src/version

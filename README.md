@@ -21,9 +21,7 @@ If you would like to support my modding work, I also have a
 - Status hotkeys for the numbers you need mid-hand (hands, discards, score,
   money, joker slots)
 - Review buffers for re-reading detail at your own pace
-- Ships translations for all of Balatro's languages
-- Speech via NVDA, JAWS, SAPI, or OneCore ([Prism](https://github.com/ethindp/prism));
-  a log file mirrors every announcement
+- Translations for all of Balatro's languages
 
 ## Installation
 
@@ -37,9 +35,6 @@ If you would like to support my modding work, I also have a
    choose "More info", then "Run anyway".
 3. Launch Balatro through Steam. You should hear **"Blindfold loaded."**
 
-The installer puts the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
-next to `Balatro.exe` and the mod (speech libraries included) into
-`%APPDATA%\Balatro\Mods\Blindfold` — nothing else on your system is touched.
 Prefer a console? Run `BlindfoldInstaller.exe --cli` for the same flows as a
 menu.
 
@@ -156,7 +151,7 @@ speech DLLs and Lovely included.
   `git pull` (plus a game restart) is the whole update. `-Uninstall`
   removes the link; the installer recognizes the junction and won't touch
   it.
-- **Releases:** `scripts\build_release.ps1` builds `Blindfold.zip` and
+- **Releases:** `scripts\build_release.ps1 -Version vX.Y.Z` builds `Blindfold.zip` and
   `BlindfoldInstaller.exe` (the installer is a Rust/wxWidgets project in
   `installer/` — see its README); publish both with
   `gh release create vX.Y.Z Blindfold.zip BlindfoldInstaller.exe ...`.

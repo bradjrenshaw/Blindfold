@@ -44,7 +44,8 @@ return {
     },
 
     MISC = {
-        LOADED = "Blindfold 로드 완료.",
+        LOADED = "Blindfold {version} 로드 완료.",
+        UPDATE_AVAILABLE = "Blindfold 업데이트가 있습니다: {current}에서 {latest}(으)로.",
     },
     RARITY = { COMMON = "일반", UNCOMMON = "고급", RARE = "희귀", LEGENDARY = "전설" },
     POSITION = { OF = "{total}개 중 {index}번째" },

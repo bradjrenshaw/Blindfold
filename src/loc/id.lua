@@ -44,7 +44,8 @@ return {
     },
 
     MISC = {
-        LOADED = "Blindfold dimuat.",
+        LOADED = "Blindfold {version} dimuat.",
+        UPDATE_AVAILABLE = "Pembaruan Blindfold tersedia: {current} ke {latest}.",
     },
     RARITY = { COMMON = "umum", UNCOMMON = "tidak umum", RARE = "langka", LEGENDARY = "legendaris" },
     POSITION = { OF = "{index} dari {total}" },

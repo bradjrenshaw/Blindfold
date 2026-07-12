@@ -118,7 +118,24 @@ if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
     Write-Host "   Prism present"
 }
 
-# --- 4. Mod link ------------------------------------------------------------------
+# --- 4. Version stamp -----------------------------------------------------------
+# The mod announces this at boot and update-checks against the tip of main.
+# The post-merge hook (installed below) refreshes it on every git pull.
+Write-Step "Stamping the version"
+try {
+    $sha = (git -C $repo rev-parse --short=7 HEAD 2>$null)
+    if ($sha) {
+        Set-Content -Path (Join-Path $src 'version') -Value "main@$sha" -Encoding Ascii -NoNewline
+        Write-Host "   main@$sha"
+        git -C $repo config core.hooksPath .githooks
+    } else {
+        Write-Warning "Not a git checkout? Version stamp skipped."
+    }
+} catch {
+    Write-Warning "Version stamp failed: $_"
+}
+
+# --- 5. Mod link ------------------------------------------------------------------
 Write-Step "Linking the mod"
 New-Item -ItemType Directory -Force -Path $mods | Out-Null
 $srcFull = [IO.Path]::GetFullPath($src).TrimEnd('\')

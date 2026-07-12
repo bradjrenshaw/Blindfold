@@ -419,7 +419,114 @@ local function recover_dead_state()
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Version + boot announcement + update check.
+--
+-- The installed version lives in <mod>/version — written by the installer
+-- (release tag "vX.Y.Z" or dev build "main@<sha>"), by scripts/deploy.ps1 and
+-- the post-merge git hook for junction installs, and stamped into release
+-- zips by scripts/build_release.ps1.
+--
+-- Speaking at Game:start_up is too early — the window isn't up yet and screen
+-- readers drop or garble it — so the loaded line waits until the game has
+-- rendered for BOOT_DELAY seconds of real time, then the update check starts:
+-- a love.thread fetches GitHub (releases + tip of main; see update_thread.lua)
+-- and the poll announces once when the installed channel has something newer.
+-- ---------------------------------------------------------------------------
+BA.version = (function()
+    local f = io.open(MOD_DIR .. "/version", "rb")
+    if not f then return nil end
+    local v = f:read("*a") or ""
+    f:close()
+    v = v:gsub("%s+", "")
+    return v ~= "" and v or nil
+end)()
+
+local GITHUB_RELEASES = "https://api.github.com/repos/bradjrenshaw/Blindfold/releases/latest"
+local GITHUB_COMMITS = "https://api.github.com/repos/bradjrenshaw/Blindfold/commits/main"
+local UPDATE_CHANNEL = "blindfold_update"
+
+local function loc_line(key, fallback, subs)
+    local s = (BA.loc and BA.loc.get and BA.loc.get(key)) or fallback
+    for k, v in pairs(subs or {}) do
+        s = s:gsub("{" .. k .. "}", (tostring(v):gsub("%%", "%%%%")))
+    end
+    return s
+end
+
+local _update_started = false
+local function start_update_check()
+    if _update_started then return end
+    _update_started = true
+    pcall(function()
+        local code = read_mod_file("update_thread.lua")
+        if not code then return end
+        love.thread.newThread(code):start(UPDATE_CHANNEL, GITHUB_RELEASES, GITHUB_COMMITS)
+    end)
+end
+
+local function ver_nums(v)
+    local a, b, c = tostring(v):match("^[vV]?(%d+)%.(%d+)%.?(%d*)")
+    if not a then return nil end
+    return tonumber(a), tonumber(b), tonumber(c) or 0
+end
+
+local function release_newer(latest, current)
+    local l1, l2, l3 = ver_nums(latest)
+    if not l1 then return false end
+    local c1, c2, c3 = ver_nums(current)
+    if not c1 then return false end   -- unknown local version: stay quiet
+    if l1 ~= c1 then return l1 > c1 end
+    if l2 ~= c2 then return l2 > c2 end
+    return l3 > c3
+end
+
+local _update_done = false
+local function poll_update_check()
+    if _update_done or not _update_started then return end
+    local ch = love.thread.getChannel(UPDATE_CHANNEL)
+    if ch:getCount() < 2 then return end
+    _update_done = true
+    local releases = ch:pop() or ""
+    local commits = ch:pop() or ""
+    local current = BA.version or ""
+    local latest
+    if current:match("^main") then
+        -- Dev channel: compare our commit against the tip of main.
+        local sha = commits:match('"sha"%s*:%s*"(%x+)"')
+        local cur = current:match("^main@(%x+)")
+        if sha and cur and sha:sub(1, #cur) ~= cur then
+            latest = "main@" .. sha:sub(1, 7)
+        end
+    else
+        -- Release channel: semver against the latest release tag.
+        local tag = releases:match('"tag_name"%s*:%s*"([^"]+)"')
+        if tag and release_newer(tag, current) then latest = tag end
+    end
+    if latest then
+        speech.say(loc_line("MISC.UPDATE_AVAILABLE",
+            "Blindfold update available: {current} to {latest}.",
+            { current = current ~= "" and current or "unknown", latest = latest }))
+    else
+        speech.log("update check: up to date (" .. (current ~= "" and current or "no version file") .. ")")
+    end
+end
+
+local BOOT_DELAY = 0.5
+local _boot_announced = false
+local function boot_announce()
+    if _boot_announced then return end
+    local t = G and G.TIMERS and G.TIMERS.REAL
+    if not t or t < BOOT_DELAY then return end
+    _boot_announced = true
+    speech.say(loc_line("MISC.LOADED", "Blindfold {version} loaded.",
+        { version = BA.version or "dev" }))
+    start_update_check()
+end
+
 function BA.focus_tick(ctrl)
+    pcall(boot_announce)
+    pcall(poll_update_check)
     pcall(log_state_transition)
     pcall(recover_dead_state)
     if Screens then pcall(Screens.tick) end
@@ -793,7 +900,8 @@ end
 local ok, err = pcall(function()
     speech.init(MOD_DIR)
     BA.install()
-    speech.say((BA.loc and BA.loc.get and BA.loc.get("MISC.LOADED")) or "Blindfold loaded.")
+    -- The loaded announcement is deliberately NOT here: it waits for the
+    -- window (boot_announce in focus_tick), or screen readers drop it.
 end)
 if not ok then
     pcall(function()

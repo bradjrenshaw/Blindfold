@@ -44,7 +44,8 @@ return {
     },
 
     MISC = {
-        LOADED = "Blindfold 已載入。",
+        LOADED = "Blindfold {version} 已載入。",
+        UPDATE_AVAILABLE = "Blindfold有可用更新：{current}到{latest}。",
     },
     RARITY = { COMMON = "普通", UNCOMMON = "罕見", RARE = "稀有", LEGENDARY = "傳奇" },
     POSITION = { OF = "第{index}個，共{total}個" },

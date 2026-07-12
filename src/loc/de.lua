@@ -44,7 +44,8 @@ return {
     },
 
     MISC = {
-        LOADED = "Blindfold geladen.",
+        LOADED = "Blindfold {version} geladen.",
+        UPDATE_AVAILABLE = "Blindfold-Update verfügbar: {current} auf {latest}.",
     },
     RARITY = { COMMON = "gewöhnlicher", UNCOMMON = "ungewöhnlicher", RARE = "seltener", LEGENDARY = "legendärer" },
     POSITION = { OF = "{index} von {total}" },
