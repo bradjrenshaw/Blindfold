@@ -54,6 +54,39 @@ try {
     # Overwrite any local dev stamp with the release tag.
     Set-Content -Path (Join-Path $stage 'Blindfold\version') -Value $Version -Encoding Ascii -NoNewline
 
+    # Manual installers open the zip first - put the instructions right there.
+    $install_txt = @"
+Blindfold $Version - manual installation
+========================================
+
+The easy way is BlindfoldInstaller.exe from the same release page, which
+does all of this for you. To install by hand instead:
+
+1. Copy version.dll (from this zip) into Balatro's game folder, next to
+   Balatro.exe. Find the folder via Steam: right-click Balatro ->
+   Manage -> Browse local files. (version.dll is the Lovely Injector,
+   the mod loader - skip this copy if you already run other Lovely mods.)
+
+2. Copy the Blindfold folder (from this zip) into:
+       %APPDATA%\Balatro\Mods
+   so it ends up at %APPDATA%\Balatro\Mods\Blindfold. Create the Mods
+   folder if it does not exist. Paste the path above into a File
+   Explorer address bar to get there.
+
+3. Launch Balatro through Steam. You should hear "Blindfold $Version
+   loaded."
+
+Updating: delete %APPDATA%\Balatro\Mods\Blindfold and copy in the new
+zip's Blindfold folder (your settings live outside it and survive).
+
+Uninstalling: delete %APPDATA%\Balatro\Mods\Blindfold, and version.dll
+from the game folder if no other mods need it. Game saves are separate
+and unaffected.
+
+Full documentation: https://github.com/bradjrenshaw/Blindfold
+"@
+    Set-Content -Path (Join-Path $stage 'INSTALL.txt') -Value $install_txt -Encoding Ascii
+
     $zip = Join-Path $repo 'Blindfold.zip'
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
