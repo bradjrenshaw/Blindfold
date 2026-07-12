@@ -97,6 +97,7 @@ return {
         SELL       = "verkoop {amount}$",
         CANT_SELL  = "niet verkoopbaar",
         PINNED     = "vastgepind",
+        NEW        = "nieuw",
         FORCED     = "gedwongen",
         WIN_STICKER = "{stake}-sticker",
         SELECTED   = "geselecteerd",

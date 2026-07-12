@@ -113,6 +113,7 @@ return {
         SELL       = "sell ${amount}",
         CANT_SELL  = "cannot sell",
         PINNED     = "pinned",
+        NEW        = "new",
         FORCED     = "forced",   -- Cerulean Bell's locked-in selection
         WIN_STICKER = "{stake} sticker",   -- collection: best winning stake
         SELECTED   = "selected",

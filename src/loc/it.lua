@@ -97,6 +97,7 @@ return {
         SELL       = "vendita {amount}$",
         CANT_SELL  = "non vendibile",
         PINNED     = "fissato",
+        NEW        = "nuovo",
         FORCED     = "forzata",
         WIN_STICKER = "adesivo {stake}",
         SELECTED   = "selezionata",

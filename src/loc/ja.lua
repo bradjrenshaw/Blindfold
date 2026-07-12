@@ -97,6 +97,7 @@ return {
         SELL       = "売値{amount}$",
         CANT_SELL  = "売却不可",
         PINNED     = "固定",
+        NEW        = "新着",
         FORCED     = "強制選択",
         WIN_STICKER = "{stake}ステッカー",
         SELECTED   = "選択",

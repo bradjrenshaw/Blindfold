@@ -97,6 +97,7 @@ return {
         SELL       = "jual {amount}$",
         CANT_SELL  = "tidak bisa dijual",
         PINNED     = "disematkan",
+        NEW        = "baru",
         FORCED     = "dipaksa",
         WIN_STICKER = "stiker {stake}",
         SELECTED   = "dipilih",

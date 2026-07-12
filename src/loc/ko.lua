@@ -97,6 +97,7 @@ return {
         SELL       = "판매가 {amount}$",
         CANT_SELL  = "판매 불가",
         PINNED     = "고정됨",
+        NEW        = "신규",
         FORCED     = "강제 선택",
         WIN_STICKER = "{stake} 스티커",
         SELECTED   = "선택됨",

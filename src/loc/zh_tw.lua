@@ -97,6 +97,7 @@ return {
         SELL       = "售價{amount}$",
         CANT_SELL  = "無法賣出",
         PINNED     = "已釘選",
+        NEW        = "新",
         FORCED     = "強制選取",
         WIN_STICKER = "{stake}貼紙",
         SELECTED   = "已選取",

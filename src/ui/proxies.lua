@@ -789,7 +789,7 @@ end
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "price" }
+ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 -- Collection modifier cards (the seals / enhancements screens) are built on
 -- the EMPTY card front — no rank or suit renders. Their identity is the
@@ -832,6 +832,21 @@ function ProxyPlayingCard:get_label()
     local suit = Proxy.loc_str(base.suit, "suits_plural") or tostring(base.suit or "")
     return Message.localized("CARD.PLAYING", { rank = rank, suit = suit })
 end
+-- The collection's "new" badge (the red "!"): the game attaches it only on
+-- collection screens, to cards discovered but not yet looked at
+-- (Card:update_alert, card.lua:79). Reading the card IS looking at it, so
+-- mirror Card:hover (card.lua:4316): mark the center alerted and save — the
+-- badge clears exactly as it does for sighted players.
+local function new_alert(node)
+    if not (node.children and node.children.alert) then return nil end
+    local center = node.config and node.config.center
+    if center and not center.alerted then
+        center.alerted = true
+        pcall(function() G:save_progress() end)
+    end
+    return A.new_alert()
+end
+
 function ProxyPlayingCard:get_focus_announcements()
     local node = self.node
     -- Face down: the identity is hidden, so never reveal rank/suit/modifiers —
@@ -868,6 +883,8 @@ function ProxyPlayingCard:get_focus_announcements()
         anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal))))
     end
     if node.debuff then anns[#anns + 1] = A.debuff() end
+    local na = new_alert(node)
+    if na then anns[#anns + 1] = na end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
     return anns
@@ -896,7 +913,7 @@ local SET_TO_TYPE = {
 }
 local ProxyJoker = class(Proxy)
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "pinned", "price" }
+ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "pinned", "new", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
 
 -- The win-stake sticker (collection jokers: the badge for the best stake
@@ -1003,6 +1020,8 @@ function ProxyJoker:get_focus_announcements()
     if node.pinned then anns[#anns + 1] = A.pinned() end
     local sticker = win_sticker(node)
     if sticker then anns[#anns + 1] = sticker end
+    local na = new_alert(node)
+    if na then anns[#anns + 1] = na end
     local price = Proxy.card_cost(node)
     if price then anns[#anns + 1] = A.price(price) end
     return anns
