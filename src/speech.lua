@@ -90,14 +90,12 @@ local function adopt(backend, requested)
         .. " (requested " .. tostring(requested) .. ")")
 end
 
--- Backends we refuse to touch. Prism's UIA backend binds to the process
--- window (it won't even initialize without one): inside the game it
--- acquires and speaks, but tearing it down on the next backend switch
--- crashes the process outright (reproduced 2026-07: NVDA/OneCore/SAPI all
--- survive the acquire-speak-stop-free cycle in isolation, UIA killed the
--- game). It also serves no purpose here — it exists for apps that expose
--- UI Automation natively, which a LOVE game never will.
-local BLOCKED = { UIA = true }
+-- Backends we refuse to touch. UIA sat here briefly after a switch-away
+-- crash, but the identical sequence survives in a windowed harness outside
+-- the game (2026-07) — guilt unproven, so it's back for diagnosis now that
+-- switches never free the outgoing backend. The pre-switch log line below
+-- names the culprit if a switch ever kills the process again.
+local BLOCKED = {}
 
 -- Names of the backends actually usable on this machine (engine present),
 -- enumerated once — the registry probe costs a native round-trip per entry.
@@ -128,6 +126,9 @@ function M.backends()
         end)
     end
     M._backends = names
+    -- Forensics: the full lineup in registry order, once per session, so a
+    -- later crash mid-switch can be placed against it.
+    log("Prism backends detected: " .. (#names > 0 and table.concat(names, ", ") or "(none)"))
     return names
 end
 
@@ -170,6 +171,10 @@ function M.set_backend(name)
     if not M.loaded then return end
     name = name or "auto"
     if name == M.current_backend then return end
+    -- Logged BEFORE any native call: if a switch hard-crashes the game, this
+    -- is the last line in the log and names the backend being switched TO
+    -- (and the live one being switched away from).
+    log("Prism: switching to '" .. name .. "' (from '" .. tostring(M.current_backend) .. "')")
     pcall(function()
         local replacement = acquire(name)
         if replacement == nil then
