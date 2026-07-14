@@ -135,6 +135,23 @@ try {
     Write-Warning "Version stamp failed: $_"
 }
 
+# --- 4b. Bundle the docs -----------------------------------------------------------
+# README.md / changes.md live at the repo root but the in-game "View
+# Documentation / View Changes" buttons open <mod>/docs/*, so copy them into
+# src\docs (gitignored) — the junction then exposes them in the mod folder.
+Write-Step "Bundling docs"
+$docs = Join-Path $src 'docs'
+New-Item -ItemType Directory -Force -Path $docs | Out-Null
+foreach ($doc in 'README.md', 'changes.md') {
+    $from = Join-Path $repo $doc
+    if (Test-Path $from) {
+        Copy-Item $from (Join-Path $docs $doc) -Force
+        Write-Host "   $doc"
+    } else {
+        Write-Warning "   $doc not found at repo root - the in-game button will 404."
+    }
+}
+
 # --- 5. Mod link ------------------------------------------------------------------
 Write-Step "Linking the mod"
 New-Item -ItemType Directory -Force -Path $mods | Out-Null

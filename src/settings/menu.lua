@@ -70,6 +70,9 @@ local function build_main()
         -- nav_button("SET.TUTORIAL", "start_tutorial"),
     }
     for _, c in ipairs(controls("speech")) do nodes[#nodes + 1] = c end
+    -- Bundled docs, opened in the OS default handler (spoken confirmation in core).
+    nodes[#nodes + 1] = nav_button("SET.VIEW_DOCS", "blindfold_docs")
+    nodes[#nodes + 1] = nav_button("SET.VIEW_CHANGES", "blindfold_changes")
     -- Community links, opened in the browser (spoken confirmation in core).
     nodes[#nodes + 1] = nav_button("SET.DISCORD", "blindfold_discord")
     nodes[#nodes + 1] = nav_button("SET.PATREON", "blindfold_patreon")

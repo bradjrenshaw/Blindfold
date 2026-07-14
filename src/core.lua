@@ -285,6 +285,17 @@ do
             G.FUNCS.overlay_menu{ definition = Menu.scoring_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.SCORING" end
         end
+        -- Bundled docs: README.md / changes.md, copied into <mod>/docs by
+        -- deploy.ps1 and build_release.ps1, opened in the OS default handler.
+        -- MOD_DIR already uses forward slashes (love save dir); encode spaces
+        -- for the file URL (a username with a space, say).
+        local function open_doc(rel, speak_key)
+            local url = "file:///" .. (MOD_DIR .. "/docs/" .. rel):gsub(" ", "%%20")
+            speech.say(Message.localized(speak_key):resolve())
+            pcall(function() love.system.openURL(url) end)
+        end
+        G.FUNCS.blindfold_docs = function() open_doc("README.md", "SET.OPENING_DOCS") end
+        G.FUNCS.blindfold_changes = function() open_doc("changes.md", "SET.OPENING_CHANGES") end
         -- Community links (the game opens its own links the same way).
         G.FUNCS.blindfold_discord = function()
             speech.say(Message.localized("SET.OPENING_DISCORD"):resolve())

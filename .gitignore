@@ -7,6 +7,9 @@ game_src/
 
 # Local version stamp (deploy.ps1 / post-merge hook / build_release.ps1)
 /src/version
+
+# Bundled docs, copied from the repo root by deploy.ps1 / build_release.ps1
+/src/docs/
 BlindfoldInstaller.exe
 
 # Rust build output

@@ -53,6 +53,11 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 try {
     Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
     Copy-Item $lovely (Join-Path $stage 'version.dll')
+    # Bundle the docs the in-game buttons open (<mod>/docs/*).
+    $stagedDocs = Join-Path $stage 'Blindfold\docs'
+    New-Item -ItemType Directory -Force -Path $stagedDocs | Out-Null
+    Copy-Item (Join-Path $repo 'README.md') $stagedDocs -Force
+    Copy-Item (Join-Path $repo 'changes.md') $stagedDocs -Force
     # Overwrite any local dev stamp with the release tag.
     Set-Content -Path (Join-Path $stage 'Blindfold\version') -Value $Version -Encoding Ascii -NoNewline
 
