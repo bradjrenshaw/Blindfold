@@ -86,6 +86,65 @@ function M.format_example(kind, style)
     return styled(style, amt, "SCORING.MULT", "SCORING.ABBR_MULT")
 end
 
+-- ---- Joker message normalization ------------------------------------------
+-- The game's NUMERIC joker popups ("+3 Mult", "X4 Mult", "+20", Popcorn's
+-- "-4 Mult") all render through six templates in the game's own localization
+-- (v_dictionary: a_chips / a_mult / a_xmult and their _minus forms). Matching
+-- a message against the LIVE templates — language-correct by construction —
+-- recovers the amount so these lines obey the same verbosity formats as every
+-- other contribution. Anything else ("Again!") stays the game's words,
+-- verbatim.
+local NUMERIC_MESSAGES = {
+    { key = "a_chips",       kind = "chips", sign = 1 },
+    { key = "a_chips_minus", kind = "chips", sign = -1 },
+    { key = "a_mult",        kind = "mult",  sign = 1 },
+    { key = "a_mult_minus",  kind = "mult",  sign = -1 },
+    { key = "a_xmult",       kind = "xmult", sign = 1 },
+    { key = "a_xmult_minus", kind = "xmult", sign = -1 },
+}
+
+local _msg_patterns, _msg_lang
+local function message_patterns()
+    local lang = G and G.SETTINGS and G.SETTINGS.language
+    if _msg_patterns and _msg_lang == lang then return _msg_patterns end
+    _msg_patterns, _msg_lang = {}, lang
+    local dict = G and G.localization and G.localization.misc
+        and G.localization.misc.v_dictionary
+    if type(dict) ~= "table" then return _msg_patterns end
+    for _, spec in ipairs(NUMERIC_MESSAGES) do
+        local tmpl = dict[spec.key]
+        if type(tmpl) == "string" then
+            -- Escape pattern magic, then #1# captures the (possibly
+            -- comma-grouped / decimal) number.
+            local p = tmpl:gsub("%W", "%%%0")
+            p = "^" .. p:gsub("%%%#1%%%#", "([%%d%%.,]+)") .. "$"
+            _msg_patterns[#_msg_patterns + 1] =
+                { pattern = p, kind = spec.kind, sign = spec.sign }
+        end
+    end
+    return _msg_patterns
+end
+
+-- A numeric game message reformatted per the effect-format settings, or nil
+-- to speak it verbatim.
+function M.normalize_message(msg)
+    if type(msg) ~= "string" or msg == "" then return nil end
+    for _, spec in ipairs(message_patterns()) do
+        local n = msg:match(spec.pattern)
+        if n then
+            local num = tonumber((n:gsub(",", "")))
+            if num then
+                if spec.kind == "xmult" then
+                    local s = M.format_effect("xmult", num)
+                    return spec.sign < 0 and ("-" .. s) or s
+                end
+                return M.format_effect(spec.kind, num * spec.sign)
+            end
+        end
+    end
+    return nil
+end
+
 -- The card/joker a status text floats over, named via its focus proxy. Fully
 -- guarded: a failure here must never drop the announcement (it only drops the
 -- name), so the whole lookup is inside one pcall.
@@ -141,7 +200,7 @@ function M.on_status(card, eval_type, amt, extra)
     elseif eval_type == "jokers" or eval_type == "extra" then
         local msg = extra and extra.message
         if type(msg) == "string" and msg ~= "" then
-            phrase = with_source(card, msg)
+            phrase = with_source(card, M.normalize_message(msg) or msg)
         elseif extra then
             -- No message string: derive the effect from the modifier fields.
             local n, eff = nil, nil
