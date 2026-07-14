@@ -178,7 +178,16 @@ function M.set_backend(name)
         end
         if M.backend ~= nil and replacement ~= M.backend then
             M.prism.prism_backend_stop(M.backend)
-            M.prism.prism_backend_free(M.backend)
+            -- Deliberately NEVER freed at runtime. A backend switch crashed
+            -- the game between acquire/stop/free, and the identical sequence
+            -- survives in a windowed harness outside it — so rather than
+            -- guess which native teardown misbehaves inside LOVE, retire the
+            -- handle unfreed (a stopped backend is a few KB; process exit
+            -- reclaims all). Never trade a blind user's voice for tidy
+            -- memory. Probe frees in backends()/acquire() stay: those
+            -- backends were never initialized/started.
+            M._retired = M._retired or {}
+            M._retired[#M._retired + 1] = M.backend
         end
         adopt(replacement, name)
     end)
