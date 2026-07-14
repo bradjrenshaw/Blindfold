@@ -69,6 +69,9 @@ function M.format_effect(kind, amt)
     end
     local style = gain and setting("scoring.fmt.mult_gain", "signed_word")
         or setting("scoring.fmt.mult_loss", "signed_word")
+    -- Mult always carries its m/word — a bare "-10" would read as chips. Also
+    -- guards stale saved values from when the option briefly existed.
+    if style == "signed" or style == "bare" then style = "signed_word" end
     return styled(style, amt, "SCORING.MULT", "SCORING.ABBR_MULT")
 end
 

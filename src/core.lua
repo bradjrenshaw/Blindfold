@@ -229,8 +229,10 @@ do
             { "signed_word", "signed_abbr", "signed" }, "signed_word")
         fmt_setting("scoring.fmt.mult_gain", "SET.FMT_MULT_GAIN", "mult_gain",
             { "signed_word", "signed_abbr", "abbr" }, "signed_word")
+        -- No bare "-10" for mult: without the m/word it's indistinguishable
+        -- from a chips line (Brad).
         fmt_setting("scoring.fmt.mult_loss", "SET.FMT_MULT_LOSS", "mult_loss",
-            { "signed_word", "signed_abbr", "signed" }, "signed_word")
+            { "signed_word", "signed_abbr" }, "signed_word")
         fmt_setting("scoring.fmt.xmult", "SET.FMT_XMULT", "xmult",
             { "word", "x_abbr", "x" }, "word")
         -- Per-announcement toggles (read by announce.Context / proxy descriptions).
