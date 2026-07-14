@@ -90,6 +90,15 @@ local function adopt(backend, requested)
         .. " (requested " .. tostring(requested) .. ")")
 end
 
+-- Backends we refuse to touch. Prism's UIA backend binds to the process
+-- window (it won't even initialize without one): inside the game it
+-- acquires and speaks, but tearing it down on the next backend switch
+-- crashes the process outright (reproduced 2026-07: NVDA/OneCore/SAPI all
+-- survive the acquire-speak-stop-free cycle in isolation, UIA killed the
+-- game). It also serves no purpose here — it exists for apps that expose
+-- UI Automation natively, which a LOVE game never will.
+local BLOCKED = { UIA = true }
+
 -- Names of the backends actually usable on this machine (engine present),
 -- enumerated once — the registry probe costs a native round-trip per entry.
 function M.backends()
@@ -105,7 +114,7 @@ function M.backends()
             for i = 0, count - 1 do
                 local id = M.prism.prism_registry_id_at(M.ctx, i)
                 local name = M.prism.prism_registry_name(M.ctx, id)
-                if name ~= nil then
+                if name ~= nil and not BLOCKED[ffi.string(name)] then
                     local b = M.prism.prism_registry_create(M.ctx, id)
                     if b ~= nil then
                         local feat = tonumber(M.prism.prism_backend_get_features(b)) or 0
@@ -126,6 +135,11 @@ end
 -- be acquired (create + initialize), otherwise the best available. nil only
 -- when nothing at all works. Does not touch M.backend.
 local function acquire(name)
+    if name and BLOCKED[name] then
+        -- A stale saved choice from before the blocklist: never acquire it.
+        log("Prism backend '" .. name .. "' is blocked (crashes in-game); using best available.")
+        name = "auto"
+    end
     if name and name ~= "auto" then
         local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
         for i = 0, count - 1 do
