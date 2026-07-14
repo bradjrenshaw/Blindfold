@@ -23,7 +23,9 @@ local function control_for(s)
     elseif s.type == "choice" then
         local labels = {}
         for i, opt in ipairs(s.options or {}) do
-            labels[i] = (s.labels and s.labels[i]) and loc(s.labels[i]) or tostring(opt)
+            labels[i] = (s.label_values and s.label_values[i])
+                or ((s.labels and s.labels[i]) and loc(s.labels[i]))
+                or tostring(opt)
         end
         return create_option_cycle({
             label = loc(s.label_key), scale = 0.8,
@@ -55,11 +57,12 @@ local function nav_button(label_key, func)
     } }
 end
 
--- The Blindfold tab: sub-screen buttons + the scoring settings inline.
+-- The Blindfold tab: sub-screen buttons + the speech settings inline.
 local function build_main()
     local nodes = {
         nav_button("SET.KEYBINDS", "blindfold_keybinds"),
         nav_button("SET.ANNOUNCEMENTS", "blindfold_announcements"),
+        nav_button("SET.SCORING", "blindfold_scoring"),
         -- The game ships G.FUNCS.start_tutorial (reset progress + launch the
         -- tutorial run) but no vanilla UI ever calls it. Handy for TESTING
         -- the tutorial flow, but it's not a real game feature, so it stays
@@ -67,7 +70,6 @@ local function build_main()
         -- nav_button("SET.TUTORIAL", "start_tutorial"),
     }
     for _, c in ipairs(controls("speech")) do nodes[#nodes + 1] = c end
-    for _, c in ipairs(controls("scoring")) do nodes[#nodes + 1] = c end
     -- Community links, opened in the browser (spoken confirmation in core).
     nodes[#nodes + 1] = nav_button("SET.DISCORD", "blindfold_discord")
     nodes[#nodes + 1] = nav_button("SET.PATREON", "blindfold_patreon")
@@ -92,6 +94,13 @@ end
 -- The Announcements sub-screen: a single column of announcement toggles.
 function M.announcements_uibox()
     local content = { n = G.UIT.C, config = { align = "cm", padding = 0.05 }, nodes = controls("announce") }
+    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
+end
+
+-- The Scoring sub-screen: the scoring toggles plus the per-effect verbosity
+-- cycles (how "+10 chips" reads during the fast scoring animations).
+function M.scoring_uibox()
+    local content = { n = G.UIT.C, config = { align = "cm", padding = 0.05 }, nodes = controls("scoring") }
     return create_UIBox_generic_options({ back_func = "options", contents = { content } })
 end
 

@@ -207,6 +207,32 @@ do
             options = { "full", "jokers", "summary" },
             labels  = { "SET.DETAIL_FULL", "SET.DETAIL_JOKERS", "SET.DETAIL_SUMMARY" } }
         Settings.register{ key = "round.actions",        type = "bool",   label_key = "SET.ROUND_ACTIONS",   default = true,   category = "scoring" }
+
+        -- Per-effect verbosity formats (the Scoring submenu). Options are
+        -- style ids; the cycle shows live examples rendered in the player's
+        -- language ("+10 chips" / "+10c" / ...), so no per-option loc keys.
+        -- Losses have their own style — vanilla never emits a negative
+        -- chips/mult popup, but the renderer is signed either way.
+        local function fmt_setting(key, label_key, kind, styles, default)
+            local examples = {}
+            for i, st in ipairs(styles) do
+                local ok2, ex = pcall(Scoring.format_example, kind, st)
+                examples[i] = ok2 and ex or st
+            end
+            Settings.register{ key = key, type = "choice", label_key = label_key,
+                default = default, category = "scoring",
+                options = styles, label_values = examples }
+        end
+        fmt_setting("scoring.fmt.chips_gain", "SET.FMT_CHIPS_GAIN", "chips_gain",
+            { "signed_word", "signed", "word", "bare", "signed_abbr", "abbr" }, "signed_word")
+        fmt_setting("scoring.fmt.chips_loss", "SET.FMT_CHIPS_LOSS", "chips_loss",
+            { "signed_word", "signed_abbr", "signed" }, "signed_word")
+        fmt_setting("scoring.fmt.mult_gain", "SET.FMT_MULT_GAIN", "mult_gain",
+            { "signed_word", "signed_abbr", "abbr" }, "signed_word")
+        fmt_setting("scoring.fmt.mult_loss", "SET.FMT_MULT_LOSS", "mult_loss",
+            { "signed_word", "signed_abbr", "signed" }, "signed_word")
+        fmt_setting("scoring.fmt.xmult", "SET.FMT_XMULT", "xmult",
+            { "word", "x_abbr", "x" }, "word")
         -- Per-announcement toggles (read by announce.Context / proxy descriptions).
         Settings.register{ key = "announce.type.enabled",        type = "bool", label_key = "SET.ANN_TYPE",        default = true, category = "announce" }
         Settings.register{ key = "announce.subtype.enabled",     type = "bool", label_key = "SET.ANN_SUBTYPE",     default = true, category = "announce" }
@@ -256,6 +282,10 @@ do
         G.FUNCS.blindfold_announcements = function()
             G.FUNCS.overlay_menu{ definition = Menu.announcements_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.ANNOUNCEMENTS" end
+        end
+        G.FUNCS.blindfold_scoring = function()
+            G.FUNCS.overlay_menu{ definition = Menu.scoring_uibox() }
+            if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.SCORING" end
         end
         -- Community links (the game opens its own links the same way).
         G.FUNCS.blindfold_discord = function()

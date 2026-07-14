@@ -25,6 +25,64 @@ local function setting(key, default)
     return default
 end
 
+-- ---- Effect formats -----------------------------------------------------
+-- Verbosity styles for the per-effect lines (the Scoring settings submenu):
+-- the animations fly, so users pick how much each contribution says. The
+-- amount carries its own sign — screen readers speak "+"/"-" — so the
+-- localized templates hold no plus/minus word of their own. Styles:
+--   signed_word "+10 chips"   signed "+10"   word "10 chips"   bare "10"
+--   signed_abbr "+10c"        abbr "10c"
+--   (times mult:) word "times 3 mult"   x_abbr "x3m"   x "3x"
+local function signed(amt)
+    local n = tostring(amt)
+    return (tonumber(amt) or 0) > 0 and ("+" .. n) or n
+end
+
+local function styled(style, amt, word_key, abbr_key)
+    if style == "signed" then return signed(amt) end
+    if style == "bare" then return tostring(amt) end
+    if style == "signed_abbr" then return signed(amt) .. loc(abbr_key) end
+    if style == "abbr" then return tostring(amt) .. loc(abbr_key) end
+    if style == "word" then return loc(word_key, { amt = amt }) end
+    return loc(word_key, { amt = signed(amt) })   -- signed_word (default)
+end
+
+local function styled_xmult(style, amt)
+    if style == "x_abbr" then return "x" .. tostring(amt) .. loc("SCORING.ABBR_MULT") end
+    if style == "x" then return tostring(amt) .. "x" end
+    return loc("SCORING.XMULT", { amt = amt })    -- word (default)
+end
+
+-- One scoring contribution as configured. kind: "chips" | "mult" | "xmult";
+-- gains and losses read their own style (vanilla never emits a negative
+-- chips/mult popup — losses arrive as joker message strings — but the
+-- renderer is signed either way).
+function M.format_effect(kind, amt)
+    if kind == "xmult" then
+        return styled_xmult(setting("scoring.fmt.xmult", "word"), amt)
+    end
+    local gain = (tonumber(amt) or 0) >= 0
+    if kind == "chips" then
+        local style = gain and setting("scoring.fmt.chips_gain", "signed_word")
+            or setting("scoring.fmt.chips_loss", "signed_word")
+        return styled(style, amt, "SCORING.CHIPS", "SCORING.ABBR_CHIPS")
+    end
+    local style = gain and setting("scoring.fmt.mult_gain", "signed_word")
+        or setting("scoring.fmt.mult_loss", "signed_word")
+    return styled(style, amt, "SCORING.MULT", "SCORING.ABBR_MULT")
+end
+
+-- A style rendered with a sample amount, for the settings cycle's option
+-- labels — live examples in the player's language.
+function M.format_example(kind, style)
+    if kind == "xmult" then return styled_xmult(style, 3) end
+    local amt = kind:match("loss") and -10 or 10
+    if kind:match("chips") then
+        return styled(style, amt, "SCORING.CHIPS", "SCORING.ABBR_CHIPS")
+    end
+    return styled(style, amt, "SCORING.MULT", "SCORING.ABBR_MULT")
+end
+
 -- The card/joker a status text floats over, named via its focus proxy. Fully
 -- guarded: a failure here must never drop the announcement (it only drops the
 -- name), so the whole lookup is inside one pcall.
@@ -68,11 +126,11 @@ function M.on_status(card, eval_type, amt, extra)
     local nonzero = (amt or 0) ~= 0
     local phrase
     if eval_type == "chips" then
-        if nonzero then phrase = loc("SCORING.CHIPS", { amt = amt }) end
+        if nonzero then phrase = M.format_effect("chips", amt) end
     elseif eval_type == "mult" or eval_type == "h_mult" then
-        if nonzero then phrase = with_source(card, loc("SCORING.MULT", { amt = amt })) end
+        if nonzero then phrase = with_source(card, M.format_effect("mult", amt)) end
     elseif eval_type == "x_mult" or eval_type == "h_x_mult" then
-        if nonzero then phrase = with_source(card, loc("SCORING.XMULT", { amt = amt })) end
+        if nonzero then phrase = with_source(card, M.format_effect("xmult", amt)) end
     elseif eval_type == "dollars" then
         if nonzero then phrase = with_source(card, loc("SCORING.DOLLARS", { amt = amt })) end
     elseif eval_type == "debuff" then
@@ -85,13 +143,13 @@ function M.on_status(card, eval_type, amt, extra)
             -- No message string: derive the effect from the modifier fields.
             local n, eff = nil, nil
             n = extra.x_mult_mod or extra.x_mult
-            if n then eff = loc("SCORING.XMULT", { amt = n })
+            if n then eff = M.format_effect("xmult", n)
             else
                 n = extra.mult_mod or extra.mult
-                if n then eff = loc("SCORING.MULT", { amt = n })
+                if n then eff = M.format_effect("mult", n)
                 else
                     n = extra.chip_mod or extra.chips
-                    if n then eff = loc("SCORING.CHIPS", { amt = n }) end
+                    if n then eff = M.format_effect("chips", n) end
                 end
             end
             if eff then phrase = with_source(card, eff) end

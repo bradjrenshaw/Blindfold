@@ -9,12 +9,15 @@ local M = { list = {}, by_key = {}, values = {}, _loaded = false }
 local FILE = "blindfold_settings.lua"
 
 -- opts: { key, type ('bool'|'choice'), label_key, default, options?, labels?,
---         apply? } — apply(v) runs on every change, for settings with live
+--         label_values?, apply? } — labels are LOC KEYS per option;
+-- label_values are pre-rendered literal strings (e.g. live format examples)
+-- and win over labels. apply(v) runs on every change, for settings with live
 -- side effects (e.g. rebinding the speech backend).
 function M.register(opts)
     local s = {
         key = opts.key, type = opts.type, label_key = opts.label_key,
         default = opts.default, options = opts.options, labels = opts.labels,
+        label_values = opts.label_values,
         category = opts.category, apply = opts.apply,
     }
     M.list[#M.list + 1] = s
