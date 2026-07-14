@@ -240,6 +240,7 @@ return {
         XMULT   = "por {amt} multi",
         ABBR_CHIPS = "f",
         ABBR_MULT  = "m",
+        JOKER_POS = "comodín en posición {n}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} debilitado",
         SOURCE  = "{source}, {effect}",

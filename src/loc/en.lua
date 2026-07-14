@@ -270,6 +270,7 @@ return {
         XMULT   = "times {amt} mult",
         ABBR_CHIPS = "c",
         ABBR_MULT  = "m",
+        JOKER_POS = "position {n} joker",
         DOLLARS = "{amt} dollars",
         DEBUFF  = "{source} debuffed",
         SOURCE  = "{source}, {effect}",

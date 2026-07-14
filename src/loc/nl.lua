@@ -240,6 +240,7 @@ return {
         XMULT   = "keer {amt} mult",
         ABBR_CHIPS = "c",
         ABBR_MULT  = "m",
+        JOKER_POS = "joker op positie {n}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} verzwakt",
         SOURCE  = "{source}, {effect}",

@@ -162,10 +162,27 @@ local function source_name(card)
     return ok and name or nil
 end
 
+-- A face-down joker's slot index (1-based, left to right), or nil. Amber
+-- Acorn flips and shuffles the jokers (blind.lua:190) and triggers never
+-- flip them back — so the trigger animation shows sighted players WHERE the
+-- effect came from, never which joker it is. The position is exactly what
+-- may be spoken.
+local function face_down_joker_pos(card)
+    if not card or card.facing ~= "back" then return nil end
+    if not (G and G.jokers and card.area == G.jokers and G.jokers.cards) then return nil end
+    for i, c in ipairs(G.jokers.cards) do
+        if c == card then return i end
+    end
+    return nil
+end
+
 -- Prefix an effect with its source ("Blueprint, times 3 mult"); plain chips from
--- individual played cards stay unprefixed to keep the sequence short.
+-- individual played cards stay unprefixed to keep the sequence short. A
+-- face-down joker names its POSITION instead ("position 3 joker, ...") —
+-- that's what the animation shows.
 local function with_source(card, effect)
-    local name = source_name(card)
+    local pos = face_down_joker_pos(card)
+    local name = pos and loc("SCORING.JOKER_POS", { n = pos }) or source_name(card)
     return name and loc("SCORING.SOURCE", { source = name, effect = effect }) or effect
 end
 
@@ -181,9 +198,26 @@ end
 -- immediately, so those speak immediately.)
 function M.on_status(card, eval_type, amt, extra)
     if not card then return end
-    if not setting("scoring.enabled", true) then return end
+    local enabled = setting("scoring.enabled", true)
     local detail = setting("scoring.detail", "full")
-    if detail == "summary" then return end                          -- summary: no per-event detail
+    if not enabled or detail == "summary" then
+        -- Per-event detail is off — but a face-down joker's trigger animation
+        -- still shows sighted players where it sits (Amber Acorn), so that
+        -- position speaks anyway, bare. Ungated like "Not Allowed!": it is
+        -- the only signal of on-screen information.
+        local pos = face_down_joker_pos(card)
+        if not pos then return end
+        local line = loc("SCORING.JOKER_POS", { n = pos })
+        if (extra and extra.instant) or not (G and G.E_MANAGER and Event) then
+            speak(line)
+        else
+            G.E_MANAGER:add_event(Event({
+                trigger = "immediate",
+                func = function() speak(line); return true end,
+            }))
+        end
+        return
+    end
     if detail == "jokers" and eval_type == "chips" then return end  -- jokers only: skip per-card chips
     local nonzero = (amt or 0) ~= 0
     local phrase

@@ -240,6 +240,7 @@ return {
         XMULT   = "vezes {amt} multi",
         ABBR_CHIPS = "f",
         ABBR_MULT  = "m",
+        JOKER_POS = "curinga na posição {n}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} enfraquecido",
         SOURCE  = "{source}, {effect}",

@@ -240,6 +240,7 @@ return {
         XMULT   = "умножить на {amt}",
         ABBR_CHIPS = "ф",
         ABBR_MULT  = "м",
+        JOKER_POS = "джокер на позиции {n}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} ослаблен",
         SOURCE  = "{source}, {effect}",

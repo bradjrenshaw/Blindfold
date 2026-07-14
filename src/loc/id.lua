@@ -240,6 +240,7 @@ return {
         XMULT   = "kali {amt} mult",
         ABBR_CHIPS = "c",
         ABBR_MULT  = "m",
+        JOKER_POS = "joker di posisi {n}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} dilemahkan",
         SOURCE  = "{source}, {effect}",

@@ -240,6 +240,7 @@ return {
         XMULT   = "倍率{amt}倍",
         ABBR_CHIPS = "チップ",
         ABBR_MULT  = "倍率",
+        JOKER_POS = "ポジション{n}のジョーカー",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source}が弱体化",
         SOURCE  = "{source}、{effect}",

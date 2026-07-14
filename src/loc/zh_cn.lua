@@ -240,6 +240,7 @@ return {
         XMULT   = "乘{amt}倍率",
         ABBR_CHIPS = "筹",
         ABBR_MULT  = "倍率",
+        JOKER_POS = "位置{n}的小丑牌",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source}被削弱",
         SOURCE  = "{source}，{effect}",

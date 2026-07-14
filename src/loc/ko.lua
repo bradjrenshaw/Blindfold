@@ -240,6 +240,7 @@ return {
         XMULT   = "배수 {amt}배",
         ABBR_CHIPS = "칩",
         ABBR_MULT  = "배수",
+        JOKER_POS = "{n}번 위치 조커",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} 약화됨",
         SOURCE  = "{source}, {effect}",
