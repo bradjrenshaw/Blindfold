@@ -122,3 +122,14 @@ The mod follows the game's language setting and ships translations for all
 of Balatro's languages (German, French, Spanish, Italian, Portuguese,
 Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). These are machine translations, so please let me know if anything is incorrect.
 
+## Credits
+I would like to thank Rashad Naqeeb for inspiring this project (you knew what you were doing when you put the idea in my head.) I would like to thank Rashad Naqeeb, Aaron Ramirez, and Austin Hicks for early testing.
+
+I would also like to thank my Patreon supporters:
+* Ahmad Abukhdair
+* Alex19EP
+* Chris Shaw
+* Garrett Burgess
+* Nancy Feldman
+* rashad naqeeb
+* Todd Shaughnessy
