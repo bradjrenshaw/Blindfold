@@ -181,6 +181,7 @@ function M.set_backend(name)
             log("Prism: nothing acquirable for '" .. name .. "'; keeping current backend.")
             return
         end
+        log("Prism: acquired '" .. name .. "', stopping the old backend")
         if M.backend ~= nil and replacement ~= M.backend then
             M.prism.prism_backend_stop(M.backend)
             -- Deliberately NEVER freed at runtime. A backend switch crashed
