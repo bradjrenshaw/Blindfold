@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "omgekeerd",
         TELL_SMALL    = "kleine kaart",
         TELL_SQUARE   = "vierkante kaart",
+        TELL_HALF     = "halfhoge kaart",
+        TELL_SHORT    = "korte kaart",
         TELL_RED_BACK = "rode achterkant",
         SELL       = "verkoop {amount}$",
         CANT_SELL  = "niet verkoopbaar",

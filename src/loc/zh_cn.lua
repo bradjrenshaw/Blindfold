@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "背面朝上",
         TELL_SMALL    = "小尺寸卡牌",
         TELL_SQUARE   = "正方形卡牌",
+        TELL_HALF     = "半高卡牌",
+        TELL_SHORT    = "矮卡牌",
         TELL_RED_BACK = "红色牌背",
         SELL       = "售价{amount}$",
         CANT_SELL  = "无法出售",

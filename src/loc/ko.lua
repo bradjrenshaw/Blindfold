@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "뒷면",
         TELL_SMALL    = "작은 카드",
         TELL_SQUARE   = "정사각형 카드",
+        TELL_HALF     = "절반 높이 카드",
+        TELL_SHORT    = "낮은 카드",
         TELL_RED_BACK = "빨간 뒷면",
         SELL       = "판매가 {amount}$",
         CANT_SELL  = "판매 불가",

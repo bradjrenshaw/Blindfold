@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "verdeckt",
         TELL_SMALL    = "kleine Karte",
         TELL_SQUARE   = "quadratische Karte",
+        TELL_HALF     = "halbhohe Karte",
+        TELL_SHORT    = "niedrige Karte",
         TELL_RED_BACK = "rote Rückseite",
         SELL       = "Verkaufswert {amount}$",
         CANT_SELL  = "nicht verkäuflich",

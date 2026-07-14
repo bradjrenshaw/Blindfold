@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "coperta",
         TELL_SMALL    = "carta piccola",
         TELL_SQUARE   = "carta quadrata",
+        TELL_HALF     = "carta a mezza altezza",
+        TELL_SHORT    = "carta corta",
         TELL_RED_BACK = "dorso rosso",
         SELL       = "vendita {amount}$",
         CANT_SELL  = "non vendibile",

@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "裏向き",
         TELL_SMALL    = "小さいカード",
         TELL_SQUARE   = "正方形のカード",
+        TELL_HALF     = "半分の高さのカード",
+        TELL_SHORT    = "低いカード",
         TELL_RED_BACK = "赤い裏面",
         SELL       = "売値{amount}$",
         CANT_SELL  = "売却不可",

@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "tertutup",
         TELL_SMALL    = "kartu kecil",
         TELL_SQUARE   = "kartu persegi",
+        TELL_HALF     = "kartu setengah tinggi",
+        TELL_SHORT    = "kartu pendek",
         TELL_RED_BACK = "punggung merah",
         SELL       = "jual {amount}$",
         CANT_SELL  = "tidak bisa dijual",

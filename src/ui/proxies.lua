@@ -951,9 +951,13 @@ local function face_down_label(node)
     local T = node.T
     if T and G and G.CARD_W and G.CARD_H then
         if T.w < G.CARD_W * 0.85 then
-            parts[#parts + 1] = Message.localized("CARD.TELL_SMALL"):resolve()
+            parts[#parts + 1] = Message.localized("CARD.TELL_SMALL"):resolve()      -- Wee: 0.7 x both (card.lua:253)
         elseif math.abs(T.h - T.w) < 0.001 then
-            parts[#parts + 1] = Message.localized("CARD.TELL_SQUARE"):resolve()
+            parts[#parts + 1] = Message.localized("CARD.TELL_SQUARE"):resolve()     -- Square: H = W (card.lua:248)
+        elseif T.h < G.CARD_H * 0.7 then
+            parts[#parts + 1] = Message.localized("CARD.TELL_HALF"):resolve()       -- Half: H/1.7 (card.lua:238)
+        elseif T.h < G.CARD_H * 0.9 then
+            parts[#parts + 1] = Message.localized("CARD.TELL_SHORT"):resolve()      -- Photograph: H/1.2 (card.lua:243)
         end
     end
     if not node.playing_card and not (node.params and node.params.bypass_back) then

@@ -93,6 +93,8 @@ return {
         FACE_DOWN  = "рубашкой вверх",
         TELL_SMALL    = "маленькая карта",
         TELL_SQUARE   = "квадратная карта",
+        TELL_HALF     = "карта в полвысоты",
+        TELL_SHORT    = "укороченная карта",
         TELL_RED_BACK = "красная рубашка",
         SELL       = "продажа {amount}$",
         CANT_SELL  = "нельзя продать",

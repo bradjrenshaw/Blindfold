@@ -109,6 +109,8 @@ return {
         -- the red back that copied jokers wear on non-red decks.
         TELL_SMALL    = "small card",
         TELL_SQUARE   = "square card",
+        TELL_HALF     = "half-height card",
+        TELL_SHORT    = "short card",
         TELL_RED_BACK = "red back",
         SELL       = "sell ${amount}",
         CANT_SELL  = "cannot sell",
