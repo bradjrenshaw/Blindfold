@@ -202,19 +202,15 @@ function M.on_status(card, eval_type, amt, extra)
     local detail = setting("scoring.detail", "full")
     if not enabled or detail == "summary" then
         -- Per-event detail is off — but a face-down joker's trigger animation
-        -- still shows sighted players where it sits (Amber Acorn), so that
-        -- position speaks anyway, bare. Ungated like "Not Allowed!": it is
-        -- the only signal of on-screen information.
+        -- still shows sighted players where it sits (Amber Acorn). Collect
+        -- the positions; one summary line speaks when the hand's total lands
+        -- (flush_fd_positions). Tracked even with scoring announcements off:
+        -- it is the only surfacing of on-screen information.
         local pos = face_down_joker_pos(card)
-        if not pos then return end
-        local line = loc("SCORING.JOKER_POS", { n = pos })
-        if (extra and extra.instant) or not (G and G.E_MANAGER and Event) then
-            speak(line)
-        else
-            G.E_MANAGER:add_event(Event({
-                trigger = "immediate",
-                func = function() speak(line); return true end,
-            }))
+        if pos then
+            local t = M._fd_positions
+            if not t then t = { set = {}, list = {} }; M._fd_positions = t end
+            if not t.set[pos] then t.set[pos] = true; t.list[#t.list + 1] = pos end
         end
         return
     end
@@ -309,9 +305,23 @@ function M.on_play_area_status(text)
     }))
 end
 
+-- Speak the face-down joker positions collected during a quiet scoring pass
+-- (summary detail / scoring announcements off), sorted and deduped:
+-- "joker positions triggered: 2, 4". Self-clearing, so extra calls no-op.
+local function flush_fd_positions()
+    local t = M._fd_positions
+    M._fd_positions = nil
+    if not t or #t.list == 0 then return end
+    table.sort(t.list)
+    speak(loc("SCORING.JOKER_POS_LIST", { list = table.concat(t.list, ", ") }))
+end
+
 -- The hand name + base chips/mult on the play, and the final score.
 function M.on_hand_text(config, vals)
     if not vals then return end
+    -- The flush sits BEFORE the enabled gate: the collected positions must
+    -- speak even when scoring announcements are fully disabled.
+    if vals.chip_total ~= nil then flush_fd_positions() end
     if not setting("scoring.enabled", true) then return end
     -- The play call (config.immediate) carries the poker hand plus its base
     -- chips and mult; the lighter preview call while selecting carries just the

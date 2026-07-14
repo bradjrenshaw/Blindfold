@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "c",
         ABBR_MULT  = "m",
         JOKER_POS = "joker di posisi {n}",
+        JOKER_POS_LIST = "posisi joker terpicu: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} dilemahkan",
         SOURCE  = "{source}, {effect}",

@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "籌",
         ABBR_MULT  = "倍率",
         JOKER_POS = "位置{n}的小丑牌",
+        JOKER_POS_LIST = "觸發的小丑牌位置：{list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source}被削弱",
         SOURCE  = "{source}，{effect}",

@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "f",
         ABBR_MULT  = "m",
         JOKER_POS = "comodín en posición {n}",
+        JOKER_POS_LIST = "posiciones de comodines activados: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} debilitado",
         SOURCE  = "{source}, {effect}",

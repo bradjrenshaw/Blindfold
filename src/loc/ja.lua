@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "チップ",
         ABBR_MULT  = "倍率",
         JOKER_POS = "ポジション{n}のジョーカー",
+        JOKER_POS_LIST = "発動したジョーカーのポジション：{list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source}が弱体化",
         SOURCE  = "{source}、{effect}",

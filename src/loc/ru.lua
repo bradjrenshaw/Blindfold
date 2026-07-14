@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "ф",
         ABBR_MULT  = "м",
         JOKER_POS = "джокер на позиции {n}",
+        JOKER_POS_LIST = "позиции сработавших джокеров: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} ослаблен",
         SOURCE  = "{source}, {effect}",

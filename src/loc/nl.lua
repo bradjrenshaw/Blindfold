@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "c",
         ABBR_MULT  = "m",
         JOKER_POS = "joker op positie {n}",
+        JOKER_POS_LIST = "geactiveerde jokerposities: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} verzwakt",
         SOURCE  = "{source}, {effect}",

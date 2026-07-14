@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "j",
         ABBR_MULT  = "m",
         JOKER_POS = "joker en position {n}",
+        JOKER_POS_LIST = "positions des jokers déclenchés : {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} affaibli",
         SOURCE  = "{source}, {effect}",

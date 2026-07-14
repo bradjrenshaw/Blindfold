@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "칩",
         ABBR_MULT  = "배수",
         JOKER_POS = "{n}번 위치 조커",
+        JOKER_POS_LIST = "발동한 조커 위치: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} 약화됨",
         SOURCE  = "{source}, {effect}",

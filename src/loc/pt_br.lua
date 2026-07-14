@@ -241,6 +241,7 @@ return {
         ABBR_CHIPS = "f",
         ABBR_MULT  = "m",
         JOKER_POS = "curinga na posição {n}",
+        JOKER_POS_LIST = "posições de curingas ativados: {list}",
         DOLLARS = "{amt}$",
         DEBUFF  = "{source} enfraquecido",
         SOURCE  = "{source}, {effect}",
