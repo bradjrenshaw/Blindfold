@@ -93,9 +93,13 @@ end
 -- Names of the backends actually usable on this machine (engine present),
 -- enumerated once — the registry probe costs a native round-trip per entry.
 function M.backends()
+    -- Before init there is nothing to enumerate — and the miss must NOT be
+    -- cached, or a call that lands too early (module load time) would pin the
+    -- list empty forever.
+    if not M.loaded then return {} end
     if M._backends then return M._backends end
     local names = {}
-    if M.loaded then
+    do
         pcall(function()
             local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
             for i = 0, count - 1 do

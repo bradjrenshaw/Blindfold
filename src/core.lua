@@ -248,19 +248,15 @@ do
 
         -- Speech backend picker: "auto" plus whatever Prism says is usable on
         -- this machine. Product names (NVDA, JAWS...) are not translated —
-        -- only the auto option carries a loc label.
-        local backend_options = { "auto" }
-        for _, name in ipairs(speech.backends and speech.backends() or {}) do
-            backend_options[#backend_options + 1] = name
-        end
+        -- only the auto option carries a loc label. This block runs at module
+        -- load, BEFORE speech.init, so the real options are filled in at boot
+        -- (see the boot pcall) once prism has enumerated.
         Settings.register{ key = "speech.backend", type = "choice",
             label_key = "SET.SPEECH_BACKEND", default = "auto", category = "speech",
-            options = backend_options, labels = { "SET.BACKEND_AUTO" },
+            options = { "auto" }, labels = { "SET.BACKEND_AUTO" },
             apply = function(v) speech.set_backend(v) end }
 
         Settings.load()
-        -- A saved non-auto backend takes effect now (set_backend no-ops on auto).
-        speech.set_backend(Settings.value("speech.backend"))
         BA.settings = Settings
         Scoring.settings = Settings
         Round.settings = Settings
@@ -931,6 +927,18 @@ end
 -- ---------------------------------------------------------------------------
 local ok, err = pcall(function()
     speech.init(MOD_DIR)
+    -- The backend picker registered before prism was up (module load time):
+    -- fill its options in now that the registry can enumerate, and apply the
+    -- saved choice (a no-op on "auto").
+    pcall(function()
+        local s = BA.settings and BA.settings.by_key and BA.settings.by_key["speech.backend"]
+        if s then
+            local opts = { "auto" }
+            for _, name in ipairs(speech.backends()) do opts[#opts + 1] = name end
+            s.options = opts
+        end
+        speech.set_backend(BA.settings and BA.settings.value("speech.backend"))
+    end)
     BA.install()
     -- The loaded announcement is deliberately NOT here: it waits for the
     -- window (boot_announce in focus_tick), or screen readers drop it.
