@@ -45,6 +45,30 @@ if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
 }
 Write-Host "   Lovely + Prism present"
 
+# --- Stamp the Lovely manifest ----------------------------------------------------
+# lovely.toml's [manifest] version is what Lovely reports for the mod. It is
+# stamped IN THE REPO (not just the staged copy) so it ships committed with
+# the release and dev builds inherit the latest release baseline.
+Write-Step "Stamping lovely.toml"
+$numeric = $Version.TrimStart('v')
+$manifestPath = Join-Path $src 'lovely.toml'
+$toml = [IO.File]::ReadAllText($manifestPath)
+$re = New-Object Text.RegularExpressions.Regex('version = "[^"]*"')
+$stamped = $re.Replace($toml, 'version = "' + $numeric + '"', 1)
+if ($stamped -ne $toml) {
+    [IO.File]::WriteAllText($manifestPath, $stamped, (New-Object Text.UTF8Encoding($false)))
+    Write-Host "   version = $numeric  (repo file updated - commit it with the release)"
+} else {
+    Write-Host "   already $numeric"
+}
+
+# The installer exe's own version is set by hand in installer\Cargo.toml;
+# just warn when it drifts from the release being cut.
+$cargoToml = [IO.File]::ReadAllText((Join-Path $repo 'installer\Cargo.toml'))
+if ($cargoToml -notmatch ('\[package\][^\[]*version = "' + [regex]::Escape($numeric) + '"')) {
+    Write-Warning "installer\Cargo.toml package version is not $numeric - bump it (and rebuild) if the exe should match."
+}
+
 # --- Stage and zip ---------------------------------------------------------------
 Write-Step "Building Blindfold.zip"
 $stage = Join-Path $env:TEMP "blindfold_release_$PID"

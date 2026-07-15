@@ -2,8 +2,10 @@
 # Registers the mod's Lua as requireable modules, then boots it once the
 # Controller exists. No Steamodded dependency — Lovely only.
 
+# The version below is stamped by scripts\build_release.ps1 -Version — don't
+# edit it by hand.
 [manifest]
-version = "1.0.0"
+version = "1.0.2"
 priority = 0
 
 # --- Register mod Lua as requireable modules. Lovely does NOT add the mod
