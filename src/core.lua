@@ -661,6 +661,23 @@ function BA.install()
         end
     end
 
+    -- 1c) Make that deselect RELIABLE under the owned overlays: the engine's
+    -- own b-button routing (controller.lua:731) only deselects when the
+    -- ENGINE's focus target is a hand card — and our overlays don't drive
+    -- engine focus, so it's stale and B "sometimes works". When an overlay
+    -- owns the screen (and no game menu is up), route b straight to
+    -- queue_R_cursor_press — same call, same gameplay guards, no focus check.
+    local orig_bpu = Controller.button_press_update
+    function Controller:button_press_update(button, dt)
+        if button == "b" and Overlays and Overlays.captures and Overlays.captures()
+            and not (G and G.OVERLAY_MENU)
+            and G and G.hand and G.hand.highlighted and G.hand.highlighted[1] then
+            self:queue_R_cursor_press()
+            return
+        end
+        return orig_bpu(self, button, dt)
+    end
+
     -- 2) Drive the engine from the keyboard via the InputAction layer.
     local orig_key_press = Controller.key_press
     function Controller:key_press(key)
