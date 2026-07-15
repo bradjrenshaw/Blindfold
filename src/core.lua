@@ -473,10 +473,16 @@ end
 -- and the poll announces once when the installed channel has something newer.
 -- ---------------------------------------------------------------------------
 BA.version = (function()
-    local f = io.open(MOD_DIR .. "/version", "rb")
-    if not f then return nil end
-    local v = f:read("*a") or ""
-    f:close()
+    -- love.filesystem first: PhysFS handles Unicode save paths, while
+    -- io.open's ANSI fopen garbles non-ASCII user names (C:\Users\Usuário)
+    -- and reported "no version file" on a perfectly good install. io.open
+    -- stays as the junction-install fallback.
+    local v = love.filesystem.read("Mods/Blindfold/version")
+    if not v then
+        local f = io.open(MOD_DIR .. "/version", "rb")
+        if f then v = f:read("*a"); f:close() end
+    end
+    if not v then return nil end
     v = v:gsub("%s+", "")
     return v ~= "" and v or nil
 end)()

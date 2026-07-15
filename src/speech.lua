@@ -17,6 +17,10 @@ local bit = require("bit")
 local M = { loaded = false, prism = nil, ctx = nil, backend = nil }
 
 ffi.cdef([[
+    int   MultiByteToWideChar(unsigned int cp, unsigned long flags,
+                              const char* mb, int cbmb, wchar_t* wc, int cchwc);
+    void* LoadLibraryW(const wchar_t* path);
+
     typedef struct prism_ctx prism_ctx;
     typedef struct prism_backend prism_backend;
 
@@ -52,12 +56,30 @@ local function log(text)
 end
 M.log = log
 
+-- UTF-8 Lua string -> null-terminated UTF-16LE buffer (for the wide Win32 API).
+local CP_UTF8 = 65001
+local function to_wide(s)
+    local n = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
+    if n <= 0 then return nil end
+    local buf = ffi.new("wchar_t[?]", n)
+    ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
+    return buf
+end
+
 -- Load Prism from the mod's lib/ folder and acquire the best available
 -- backend (prism's own preference order). mod_dir is the deployed mod path.
 function M.init(mod_dir)
     local lib_dir = (mod_dir .. "/lib"):gsub("/", "\\")
     local ok, err = pcall(function()
-        M.prism = ffi.load(lib_dir .. "\\prism.dll")
+        -- ffi.load routes through the ANSI LoadLibraryA, which garbles
+        -- non-ASCII install paths (C:\Users\Usuário\... -> "module not
+        -- found"). Load the DLL ourselves through the wide API; ffi.load by
+        -- bare name then binds to the ALREADY-LOADED module (LoadLibrary
+        -- resolves loaded modules by name before searching disk).
+        local wide = to_wide(lib_dir .. "\\prism.dll")
+        assert(wide and ffi.C.LoadLibraryW(wide) ~= nil,
+            "LoadLibraryW failed for " .. lib_dir .. "\\prism.dll")
+        M.prism = ffi.load("prism")
         M.ctx = M.prism.prism_init(nil)
         assert(M.ctx ~= nil, "prism_init returned null")
         M.backend = M.prism.prism_registry_create_best(M.ctx)
