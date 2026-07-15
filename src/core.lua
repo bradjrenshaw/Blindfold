@@ -678,6 +678,53 @@ function BA.install()
         return orig_bpu(self, button, dt)
     end
 
+    -- 1d) The Wheel of Fortune's FAILURE is an attention_text "Nope!" popup
+    -- (card.lua:1502) — no eval status, no hand text, nothing else we hook.
+    -- Wrap attention_text for exactly that popup; its other texts either
+    -- announce through paths we already cover or are decorative.
+    if type(attention_text) == "function" then
+        local orig_attention = attention_text
+        _G.attention_text = function(args)
+            pcall(function()
+                local nope = localize and localize("k_nope_ex")
+                if args and type(args.text) == "string" and args.text == nope then
+                    speech.say(args.text)
+                end
+            end)
+            return orig_attention(args)
+        end
+    end
+
+    -- 1e) The Wheel of Fortune's SUCCESS (also Aura / Hex / Ectoplasm) lands
+    -- an edition on one card with a juice + per-edition sound — set_edition's
+    -- celebration (card.lua:432) — but nothing names the card or edition.
+    -- Announce exactly when the game celebrates (not silent): the silent
+    -- calls are spawn-time decoration (shop stock, pack contents).
+    local orig_set_edition = Card.set_edition
+    function Card:set_edition(edition, immediate, silent)
+        orig_set_edition(self, edition, immediate, silent)
+        if not (self.edition and not silent) then return end
+        local card = self
+        pcall(function()
+            G.E_MANAGER:add_event(Event({ trigger = "immediate", func = function()
+                pcall(function()
+                    local Proxy = ba_require("ui.proxies").Proxy
+                    local Factory2 = ba_require("ui.factory")
+                    local proxy = Factory2.create(card)
+                    local m = proxy and proxy.get_label and proxy:get_label()
+                    local name = m and m:resolve() or nil
+                    local word = Proxy.edition_word(card)
+                    word = word and word:resolve() or nil
+                    if name and word then
+                        speech.say(loc_line("CARD.TIP", "{name}, {desc}",
+                            { name = name, desc = word }))
+                    end
+                end)
+                return true
+            end }))
+        end)
+    end
+
     -- 2) Drive the engine from the keyboard via the InputAction layer.
     local orig_key_press = Controller.key_press
     function Controller:key_press(key)
