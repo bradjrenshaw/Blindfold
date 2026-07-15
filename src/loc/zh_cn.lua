@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "事件",
         GAME = "游戏",
         CARD = "卡牌",
         JOKER = "小丑牌",
@@ -234,6 +235,15 @@ return {
         TAG           = "标签",
     },
 
+    EVENTS = {
+        DESTROYED = "{name}被摧毁",
+        ADDED     = "{name}已添加",
+        HANDS     = "出牌次数{amt}",
+        DISCARDS  = "弃牌次数{amt}",
+        ANTE      = "底注{amt}",
+        ROUND     = "回合{amt}",
+    },
+
     SCORING = {
         HAND    = "{name}，{chips}筹码，{mult}倍率",
         HAND_LEVEL = "{name}升到{level}级，{chips}筹码，{mult}倍率",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "朗读区域",
         ANN_SCREEN      = "朗读画面切换",
         ANN_KEYWORDS    = "朗读关键词说明",
+        EV_TAGS         = "播报标签效果",
+        EV_CARDS        = "播报创建和摧毁的卡牌",
+        EV_RESOURCES    = "播报资源变化",
         DISCORD         = "访问Discord",
         PATREON         = "在Patreon上支持我们",
         OPENING_DISCORD = "正在浏览器中打开Discord。",

@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Gebeurtenissen",
         GAME = "Spel",
         CARD = "Kaart",
         JOKER = "Joker",
@@ -234,6 +235,15 @@ return {
         TAG           = "Tag",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} vernietigd",
+        ADDED     = "{name} toegevoegd",
+        HANDS     = "{amt} handen",
+        DISCARDS  = "{amt} weggooibeurten",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} ronde",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
         HAND_LEVEL = "{name} gestegen naar niveau {level}, {chips} chips, {mult} mult",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Gebied aankondigen",
         ANN_SCREEN      = "Schermwissels aankondigen",
         ANN_KEYWORDS    = "Trefwoordbeschrijvingen aankondigen",
+        EV_TAGS         = "Tag-effecten aankondigen",
+        EV_CARDS        = "Gemaakte en vernietigde kaarten aankondigen",
+        EV_RESOURCES    = "Wijzigingen in hulpbronnen aankondigen",
         DISCORD         = "Bezoek de Discord",
         PATREON         = "Steun op Patreon",
         OPENING_DISCORD = "Discord wordt geopend in de browser.",

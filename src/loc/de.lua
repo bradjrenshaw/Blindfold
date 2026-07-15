@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Ereignisse",
         GAME = "Spiel",
         CARD = "Karte",
         JOKER = "Joker",
@@ -234,6 +235,15 @@ return {
         TAG           = "Tag",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} zerstört",
+        ADDED     = "{name} hinzugefügt",
+        HANDS     = "{amt} Hände",
+        DISCARDS  = "{amt} Abwürfe",
+        ANTE      = "{amt} Ante",
+        ROUND     = "{amt} Runde",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} Chips, {mult} Mult",
         HAND_LEVEL = "{name} aufgestiegen auf Stufe {level}, {chips} Chips, {mult} Mult",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Bereich ansagen",
         ANN_SCREEN      = "Bildschirmwechsel ansagen",
         ANN_KEYWORDS    = "Stichwort-Beschreibungen ansagen",
+        EV_TAGS         = "Tag-Effekte ansagen",
+        EV_CARDS        = "Erstellte und zerstörte Karten ansagen",
+        EV_RESOURCES    = "Ressourcenänderungen ansagen",
         DISCORD         = "Discord besuchen",
         PATREON         = "Auf Patreon unterstützen",
         OPENING_DISCORD = "Discord wird im Browser geöffnet.",

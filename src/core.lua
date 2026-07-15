@@ -42,7 +42,7 @@ BA.require = ba_require
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring, Containers, Screens, FocusBuffers, Overlays
+local Factory, Input, Scoring, Containers, Screens, FocusBuffers, Overlays, Events
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -79,6 +79,14 @@ do
         Buffers.add(FocusBuffers.ui)
         BA.focus_buffers = FocusBuffers
         BA.buffers = Buffers
+
+        -- Run events (tags firing, cards created/destroyed, resource deltas):
+        -- hooks in BA.install emit through the dispatcher; its history buffer
+        -- joins the review cycle.
+        Events = ba_require("events.dispatcher")
+        Events.say = speech.say
+        Buffers.add(Events.buffer)
+        BA.events = Events
         local kb = Input.KeyboardBinding
         Input.register{ key = "buffer_next_item", label_key = "INPUT.BUFFER_NEXT_ITEM",
             handler = function() Buffers.next_item() end, bindings = { kb.new("up", true) } }
@@ -246,6 +254,7 @@ do
         Settings.register{ key = "announce.container.enabled",   type = "bool", label_key = "SET.ANN_CONTAINER",   default = true, category = "announce" }
         Settings.register{ key = "announce.screen.enabled",      type = "bool", label_key = "SET.ANN_SCREEN",      default = true, category = "announce" }
         Settings.register{ key = "announce.keywords.enabled",    type = "bool", label_key = "SET.ANN_KEYWORDS",    default = true, category = "announce" }
+        Events.register_settings()   -- events.<group>.enabled toggles (same screen)
 
         -- Speech backend picker: "auto" plus whatever Prism says is usable on
         -- this machine. Product names (NVDA, JAWS...) are not translated —
@@ -678,51 +687,195 @@ function BA.install()
         return orig_bpu(self, button, dt)
     end
 
-    -- 1d) The Wheel of Fortune's FAILURE is an attention_text "Nope!" popup
-    -- (card.lua:1502) — no eval status, no hand text, nothing else we hook.
-    -- Wrap attention_text for exactly that popup; its other texts either
-    -- announce through paths we already cover or are decorative.
+    -- ---- Run events (through the events dispatcher: grouped toggles in the
+    -- Announcements screen, mirrored into the Events review buffer) --------
+
+    -- A card named via its focus proxy, or nil. Face-down cards label as
+    -- "face down card" — exactly what a sighted player would see destroyed.
+    local function card_label(card)
+        local ok, name = pcall(function()
+            local proxy = Factory.create(card)
+            local m = proxy and proxy.get_label and proxy:get_label()
+            return m and m:resolve() or nil
+        end)
+        return ok and name or nil
+    end
+    local function emit(group, text, opts)
+        if Events then pcall(Events.emit, group, text, opts) end
+    end
+
+    -- 1d) attention_text popups nothing else covers: the Wheel of Fortune's
+    -- "Nope!" (card.lua:1502) and the Plasma Deck's "Balanced" swirl
+    -- (back.lua:139). Everything else attention_text shows announces through
+    -- paths we already hook or is decorative.
     if type(attention_text) == "function" then
         local orig_attention = attention_text
         _G.attention_text = function(args)
             pcall(function()
-                local nope = localize and localize("k_nope_ex")
-                if args and type(args.text) == "string" and args.text == nope then
-                    speech.say(args.text)
+                local text = args and type(args.text) == "string" and args.text or nil
+                if not text then return end
+                if text == (localize and localize("k_nope_ex")) then
+                    emit("cards", text, { instant = true })
+                elseif text == (localize and localize("k_balanced")) then
+                    emit("resources", text, { instant = true })
                 end
             end)
             return orig_attention(args)
         end
     end
 
-    -- 1e) The Wheel of Fortune's SUCCESS (also Aura / Hex / Ectoplasm) lands
-    -- an edition on one card with a juice + per-edition sound — set_edition's
-    -- celebration (card.lua:432) — but nothing names the card or edition.
-    -- Announce exactly when the game celebrates (not silent): the silent
-    -- calls are spawn-time decoration (shop stock, pack contents).
+    -- 1e) An edition landing on a card (Wheel of Fortune / Aura / Hex /
+    -- Ectoplasm): set_edition's celebration (juice + per-edition sound,
+    -- card.lua:432) never names the card or edition. Announce exactly when
+    -- the game celebrates — the silent calls are spawn-time decoration.
     local orig_set_edition = Card.set_edition
     function Card:set_edition(edition, immediate, silent)
         orig_set_edition(self, edition, immediate, silent)
         if not (self.edition and not silent) then return end
-        local card = self
         pcall(function()
-            G.E_MANAGER:add_event(Event({ trigger = "immediate", func = function()
+            local Proxy = ba_require("ui.proxies").Proxy
+            local name = card_label(self)
+            local word = Proxy.edition_word(self)
+            word = word and word:resolve() or nil
+            if name and word then
+                emit("cards", loc_line("CARD.TIP", "{name}, {desc}",
+                    { name = name, desc = word }))
+            end
+        end)
+    end
+
+    -- 1f) Tags firing: Tag:yep pops the effect text over the HUD tag
+    -- (tag.lua:62, "+$25" etc.), Tag:nope pops a literal NOPE. Named with the
+    -- game's localized tag name.
+    if Tag then
+        local function tag_name(tag)
+            local ok, name = pcall(localize, { type = "name_text", set = "Tag", key = tag.key })
+            return (ok and type(name) == "string" and name ~= "" and name ~= "ERROR") and name or nil
+        end
+        local orig_yep = Tag.yep
+        function Tag:yep(message, _colour, func)
+            pcall(function()
+                local name = tag_name(self)
+                local text = tostring(message or "")
+                emit("tags", name and loc_line("CARD.TIP", "{name}, {desc}",
+                    { name = name, desc = text }) or text)
+            end)
+            return orig_yep(self, message, _colour, func)
+        end
+        local orig_nope = Tag.nope
+        function Tag:nope()
+            pcall(function()
+                local name = tag_name(self)
+                emit("tags", name and loc_line("CARD.TIP", "{name}, {desc}",
+                    { name = name, desc = "NOPE" }) or "NOPE")
+            end)
+            return orig_nope(self)
+        end
+    end
+
+    -- 1g) Cards destroyed: the victim of Ceremonial Dagger / Hex / Immolate /
+    -- Madness just plays its dissolve. Announce dissolves from the joker row
+    -- and the hand; NOT sells (sell_card dissolves too — flagged below, the
+    -- sell announcement covers it), used consumables (G.consumeables), pack
+    -- skips, or scoring shatters (G.play — the eval message names those).
+    local orig_sell_card = Card.sell_card
+    function Card:sell_card()
+        self._ba_selling = true
+        return orig_sell_card(self)
+    end
+    local orig_dissolve = Card.start_dissolve
+    function Card:start_dissolve(...)
+        pcall(function()
+            if self._ba_selling then return end
+            if not (G and self.area and (self.area == G.jokers or self.area == G.hand)) then return end
+            local name = card_label(self)
+            if name then
+                emit("cards", loc_line("EVENTS.DESTROYED", "{name} destroyed",
+                    { name = name }), { instant = true })
+            end
+        end)
+        return orig_dissolve(self, ...)
+    end
+
+    -- 1h) Cards created mid-run (Judgement, Riff-Raff, Ankh and Invisible
+    -- Joker copies, spectral-made consumables): they materialize into the
+    -- joker/consumable rows via emplace. Purchases and pack picks arrive
+    -- through the same emplace — flagged at their FUNCS below, since buying
+    -- already announces.
+    local orig_buy = G.FUNCS.buy_from_shop
+    if orig_buy then
+        G.FUNCS.buy_from_shop = function(e)
+            pcall(function()
+                local c = e and e.config and e.config.ref_table
+                if c then c._ba_acquired = true end
+            end)
+            return orig_buy(e)
+        end
+    end
+    local orig_use = G.FUNCS.use_card
+    if orig_use then
+        G.FUNCS.use_card = function(e, mute, nosave)
+            pcall(function()
+                local c = e and e.config and e.config.ref_table
+                if c then c._ba_acquired = true end
+            end)
+            return orig_use(e, mute, nosave)
+        end
+    end
+    local orig_emplace = CardArea.emplace
+    function CardArea:emplace(card, location, stay_flipped)
+        local from = card and card.area
+        orig_emplace(self, card, location, stay_flipped)
+        pcall(function()
+            if not (G and (self == G.jokers or self == G.consumeables)) then return end
+            if from ~= nil then return end            -- moved, not created
+            if card._ba_acquired then card._ba_acquired = nil; return end
+            local name = card_label(card)
+            if name then
+                emit("cards", loc_line("EVENTS.ADDED", "{name} added", { name = name }))
+            end
+        end)
+    end
+
+    -- 1i) Resource deltas: the game pops "+1"/"-1" next to the HUD number
+    -- whenever hands/discards/ante/round change outside the normal round
+    -- reset (ease_*, common_events.lua:111+). Money (ease_dollars) is
+    -- deliberately NOT hooked: every dollar change already announces through
+    -- the scoring, cash-out, or tag paths — hooking it would double-speak.
+    local EASES = {
+        { name = "ease_hands_played", key = "EVENTS.HANDS",    fallback = "{amt} hands" },
+        { name = "ease_discard",      key = "EVENTS.DISCARDS", fallback = "{amt} discards" },
+        { name = "ease_ante",         key = "EVENTS.ANTE",     fallback = "{amt} ante" },
+        { name = "ease_round",        key = "EVENTS.ROUND",    fallback = "{amt} round" },
+    }
+    for _, spec in ipairs(EASES) do
+        local orig = _G[spec.name]
+        if type(orig) == "function" then
+            _G[spec.name] = function(mod, ...)
                 pcall(function()
-                    local Proxy = ba_require("ui.proxies").Proxy
-                    local Factory2 = ba_require("ui.factory")
-                    local proxy = Factory2.create(card)
-                    local m = proxy and proxy.get_label and proxy:get_label()
-                    local name = m and m:resolve() or nil
-                    local word = Proxy.edition_word(card)
-                    word = word and word:resolve() or nil
-                    if name and word then
-                        speech.say(loc_line("CARD.TIP", "{name}, {desc}",
-                            { name = name, desc = word }))
+                    local n = tonumber(mod)
+                    if n and n ~= 0 then
+                        local amt = n > 0 and ("+" .. tostring(n)) or tostring(n)
+                        emit("resources", loc_line(spec.key, spec.fallback, { amt = amt }))
                     end
                 end)
-                return true
-            end }))
-        end)
+                return orig(mod, ...)
+            end
+        end
+    end
+
+    -- 1j) "No space!" — a joker/consumable-creating effect firing with full
+    -- slots (alert_no_space, misc_functions.lua:885). The game's word.
+    if type(alert_no_space) == "function" then
+        local orig_no_space = alert_no_space
+        _G.alert_no_space = function(card, area)
+            pcall(function()
+                local ok, text = pcall(localize, "k_no_space_ex")
+                emit("cards", (ok and type(text) == "string") and text or "No space!",
+                    { instant = true })
+            end)
+            return orig_no_space(card, area)
+        end
     end
 
     -- 2) Drive the engine from the keyboard via the InputAction layer.

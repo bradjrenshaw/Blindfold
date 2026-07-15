@@ -149,6 +149,7 @@ return {
 
     -- Buffer (review-cursor) readouts.
     BUFFER = {
+        EVENTS = "Events",
         GAME = "Game",
         CARD = "Card",
         JOKER = "Joker",
@@ -264,6 +265,15 @@ return {
     },
 
     -- Spoken hand-scoring sequence.
+    EVENTS = {
+        DESTROYED = "{name} destroyed",
+        ADDED     = "{name} added",
+        HANDS     = "{amt} hands",
+        DISCARDS  = "{amt} discards",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} round",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} chips, {mult} mult",
         HAND_LEVEL = "{name} upgraded to level {level}, {chips} chips, {mult} mult",
@@ -308,6 +318,9 @@ return {
         ANN_CONTAINER   = "Announce container",
         ANN_SCREEN      = "Announce screen changes",
         ANN_KEYWORDS    = "Announce keyword descriptions",
+        EV_TAGS         = "Announce tag effects",
+        EV_CARDS        = "Announce created and destroyed cards",
+        EV_RESOURCES    = "Announce resource changes",
         DISCORD         = "Visit Discord",
         PATREON         = "Support on Patreon",
         OPENING_DISCORD = "Opening Discord in browser.",

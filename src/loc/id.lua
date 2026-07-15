@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Peristiwa",
         GAME = "Permainan",
         CARD = "Kartu",
         JOKER = "Joker",
@@ -234,6 +235,15 @@ return {
         TAG           = "Tag",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} dihancurkan",
+        ADDED     = "{name} ditambahkan",
+        HANDS     = "{amt} giliran main",
+        DISCARDS  = "{amt} buangan",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} ronde",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} chip, {mult} mult",
         HAND_LEVEL = "{name} naik ke level {level}, {chips} chip, {mult} mult",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Bacakan area",
         ANN_SCREEN      = "Bacakan pergantian layar",
         ANN_KEYWORDS    = "Bacakan deskripsi kata kunci",
+        EV_TAGS         = "Bacakan efek tag",
+        EV_CARDS        = "Bacakan kartu yang dibuat dan dihancurkan",
+        EV_RESOURCES    = "Bacakan perubahan sumber daya",
         DISCORD         = "Kunjungi Discord",
         PATREON         = "Dukung di Patreon",
         OPENING_DISCORD = "Membuka Discord di browser.",

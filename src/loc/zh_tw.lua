@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "事件",
         GAME = "遊戲",
         CARD = "卡牌",
         JOKER = "小丑牌",
@@ -234,6 +235,15 @@ return {
         TAG           = "標籤",
     },
 
+    EVENTS = {
+        DESTROYED = "{name}被摧毀",
+        ADDED     = "{name}已添加",
+        HANDS     = "出牌次數{amt}",
+        DISCARDS  = "棄牌次數{amt}",
+        ANTE      = "底注{amt}",
+        ROUND     = "回合{amt}",
+    },
+
     SCORING = {
         HAND    = "{name}，{chips}籌碼，{mult}倍率",
         HAND_LEVEL = "{name}升到{level}級，{chips}籌碼，{mult}倍率",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "朗讀區域",
         ANN_SCREEN      = "朗讀畫面切換",
         ANN_KEYWORDS    = "朗讀關鍵詞說明",
+        EV_TAGS         = "播報標籤效果",
+        EV_CARDS        = "播報創建和摧毀的卡牌",
+        EV_RESOURCES    = "播報資源變化",
         DISCORD         = "造訪Discord",
         PATREON         = "在Patreon上支持我們",
         OPENING_DISCORD = "正在瀏覽器中開啟Discord。",

@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "이벤트",
         GAME = "게임",
         CARD = "카드",
         JOKER = "조커",
@@ -234,6 +235,15 @@ return {
         TAG           = "태그",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} 파괴됨",
+        ADDED     = "{name} 추가됨",
+        HANDS     = "핸드 {amt}",
+        DISCARDS  = "버리기 {amt}",
+        ANTE      = "앤티 {amt}",
+        ROUND     = "라운드 {amt}",
+    },
+
     SCORING = {
         HAND    = "{name}, 칩 {chips}, 배수 {mult}",
         HAND_LEVEL = "{name} 레벨 {level}로 상승, 칩 {chips}, 배수 {mult}",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "영역 읽기",
         ANN_SCREEN      = "화면 전환 읽기",
         ANN_KEYWORDS    = "키워드 설명 읽기",
+        EV_TAGS         = "태그 효과 알림",
+        EV_CARDS        = "생성/파괴된 카드 알림",
+        EV_RESOURCES    = "자원 변화 알림",
         DISCORD         = "Discord 방문",
         PATREON         = "Patreon에서 후원하기",
         OPENING_DISCORD = "브라우저에서 Discord를 여는 중입니다.",

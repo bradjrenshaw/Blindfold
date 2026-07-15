@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "События",
         GAME = "Игра",
         CARD = "Карта",
         JOKER = "Джокер",
@@ -234,6 +235,15 @@ return {
         TAG           = "Тег",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} уничтожена",
+        ADDED     = "{name} добавлена",
+        HANDS     = "{amt} руки",
+        DISCARDS  = "{amt} сбросы",
+        ANTE      = "{amt} анте",
+        ROUND     = "{amt} раунд",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} фишек, {mult} множитель",
         HAND_LEVEL = "{name}: уровень повышен до {level}, {chips} фишек, {mult} множитель",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Озвучивать область",
         ANN_SCREEN      = "Озвучивать смену экрана",
         ANN_KEYWORDS    = "Озвучивать описания ключевых слов",
+        EV_TAGS         = "Озвучивать эффекты меток",
+        EV_CARDS        = "Озвучивать созданные и уничтоженные карты",
+        EV_RESOURCES    = "Озвучивать изменения ресурсов",
         DISCORD         = "Наш Discord",
         PATREON         = "Поддержать на Patreon",
         OPENING_DISCORD = "Discord открывается в браузере.",

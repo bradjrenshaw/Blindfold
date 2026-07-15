@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Eventos",
         GAME = "Partida",
         CARD = "Carta",
         JOKER = "Comodín",
@@ -234,6 +235,15 @@ return {
         TAG           = "Etiqueta",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} destruida",
+        ADDED     = "{name} añadida",
+        HANDS     = "{amt} manos",
+        DISCARDS  = "{amt} descartes",
+        ANTE      = "{amt} apuesta inicial",
+        ROUND     = "{amt} ronda",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} fichas, {mult} multi",
         HAND_LEVEL = "{name} subió al nivel {level}, {chips} fichas, {mult} multi",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Anunciar zona",
         ANN_SCREEN      = "Anunciar cambios de pantalla",
         ANN_KEYWORDS    = "Anunciar descripciones de palabras clave",
+        EV_TAGS         = "Anunciar efectos de etiquetas",
+        EV_CARDS        = "Anunciar cartas creadas y destruidas",
+        EV_RESOURCES    = "Anunciar cambios de recursos",
         DISCORD         = "Visitar Discord",
         PATREON         = "Apóyanos en Patreon",
         OPENING_DISCORD = "Abriendo Discord en el navegador.",

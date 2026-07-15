@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "イベント",
         GAME = "ゲーム",
         CARD = "カード",
         JOKER = "ジョーカー",
@@ -234,6 +235,15 @@ return {
         TAG           = "タグ",
     },
 
+    EVENTS = {
+        DESTROYED = "{name}が破壊されました",
+        ADDED     = "{name}が追加されました",
+        HANDS     = "ハンド{amt}",
+        DISCARDS  = "ディスカード{amt}",
+        ANTE      = "アンティ{amt}",
+        ROUND     = "ラウンド{amt}",
+    },
+
     SCORING = {
         HAND    = "{name}、チップ{chips}、倍率{mult}",
         HAND_LEVEL = "{name}がレベル{level}に上昇、チップ{chips}、倍率{mult}",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "エリアを読み上げる",
         ANN_SCREEN      = "画面の切り替えを読み上げる",
         ANN_KEYWORDS    = "キーワードの説明を読み上げる",
+        EV_TAGS         = "タグ効果を読み上げる",
+        EV_CARDS        = "生成・破壊されたカードを読み上げる",
+        EV_RESOURCES    = "リソースの変化を読み上げる",
         DISCORD         = "Discordを開く",
         PATREON         = "Patreonで支援する",
         OPENING_DISCORD = "ブラウザでDiscordを開いています。",

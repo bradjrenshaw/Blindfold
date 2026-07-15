@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Événements",
         GAME = "Partie",
         CARD = "Carte",
         JOKER = "Joker",
@@ -234,6 +235,15 @@ return {
         TAG           = "Badge",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} détruite",
+        ADDED     = "{name} ajoutée",
+        HANDS     = "{amt} mains",
+        DISCARDS  = "{amt} défausses",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} manche",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} jetons, {mult} multi",
         HAND_LEVEL = "{name} amélioré au niveau {level}, {chips} jetons, {mult} multi",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Annoncer la zone",
         ANN_SCREEN      = "Annoncer les changements d'écran",
         ANN_KEYWORDS    = "Annoncer les descriptions des mots-clés",
+        EV_TAGS         = "Annoncer les effets des étiquettes",
+        EV_CARDS        = "Annoncer les cartes créées et détruites",
+        EV_RESOURCES    = "Annoncer les changements de ressources",
         DISCORD         = "Visiter le Discord",
         PATREON         = "Soutenir sur Patreon",
         OPENING_DISCORD = "Ouverture de Discord dans le navigateur.",

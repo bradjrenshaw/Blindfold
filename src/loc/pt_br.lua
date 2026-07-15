@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Eventos",
         GAME = "Partida",
         CARD = "Carta",
         JOKER = "Curinga",
@@ -234,6 +235,15 @@ return {
         TAG           = "Marca",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} destruída",
+        ADDED     = "{name} adicionada",
+        HANDS     = "{amt} mãos",
+        DISCARDS  = "{amt} descartes",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} rodada",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} fichas, {mult} multi",
         HAND_LEVEL = "{name} subiu para o nível {level}, {chips} fichas, {mult} multi",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Anunciar área",
         ANN_SCREEN      = "Anunciar mudanças de tela",
         ANN_KEYWORDS    = "Anunciar descrições de palavras-chave",
+        EV_TAGS         = "Anunciar efeitos de etiquetas",
+        EV_CARDS        = "Anunciar cartas criadas e destruídas",
+        EV_RESOURCES    = "Anunciar mudanças de recursos",
         DISCORD         = "Visitar o Discord",
         PATREON         = "Apoie no Patreon",
         OPENING_DISCORD = "Abrindo o Discord no navegador.",

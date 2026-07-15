@@ -131,6 +131,7 @@ return {
     },
 
     BUFFER = {
+        EVENTS = "Eventi",
         GAME = "Partita",
         CARD = "Carta",
         JOKER = "Jolly",
@@ -234,6 +235,15 @@ return {
         TAG           = "Patto",
     },
 
+    EVENTS = {
+        DESTROYED = "{name} distrutta",
+        ADDED     = "{name} aggiunta",
+        HANDS     = "{amt} mani",
+        DISCARDS  = "{amt} scarti",
+        ANTE      = "{amt} ante",
+        ROUND     = "{amt} round",
+    },
+
     SCORING = {
         HAND    = "{name}, {chips} gettoni, {mult} molt",
         HAND_LEVEL = "{name} salito al livello {level}, {chips} gettoni, {mult} molt",
@@ -277,6 +287,9 @@ return {
         ANN_CONTAINER   = "Annuncia l'area",
         ANN_SCREEN      = "Annuncia i cambi di schermata",
         ANN_KEYWORDS    = "Annuncia le descrizioni delle parole chiave",
+        EV_TAGS         = "Annuncia gli effetti dei tag",
+        EV_CARDS        = "Annuncia carte create e distrutte",
+        EV_RESOURCES    = "Annuncia i cambiamenti di risorse",
         DISCORD         = "Visita il Discord",
         PATREON         = "Sostienici su Patreon",
         OPENING_DISCORD = "Apertura di Discord nel browser.",
