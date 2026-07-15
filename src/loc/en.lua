@@ -208,6 +208,7 @@ return {
         CANT_SELECT = "Cannot select",
         PICKED_UP   = "Picked up, {name}",
         PICKUP_CANCELLED = "Cancelled",
+        SELECTION_CLEARED = "Selection cleared",
         MOVED       = "Moved",
         PINNED_CANT_MOVE = "Pinned, cannot move",
         PLACE_LEFT    = "place left of {name}",

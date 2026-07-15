@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "Nie można zaznaczyć",
         PICKED_UP   = "Podniesiono, {name}",
         PICKUP_CANCELLED = "Anulowano",
+        SELECTION_CLEARED = "Zaznaczenie wyczyszczone",
         MOVED       = "Przeniesiono",
         PINNED_CANT_MOVE = "Przyszpilony, nie można przenieść",
         PLACE_LEFT    = "połóż na lewo od {name}",

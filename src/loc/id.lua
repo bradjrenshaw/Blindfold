@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "Tidak bisa dipilih",
         PICKED_UP   = "Diambil, {name}",
         PICKUP_CANCELLED = "Dibatalkan",
+        SELECTION_CLEARED = "Pilihan dibersihkan",
         MOVED       = "Dipindahkan",
         PINNED_CANT_MOVE = "Disematkan, tidak bisa dipindah",
         PLACE_LEFT    = "letakkan di kiri {name}",

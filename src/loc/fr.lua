@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "Sélection impossible",
         PICKED_UP   = "Prise, {name}",
         PICKUP_CANCELLED = "Annulé",
+        SELECTION_CLEARED = "Sélection annulée",
         MOVED       = "Déplacée",
         PINNED_CANT_MOVE = "Épinglé, déplacement impossible",
         PLACE_LEFT    = "poser à gauche de {name}",

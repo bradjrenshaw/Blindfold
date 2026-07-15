@@ -644,6 +644,22 @@ function BA.install()
         pcall(BA.focus_tick, self)
     end
 
+    -- 1b) Deselect-all feedback: Backspace / B / right-click all land in the
+    -- engine's queue_R_cursor_press (controller.lua:1026), which clears the
+    -- hand's highlights silently. Speak only when a selection actually
+    -- cleared (the engine's own guards may refuse — mid-scoring, locked).
+    local orig_r_cursor = Controller.queue_R_cursor_press
+    function Controller:queue_R_cursor_press(x, y)
+        local before = (G and G.hand and G.hand.highlighted and #G.hand.highlighted) or 0
+        orig_r_cursor(self, x, y)
+        local after = (G and G.hand and G.hand.highlighted and #G.hand.highlighted) or 0
+        if before > 0 and after == 0 then
+            pcall(function()
+                speech.say(loc_line("PLAY.SELECTION_CLEARED", "Selection cleared"))
+            end)
+        end
+    end
+
     -- 2) Drive the engine from the keyboard via the InputAction layer.
     local orig_key_press = Controller.key_press
     function Controller:key_press(key)

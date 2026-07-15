@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "无法选择",
         PICKED_UP   = "已拿起，{name}",
         PICKUP_CANCELLED = "已取消",
+        SELECTION_CLEARED = "已取消选择",
         MOVED       = "已移动",
         PINNED_CANT_MOVE = "已固定，无法移动",
         PLACE_LEFT    = "放到{name}左边",

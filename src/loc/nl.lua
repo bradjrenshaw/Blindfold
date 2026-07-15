@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "Kan niet selecteren",
         PICKED_UP   = "Opgepakt, {name}",
         PICKUP_CANCELLED = "Geannuleerd",
+        SELECTION_CLEARED = "Selectie gewist",
         MOVED       = "Verplaatst",
         PINNED_CANT_MOVE = "Vastgepind, kan niet verplaatsen",
         PLACE_LEFT    = "links van {name} neerleggen",

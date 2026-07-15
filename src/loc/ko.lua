@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "선택할 수 없음",
         PICKED_UP   = "집었음, {name}",
         PICKUP_CANCELLED = "취소됨",
+        SELECTION_CLEARED = "선택 해제됨",
         MOVED       = "이동됨",
         PINNED_CANT_MOVE = "고정되어 이동 불가",
         PLACE_LEFT    = "{name} 왼쪽에 놓기",

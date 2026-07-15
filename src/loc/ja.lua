@@ -185,6 +185,7 @@ return {
         CANT_SELECT = "選択できません",
         PICKED_UP   = "持ち上げました、{name}",
         PICKUP_CANCELLED = "キャンセルしました",
+        SELECTION_CLEARED = "選択を解除しました",
         MOVED       = "移動しました",
         PINNED_CANT_MOVE = "固定されているため移動できません",
         PLACE_LEFT    = "{name}の左に置く",
