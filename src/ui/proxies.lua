@@ -376,6 +376,14 @@ function Proxy.card_deferred(card, index, total)
     end
     local sell = Proxy.card_sell_message(card)
     if sell then parts[#parts + 1] = sell end
+    -- Keyword info tips ("Gold Card: ...", "Holographic: ..."), before the
+    -- position (Brad) — new players shouldn't need the buffer to learn what
+    -- a modifier means. Toggle: Announcements -> keyword descriptions.
+    if Proxy.announce_enabled("keywords") then
+        for _, tip in ipairs(Proxy.card_info_tips(card)) do
+            parts[#parts + 1] = tip
+        end
+    end
     if Proxy.announce_enabled("position") then
         local p = Proxy.card_position(card, index, total)
         if p then parts[#parts + 1] = p:resolve() end
@@ -913,7 +921,7 @@ local SET_TO_TYPE = {
 }
 local ProxyJoker = class(Proxy)
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "pinned", "new", "price" }
+ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "eternal", "perishable", "rental", "pinned", "new", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
 
 -- The win-stake sticker (collection jokers: the badge for the best stake
@@ -1021,6 +1029,13 @@ function ProxyJoker:get_focus_announcements()
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
     if node.debuff then anns[#anns + 1] = A.debuff() end
+    -- Modifier stickers, front faces only (Card:draw renders none of them on
+    -- backs, card.lua:4539) — this branch is already face-up. Announced by
+    -- default: eternal/perishable/rental change what you can DO with the
+    -- card (user feedback: buying an eternal joker unknowingly).
+    if node.ability and node.ability.eternal then anns[#anns + 1] = A.eternal() end
+    if node.ability and node.ability.perishable then anns[#anns + 1] = A.perishable() end
+    if node.ability and node.ability.rental then anns[#anns + 1] = A.rental() end
     if node.pinned then anns[#anns + 1] = A.pinned() end
     local sticker = win_sticker(node)
     if sticker then anns[#anns + 1] = sticker end

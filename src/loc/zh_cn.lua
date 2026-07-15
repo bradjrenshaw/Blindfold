@@ -276,6 +276,7 @@ return {
         ANN_POSITION    = "朗读位置",
         ANN_CONTAINER   = "朗读区域",
         ANN_SCREEN      = "朗读画面切换",
+        ANN_KEYWORDS    = "朗读关键词说明",
         DISCORD         = "访问Discord",
         PATREON         = "在Patreon上支持我们",
         OPENING_DISCORD = "正在浏览器中打开Discord。",

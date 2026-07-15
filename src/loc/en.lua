@@ -307,6 +307,7 @@ return {
         ANN_POSITION    = "Announce position",
         ANN_CONTAINER   = "Announce container",
         ANN_SCREEN      = "Announce screen changes",
+        ANN_KEYWORDS    = "Announce keyword descriptions",
         DISCORD         = "Visit Discord",
         PATREON         = "Support on Patreon",
         OPENING_DISCORD = "Opening Discord in browser.",

@@ -276,6 +276,7 @@ return {
         ANN_POSITION    = "Bacakan posisi",
         ANN_CONTAINER   = "Bacakan area",
         ANN_SCREEN      = "Bacakan pergantian layar",
+        ANN_KEYWORDS    = "Bacakan deskripsi kata kunci",
         DISCORD         = "Kunjungi Discord",
         PATREON         = "Dukung di Patreon",
         OPENING_DISCORD = "Membuka Discord di browser.",

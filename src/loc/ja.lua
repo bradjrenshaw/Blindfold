@@ -276,6 +276,7 @@ return {
         ANN_POSITION    = "位置を読み上げる",
         ANN_CONTAINER   = "エリアを読み上げる",
         ANN_SCREEN      = "画面の切り替えを読み上げる",
+        ANN_KEYWORDS    = "キーワードの説明を読み上げる",
         DISCORD         = "Discordを開く",
         PATREON         = "Patreonで支援する",
         OPENING_DISCORD = "ブラウザでDiscordを開いています。",

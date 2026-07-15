@@ -276,6 +276,7 @@ return {
         ANN_POSITION    = "Annuncia la posizione",
         ANN_CONTAINER   = "Annuncia l'area",
         ANN_SCREEN      = "Annuncia i cambi di schermata",
+        ANN_KEYWORDS    = "Annuncia le descrizioni delle parole chiave",
         DISCORD         = "Visita il Discord",
         PATREON         = "Sostienici su Patreon",
         OPENING_DISCORD = "Apertura di Discord nel browser.",

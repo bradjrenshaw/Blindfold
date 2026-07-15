@@ -31,6 +31,19 @@ function A.debuff()        return { key = "debuff",      suffix = ",", render = 
 function A.pinned()        return { key = "pinned",      suffix = ",", render = function() return Message.localized("CARD.PINNED") end } end
 -- The collection's red "!" badge on newly discovered cards (Card:update_alert).
 function A.new_alert()     return { key = "new",         suffix = ",", render = function() return Message.localized("CARD.NEW") end } end
+-- Joker modifier stickers (eternal / perishable / rental), named with the
+-- game's own localized badge words (G.localization.descriptions.Other).
+local function badge_word(key, fallback)
+    return function()
+        local ok, name = pcall(function()
+            return G.localization.descriptions.Other[key].name
+        end)
+        return Message.raw((ok and type(name) == "string" and name ~= "") and name or fallback)
+    end
+end
+function A.eternal()       return { key = "eternal",    suffix = ",", render = badge_word("eternal", "Eternal") } end
+function A.perishable()    return { key = "perishable", suffix = ",", render = badge_word("perishable", "Perishable") } end
+function A.rental()        return { key = "rental",     suffix = ",", render = badge_word("rental", "Rental") } end
 function A.selected()      return { key = "selected",    suffix = ",", render = function() return Message.localized("CARD.SELECTED") end } end
 function A.description(v)  return { key = "description", suffix = "",  render = function() return msg(v) end } end
 -- Secondary help/info text on a control (e.g. an option's explanatory line).

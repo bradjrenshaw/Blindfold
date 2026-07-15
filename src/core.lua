@@ -245,6 +245,7 @@ do
         Settings.register{ key = "announce.position.enabled",    type = "bool", label_key = "SET.ANN_POSITION",    default = true, category = "announce" }
         Settings.register{ key = "announce.container.enabled",   type = "bool", label_key = "SET.ANN_CONTAINER",   default = true, category = "announce" }
         Settings.register{ key = "announce.screen.enabled",      type = "bool", label_key = "SET.ANN_SCREEN",      default = true, category = "announce" }
+        Settings.register{ key = "announce.keywords.enabled",    type = "bool", label_key = "SET.ANN_KEYWORDS",    default = true, category = "announce" }
 
         -- Speech backend picker: "auto" plus whatever Prism says is usable on
         -- this machine. Product names (NVDA, JAWS...) are not translated —
