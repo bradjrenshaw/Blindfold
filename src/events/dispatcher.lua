@@ -21,17 +21,19 @@ local Settings = require("settings.registry")
 
 local M = { say = nil }
 
--- One toggle per group, surfaced in the Announcements screen.
+-- One toggle per group, surfaced in the Announcements screen. Resources
+-- default OFF (Brad): the +1/-1 HUD deltas fire often enough to spam; the
+-- events buffer still records them for anyone who wants the history.
 M.GROUPS = {
-    { key = "tags",      label_key = "SET.EV_TAGS" },
-    { key = "cards",     label_key = "SET.EV_CARDS" },
-    { key = "resources", label_key = "SET.EV_RESOURCES" },
+    { key = "tags",      label_key = "SET.EV_TAGS",      default = true },
+    { key = "cards",     label_key = "SET.EV_CARDS",     default = true },
+    { key = "resources", label_key = "SET.EV_RESOURCES", default = false },
 }
 
 function M.register_settings()
     for _, g in ipairs(M.GROUPS) do
         Settings.register{ key = "events." .. g.key .. ".enabled", type = "bool",
-            label_key = g.label_key, default = true, category = "announce" }
+            label_key = g.label_key, default = g.default, category = "announce" }
     end
 end
 
