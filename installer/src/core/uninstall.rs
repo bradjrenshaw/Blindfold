@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use super::detect::is_reparse_point;
-use super::paths::{balatro_data_dir, mods_dir, LOVELY_DLL, MOD_ZIP_DIR, USER_FILES};
+use super::paths::{balatro_data_dir, mods_dir, MOD_ZIP_DIR, USER_FILES};
 
 #[derive(Debug, PartialEq)]
 pub enum UninstallOutcome {
@@ -53,17 +53,21 @@ pub fn other_mods_present_in(mods_root: &Path) -> bool {
 
 /// Remove the Lovely Injector proxy from the game folder.
 pub fn remove_lovely(game_path: &Path) -> Result<bool, String> {
-    let dll = game_path.join(LOVELY_DLL);
-    if !dll.exists() {
-        return Ok(false);
+    use super::paths::LOVELY_FILES;
+    let mut removed_any = false;
+    for filename in LOVELY_FILES {
+        let path = game_path.join(filename);
+        if path.exists() {
+            fs::remove_file(&path).map_err(|e| {
+                format!(
+                    "Failed to remove {}: {}. You may need to re-run as administrator.",
+                    filename, e
+                )
+            })?;
+            removed_any = true;
+        }
     }
-    fs::remove_file(&dll).map_err(|e| {
-        format!(
-            "Failed to remove {}: {}. You may need to re-run as administrator.",
-            LOVELY_DLL, e
-        )
-    })?;
-    Ok(true)
+    Ok(removed_any)
 }
 
 /// Remove the mod's settings, rebinds, and speech log from %APPDATA%\Balatro.
@@ -91,11 +95,20 @@ mod tests {
     }
 
     #[test]
-    fn remove_lovely_deletes_dll() {
+    fn remove_lovely_deletes_injector_files() {
         let dir = tempfile::tempdir().unwrap();
-        fs::write(dir.path().join("version.dll"), "").unwrap();
-        assert_eq!(remove_lovely(dir.path()).unwrap(), true);
-        assert!(!dir.path().join("version.dll").exists());
+        use crate::core::paths::LOVELY_FILES;
+        for f in LOVELY_FILES {
+            fs::write(dir.path().join(f), "").unwrap();
+        }
+        if !LOVELY_FILES.is_empty() {
+            assert_eq!(remove_lovely(dir.path()).unwrap(), true);
+        } else {
+            assert_eq!(remove_lovely(dir.path()).unwrap(), false);
+        }
+        for f in LOVELY_FILES {
+            assert!(!dir.path().join(f).exists());
+        }
     }
 
     #[test]
