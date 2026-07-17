@@ -3,7 +3,7 @@ use std::io::{Cursor, Read};
 use std::path::Path;
 
 use super::detect::is_reparse_point;
-use super::paths::{mod_dir, mods_dir, version_file, LOVELY_DLL, MOD_ZIP_DIR};
+use super::paths::{mod_dir, mods_dir, version_file, MOD_ZIP_DIR};
 
 pub fn get_installed_version() -> Option<String> {
     let vf = version_file();
@@ -90,22 +90,33 @@ pub fn install_from_file(zip_path: &Path, game_path: &Path) -> Result<(), String
     install_zip(&data, game_path)
 }
 
+fn should_skip_mod_file(rest: &str) -> bool {
+    use super::paths::EXCLUDED_MOD_FILES;
+    let normalized = rest.replace('\\', "/");
+    EXCLUDED_MOD_FILES.iter().any(|&excluded| normalized == excluded)
+}
+
 /// Where a zip entry belongs.
 enum Route {
     /// The Lovely Injector proxy -> next to Balatro.exe
-    LovelyDll,
+    LovelyFile(String),
     /// A mod file -> Mods\Blindfold\<path>
     Mod(String),
     Skip,
 }
 
-/// A release zip (scripts\build_release.ps1): version.dll at the root,
+/// A release zip (scripts\build_release.ps1): version.dll/liblovely.dylib/run_lovely_macos.sh at the root,
 /// payload under Blindfold/.
 fn route_release(name: &str) -> Route {
-    if name == LOVELY_DLL {
-        Route::LovelyDll
+    use super::paths::LOVELY_FILES;
+    if LOVELY_FILES.contains(&name) {
+        Route::LovelyFile(name.to_string())
     } else if let Some(rest) = name.strip_prefix("Blindfold/") {
-        Route::Mod(rest.to_string())
+        if should_skip_mod_file(rest) {
+            Route::Skip
+        } else {
+            Route::Mod(rest.to_string())
+        }
     } else {
         Route::Skip
     }
@@ -116,13 +127,21 @@ fn route_release(name: &str) -> Route {
 /// third_party/lovely/version.dll — the same layout scripts/deploy.ps1
 /// installs from.
 fn route_repo(name: &str) -> Route {
+    use super::paths::LOVELY_FILES;
     let Some((_top, rest)) = name.split_once('/') else {
         return Route::Skip;
     };
-    if rest == "third_party/lovely/version.dll" {
-        Route::LovelyDll
-    } else if let Some(mod_path) = rest.strip_prefix("src/") {
-        Route::Mod(mod_path.to_string())
+    if let Some(filename) = rest.strip_prefix("third_party/lovely/") {
+        if LOVELY_FILES.contains(&filename) {
+            return Route::LovelyFile(filename.to_string());
+        }
+    }
+    if let Some(mod_path) = rest.strip_prefix("src/") {
+        if should_skip_mod_file(mod_path) {
+            Route::Skip
+        } else {
+            Route::Mod(mod_path.to_string())
+        }
     } else {
         Route::Skip
     }
@@ -196,7 +215,7 @@ fn extract_routed(
         }
 
         let (dest, is_dll) = match route(&name) {
-            Route::LovelyDll => (game_path.join(LOVELY_DLL), true),
+            Route::LovelyFile(filename) => (game_path.join(filename), true),
             Route::Mod(rest) => {
                 if rest.is_empty() {
                     continue;
@@ -221,9 +240,9 @@ fn extract_routed(
         file.read_to_end(&mut contents)
             .map_err(|e| format!("Failed to read {}: {}", name, e))?;
 
-        // An existing version.dll is left alone entirely: the user may run
+        // An existing Lovely injector file is left alone entirely: the user may run
         // other Lovely mods with a newer injector than our bundled one, and
-        // overwriting would downgrade their whole setup. Only a missing DLL
+        // overwriting would downgrade their whole setup. Only a missing file
         // is written (also keeps updates elevation-free).
         if is_dll && dest.exists() {
             continue;
@@ -235,7 +254,7 @@ fn extract_routed(
                     "Couldn't write {} into the game folder: {}. \
                      Re-run this installer as administrator (the game may live \
                      under Program Files).",
-                    LOVELY_DLL, e
+                    dest.file_name().unwrap_or_default().to_string_lossy(), e
                 )
             } else {
                 format!("Failed to write file {}: {}", name, e)
@@ -272,64 +291,116 @@ mod tests {
         let mods = tempfile::tempdir().unwrap();
 
         let zip = make_zip(&[
-            ("version.dll", b"lovely"),
+            ("version.dll", b"lovely dll"),
+            ("liblovely.dylib", b"lovely dylib"),
+            ("run_lovely_macos.sh", b"lovely sh"),
             ("Blindfold/lovely.toml", b"[manifest]"),
             ("Blindfold/core.lua", b"-- core"),
-            ("Blindfold/lib/prism.dll", b"prism"),
+            ("Blindfold/lib/prism.dll", b"prism dll"),
+            ("Blindfold/lib/libprism.dylib", b"prism dylib"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
 
-        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
-        let md = mods.path().join("Blindfold");
-        assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
-        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
-        // Nothing but the DLL lands in the game folder
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely dll");
+            assert!(!game.path().join("liblovely.dylib").exists());
+            assert!(!game.path().join("run_lovely_macos.sh").exists());
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
+            assert!(!md.join("lib").join("libprism.dylib").exists());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert!(!game.path().join("version.dll").exists());
+            assert_eq!(fs::read(game.path().join("liblovely.dylib")).unwrap(), b"lovely dylib");
+            assert_eq!(fs::read(game.path().join("run_lovely_macos.sh")).unwrap(), b"lovely sh");
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert!(!md.join("lib").join("prism.dll").exists());
+            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+        }
+        
         assert!(!game.path().join("Blindfold").exists());
     }
 
     #[test]
     fn install_handles_backslash_entry_names() {
-        // PowerShell's Compress-Archive (scripts\build_release.ps1) writes
-        // entry names with backslashes; routing must still work.
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[
-            ("version.dll", b"lovely"),
+            ("version.dll", b"lovely dll"),
+            ("liblovely.dylib", b"lovely dylib"),
+            ("run_lovely_macos.sh", b"lovely sh"),
             ("Blindfold\\lovely.toml", b"[manifest]"),
-            ("Blindfold\\lib\\prism.dll", b"prism"),
+            ("Blindfold\\lib\\prism.dll", b"prism dll"),
+            ("Blindfold\\lib\\libprism.dylib", b"prism dylib"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
 
-        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
-        let md = mods.path().join("Blindfold");
-        assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
-        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely dll");
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
+            assert!(!md.join("lib").join("libprism.dylib").exists());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(fs::read(game.path().join("liblovely.dylib")).unwrap(), b"lovely dylib");
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert!(!md.join("lib").join("prism.dll").exists());
+            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+        }
     }
 
     #[test]
     fn install_repo_zip_routes_src_and_lovely() {
-        // GitHub zipball layout: one top-level folder named <repo>-<branch>
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[
             ("Blindfold-main/README.md", b"docs"),
             ("Blindfold-main/src/lovely.toml", b"[manifest]"),
             ("Blindfold-main/src/core.lua", b"-- core"),
-            ("Blindfold-main/src/lib/prism.dll", b"prism"),
-            ("Blindfold-main/third_party/lovely/version.dll", b"lovely"),
+            ("Blindfold-main/src/lib/prism.dll", b"prism dll"),
+            ("Blindfold-main/src/lib/libprism.dylib", b"prism dylib"),
+            ("Blindfold-main/third_party/lovely/version.dll", b"lovely dll"),
+            ("Blindfold-main/third_party/lovely/liblovely.dylib", b"lovely dylib"),
+            ("Blindfold-main/third_party/lovely/run_lovely_macos.sh", b"lovely sh"),
             ("Blindfold-main/scripts/deploy.ps1", b"# script"),
         ]);
 
         install_repo_zip_to(&zip, game.path(), mods.path()).unwrap();
 
-        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely dll");
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
+            assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
+            assert!(!md.join("lib").join("libprism.dylib").exists());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(fs::read(game.path().join("liblovely.dylib")).unwrap(), b"lovely dylib");
+            assert_eq!(fs::read(game.path().join("run_lovely_macos.sh")).unwrap(), b"lovely sh");
+            let md = mods.path().join("Blindfold");
+            assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
+            assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
+            assert!(!md.join("lib").join("prism.dll").exists());
+            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+        }
+
         let md = mods.path().join("Blindfold");
-        assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
-        assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
-        assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism");
-        // Repo files outside src/ stay out of the install
         assert!(!md.join("README.md").exists());
         assert!(!md.join("scripts").exists());
         assert!(!mods.path().join("README.md").exists());
@@ -383,18 +454,21 @@ mod tests {
 
     #[test]
     fn install_leaves_existing_dll_alone() {
-        // A user's existing Lovely (possibly newer, shared with other mods)
-        // must never be overwritten.
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
-        fs::write(game.path().join("version.dll"), b"newer lovely").unwrap();
+        
+        let primary_file = if cfg!(target_os = "macos") { "liblovely.dylib" } else { "version.dll" };
+        
+        fs::write(game.path().join(primary_file), b"newer lovely").unwrap();
         let zip = make_zip(&[
-            ("version.dll", b"bundled lovely"),
+            ("version.dll", b"bundled lovely dll"),
+            ("liblovely.dylib", b"bundled lovely dylib"),
+            ("run_lovely_macos.sh", b"bundled lovely sh"),
             ("Blindfold/lovely.toml", b"ok"),
         ]);
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
         assert_eq!(
-            fs::read(game.path().join("version.dll")).unwrap(),
+            fs::read(game.path().join(primary_file)).unwrap(),
             b"newer lovely"
         );
     }
@@ -404,11 +478,21 @@ mod tests {
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[
-            ("version.dll", b"lovely"),
+            ("version.dll", b"lovely dll"),
+            ("liblovely.dylib", b"lovely dylib"),
+            ("run_lovely_macos.sh", b"lovely sh"),
             ("Blindfold/lovely.toml", b"ok"),
         ]);
         install_zip_to(&zip, game.path(), mods.path()).unwrap();
-        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
+        
+        #[cfg(target_os = "windows")]
+        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely dll");
+        
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(fs::read(game.path().join("liblovely.dylib")).unwrap(), b"lovely dylib");
+            assert_eq!(fs::read(game.path().join("run_lovely_macos.sh")).unwrap(), b"lovely sh");
+        }
     }
 
     #[cfg(target_os = "windows")]

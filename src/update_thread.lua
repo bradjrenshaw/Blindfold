@@ -11,6 +11,9 @@ local channel = love.thread.getChannel(chan_name)
 
 local ok, err = pcall(function()
     local ffi = require("ffi")
+    if ffi.os ~= "Windows" then
+        error("Update checks via WinINet are only supported on Windows")
+    end
     ffi.cdef([[
         typedef void* HINTERNET;
         HINTERNET InternetOpenA(const char* agent, unsigned long access,

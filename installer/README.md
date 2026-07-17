@@ -6,24 +6,24 @@ widgets); pass `--cli` for a console flow.
 
 What it does:
 
-1. Finds the Balatro install (Steam registry → `libraryfolders.vdf` → default
-   path; Browse... as fallback) and validates it by `Balatro.exe`.
+1. Finds the Balatro install (Steam library folders/stock paths) and validates it by `Balatro.exe` (Windows) or `Balatro.app` (macOS).
 2. Downloads a chosen release of `Blindfold.zip` from GitHub (or installs from
    a local zip, or — "Install dev build" — the latest commit on main via the
-   branch zipball, remapping `src/**` and `third_party/lovely/version.dll` to
+   branch zipball, remapping `src/**` and target injector files to
    the same destinations) and extracts it, routed:
-   - `version.dll` → the game folder (Lovely Injector; only written when
-     missing — an existing one is never touched, so we can't downgrade a
-     multi-mod setup's newer Lovely, and updates stay elevation-free)
-   - `Blindfold/**` → `%APPDATA%\Balatro\Mods` (replaced wholesale, so updates
-     never leave stale files; settings live outside and survive)
+   * **Windows**:
+     * `version.dll` → the game folder (Lovely Injector; only written when missing)
+     * `Blindfold/**` (excluding `lib/libprism.dylib`) → `%APPDATA%\Balatro\Mods`
+   * **macOS**:
+     * `liblovely.dylib` and `run_lovely_macos.sh` → the game folder (Lovely Injector; only written when missing)
+     * `Blindfold/**` (excluding `lib/prism.dll`) → `~/Library/Application Support/Balatro/Mods`
 3. Tracks the installed version in `Mods\Blindfold\version` and offers
    Update when GitHub has a newer tag (semver compare). Dev builds are
    recorded as `main@<sha>` and update-check against the tip of main
    instead — "Update dev build" appears whenever main has moved, so dev
    users can stay on that channel; the Install button ("Install release")
    remains the way back to stable.
-4. Uninstall removes the mod folder and optionally `version.dll` (left alone
+4. Uninstall removes the mod folder and optionally the injector files (left alone
    if other Lovely mods are present) and the user files
    (`blindfold_settings.lua`, `blindfold_keybinds.lua`, `blindfold.log`).
 
