@@ -21,6 +21,7 @@ If you would like to support my modding work, I also have a
 
 ## Installation
 
+### Windows
 1. Download `BlindfoldInstaller.exe` from the
    [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest).
 2. Run it. It finds your Steam install of Balatro automatically (use
@@ -34,30 +35,34 @@ If you would like to support my modding work, I also have a
 Prefer a console? Run `BlindfoldInstaller.exe --cli` for the same flows as a
 menu.
 
+### macOS
+1. Download `BlindfoldInstaller.app.zip` (extracting it to get `BlindfoldInstaller.app`) from the
+   [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest).
+2. Run it. It finds your Steam install of Balatro automatically and shows one row of
+   buttons: press **Install**.
+3. Launch Balatro through Steam. You should hear **"Blindfold loaded."**
+
+Prefer a console? Run `./BlindfoldInstaller.app/Contents/MacOS/blindfold-installer --cli` for the same flows as a menu.
+
 **Updating:** run the installer again. It tells you when a newer version is
-out and the Install button becomes **Update**. "Install dev build" instead
-installs the very latest work-in-progress code from this repository — ahead
-of any release, updated the same way ("Update dev build" appears whenever
-there's something new).
+out and the Install/Update button adjusts. "Install dev build" instead
+installs the very latest work-in-progress code from this repository.
 
 ### Manual installation
 
 Prefer to place files yourself? Each release also ships `Blindfold.zip`
 (this README is included in it):
 
-1. Copy `version.dll` from the zip into Balatro's game folder, next to
-   `Balatro.exe` (Steam: right-click Balatro → Manage → Browse local
-   files). This is the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector)
-   mod loader — skip it if you already run other Lovely mods.
-2. Copy the zip's `Blindfold` folder into `%APPDATA%\Balatro\Mods`, so it
-   ends up at `%APPDATA%\Balatro\Mods\Blindfold` (create `Mods` if it
-   doesn't exist yet).
+1. **Copy Injector Files**:
+   * **Windows**: Copy `version.dll` from the zip into Balatro's game folder, next to `Balatro.exe` (Steam: right-click Balatro → Manage → Browse local files).
+   * **macOS**: Copy `liblovely.dylib` and `run_lovely_macos.sh` from the zip into Balatro's game folder, next to `Balatro.app`.
+   This is the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector) mod loader — skip it if you already run other Lovely mods.
+2. **Copy Mod Payload**:
+   * **Windows**: Copy the zip's `Blindfold` folder (excluding `lib/libprism.dylib` which is Mac-only) into `%APPDATA%\Balatro\Mods`, so it ends up at `%APPDATA%\Balatro\Mods\Blindfold` (create `Mods` if it doesn't exist yet).
+   * **macOS**: Copy the zip's `Blindfold` folder (excluding `lib/prism.dll` which is Windows-only) into `~/Library/Application Support/Balatro/Mods`, so it ends up at `~/Library/Application Support/Balatro/Mods/Blindfold` (create `Mods` if it doesn't exist yet).
 3. Launch Balatro through Steam.
 
-To update manually, delete `Mods\Blindfold` and copy in the new zip's
-folder — settings live outside it and survive. To uninstall, delete
-`Mods\Blindfold` (and the game folder's `version.dll` if nothing else
-needs Lovely).
+To update manually, delete the `Blindfold` folder under `Mods` and copy in the new zip's folder — settings live outside it and survive. To uninstall manually, delete the `Blindfold` folder under `Mods` and the injector files.
 
 **Uninstalling:** the installer's Uninstall button removes the mod and
 offers to also remove the Lovely Injector and Blindfold's settings. Your
