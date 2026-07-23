@@ -794,6 +794,12 @@ end
 
 -- Playing card: identity is rank + suit (card.base), with enhancement / edition
 -- / seal / debuff as modifiers. (Ability descriptions are a later pass.)
+-- Defined below (near the joker proxy); forward-declared because the
+-- playing-card label needs it too — face-down cards must never leak their
+-- identity through ANY label consumer (grab pickups, placement hints,
+-- scoring source names), not just the focus announcement.
+local face_down_label
+
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
@@ -824,6 +830,9 @@ end
 
 function ProxyPlayingCard:get_label()
     local node = self.node
+    -- Face down: the identity is hidden. Reading rank/suit here leaked it
+    -- through grab ("Picked up, Ace of Spades") — that's cheating (user).
+    if node.facing == "back" then return face_down_label(node) end
     -- Stone cards render NO rank or suit — the draw skips the front face
     -- entirely (card.lua: `ability.effect ~= 'Stone Card'`) and the game
     -- treats them as rankless/suitless. Read the enhancement name instead.
@@ -954,7 +963,7 @@ end
 --     run's deck isn't red.
 -- Editions are NOT visible (their shaders only draw on the front face), and
 -- the game hides the sell price ("?"), so neither is spoken.
-local function face_down_label(node)
+function face_down_label(node)   -- forward-declared above ProxyPlayingCard
     local parts = { Message.localized("CARD.FACE_DOWN"):resolve() }
     local T = node.T
     if T and G and G.CARD_W and G.CARD_H then
