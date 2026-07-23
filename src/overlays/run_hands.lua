@@ -163,21 +163,32 @@ function M:build(b)
         local h = G.GAME and G.GAME.hands and G.GAME.hands[name]
         if h and h.visible then
             local disp = game_loc(name, "poker_hands") or name
-            local cells = {}
-            cells[0] = Id.structural("h:" .. name)
-            b:add_node(cells[0], {
-                label = text_label(disp),
-                deferred = function()
-                    local d = hand_description(name)
-                    return d and Message.raw(d) or nil
-                end,
-            })
             local values = {
                 (game_loc("k_level_prefix") or "lvl.") .. tostring(h.level),
                 tostring(h.chips),
                 tostring(h.mult),
                 tostring(h.played),
             }
+            local cells = {}
+            cells[0] = Id.structural("h:" .. name)
+            b:add_node(cells[0], {
+                -- The primary reads the WHOLE ROW (wotr's tables: walking the
+                -- name column gives full-row readouts; the value cells exist
+                -- for single-column comparison walks). The level text is
+                -- self-describing; the bare numbers carry their headers.
+                label = function(ctx)
+                    local parts = { disp, values[1] }
+                    for col = 2, 4 do
+                        parts[#parts + 1] =
+                            Message.localized(HEADERS[col]):resolve() .. " " .. values[col]
+                    end
+                    ctx.message:fragment(Message.raw(table.concat(parts, ", ")))
+                end,
+                deferred = function()
+                    local d = hand_description(name)
+                    return d and Message.raw(d) or nil
+                end,
+            })
             for col = 1, 4 do
                 cells[col] = Id.structural("h:" .. name .. ":c" .. col)
                 b:add_node(cells[col], { label = text_label(values[col]) })
