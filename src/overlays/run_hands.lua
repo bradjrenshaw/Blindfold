@@ -67,6 +67,12 @@ end
 local function tree_has_hands_row(node, depth)
     if type(node) ~= "table" or depth > 30 then return false end
     if is_hands_row(node) then return true end
+    -- Tab contents are EMBEDDED UIBoxes behind UIT.O (the deck-view lesson):
+    -- descend through their UIRoot or the rows are invisible to this walk.
+    local obj = node.config and node.config.object
+    if obj and obj.is and UIBox and obj:is(UIBox) and obj.UIRoot then
+        if tree_has_hands_row(obj.UIRoot, depth + 1) then return true end
+    end
     local hit = false
     if node.children then
         each_child(node.children, function(ch)
