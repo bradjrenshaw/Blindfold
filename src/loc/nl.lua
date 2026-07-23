@@ -235,6 +235,13 @@ return {
         TAG           = "Tag",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "level",
+        COL_CHIPS  = "chips",
+        COL_MULT   = "mult",
+        COL_PLAYED = "gespeeld",
+    },
+
     EVENTS = {
         DESTROYED = "{name} vernietigd",
         ADDED     = "{name} toegevoegd",

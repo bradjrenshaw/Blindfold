@@ -235,6 +235,13 @@ return {
         TAG           = "标签",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "等级",
+        COL_CHIPS  = "筹码",
+        COL_MULT   = "倍率",
+        COL_PLAYED = "打出次数",
+    },
+
     EVENTS = {
         DESTROYED = "{name}被摧毁",
         ADDED     = "{name}已添加",

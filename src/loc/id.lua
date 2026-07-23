@@ -235,6 +235,13 @@ return {
         TAG           = "Tag",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "level",
+        COL_CHIPS  = "chip",
+        COL_MULT   = "mult",
+        COL_PLAYED = "dimainkan",
+    },
+
     EVENTS = {
         DESTROYED = "{name} dihancurkan",
         ADDED     = "{name} ditambahkan",

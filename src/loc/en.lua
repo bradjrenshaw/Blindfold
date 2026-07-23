@@ -265,6 +265,13 @@ return {
     },
 
     -- Spoken hand-scoring sequence.
+    RUNINFO = {
+        COL_LEVEL  = "level",
+        COL_CHIPS  = "chips",
+        COL_MULT   = "mult",
+        COL_PLAYED = "played",
+    },
+
     EVENTS = {
         DESTROYED = "{name} destroyed",
         ADDED     = "{name} added",

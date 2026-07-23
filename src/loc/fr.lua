@@ -235,6 +235,13 @@ return {
         TAG           = "Badge",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "niveau",
+        COL_CHIPS  = "jetons",
+        COL_MULT   = "multi",
+        COL_PLAYED = "jouées",
+    },
+
     EVENTS = {
         DESTROYED = "{name} détruite",
         ADDED     = "{name} ajoutée",

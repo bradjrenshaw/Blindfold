@@ -56,9 +56,11 @@ end
 -- In raw mode: a directional edge between declared nodes. In MENU mode: an
 -- edge OVERRIDE applied after the rows are lowered — set a custom transition,
 -- or pass to = nil to REMOVE the lowered edge (e.g. a column with nothing
--- beneath it stops instead of falling to another column).
-function Builder:connect(from, dir, to)
-    self.raw_edges[#self.raw_edges + 1] = { from = from, dir = dir, to = to }
+-- beneath it stops instead of falling to another column). `label` (fn(ctx),
+-- optional) speaks while crossing that edge — tables use it for column
+-- headers and row names.
+function Builder:connect(from, dir, to, label)
+    self.raw_edges[#self.raw_edges + 1] = { from = from, dir = dir, to = to, label = label }
     return self
 end
 
@@ -176,7 +178,7 @@ local function build_menu(self)
             if e.to == nil then
                 from.trans[e.dir] = nil
             elseif render.nodes[e.to.key] then
-                from.trans[e.dir] = { to = e.to.key }
+                from.trans[e.dir] = { to = e.to.key, label = e.label }
             end
         end
     end
@@ -193,7 +195,7 @@ local function build_raw(self)
         -- Skip edges to/from controls that were never declared (and nil-to
         -- removals, which are only meaningful as menu-mode overrides).
         if edge.to and render.nodes[edge.from.key] and render.nodes[edge.to.key] then
-            render.nodes[edge.from.key].trans[edge.dir] = { to = edge.to.key }
+            render.nodes[edge.from.key].trans[edge.dir] = { to = edge.to.key, label = edge.label }
         end
     end
     render.start_key = self.start_id and self.start_id.key or self.raw_order[1].key

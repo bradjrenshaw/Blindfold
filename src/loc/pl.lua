@@ -235,6 +235,13 @@ return {
         TAG           = "Znacznik",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "poziom",
+        COL_CHIPS  = "żetony",
+        COL_MULT   = "mnożnik",
+        COL_PLAYED = "zagrane",
+    },
+
     EVENTS = {
         DESTROYED = "{name} zniszczona",
         ADDED     = "{name} dodana",

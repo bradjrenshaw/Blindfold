@@ -235,6 +235,13 @@ return {
         TAG           = "Patto",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "livello",
+        COL_CHIPS  = "gettoni",
+        COL_MULT   = "molt",
+        COL_PLAYED = "giocate",
+    },
+
     EVENTS = {
         DESTROYED = "{name} distrutta",
         ADDED     = "{name} aggiunta",

@@ -235,6 +235,13 @@ return {
         TAG           = "タグ",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "レベル",
+        COL_CHIPS  = "チップ",
+        COL_MULT   = "倍率",
+        COL_PLAYED = "プレイ回数",
+    },
+
     EVENTS = {
         DESTROYED = "{name}が破壊されました",
         ADDED     = "{name}が追加されました",

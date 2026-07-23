@@ -235,6 +235,13 @@ return {
         TAG           = "태그",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "레벨",
+        COL_CHIPS  = "칩",
+        COL_MULT   = "배수",
+        COL_PLAYED = "플레이 횟수",
+    },
+
     EVENTS = {
         DESTROYED = "{name} 파괴됨",
         ADDED     = "{name} 추가됨",

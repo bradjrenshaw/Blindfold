@@ -235,6 +235,13 @@ return {
         TAG           = "Тег",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "уровень",
+        COL_CHIPS  = "фишки",
+        COL_MULT   = "множитель",
+        COL_PLAYED = "сыграно",
+    },
+
     EVENTS = {
         DESTROYED = "{name} уничтожена",
         ADDED     = "{name} добавлена",

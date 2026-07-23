@@ -235,6 +235,13 @@ return {
         TAG           = "Marca",
     },
 
+    RUNINFO = {
+        COL_LEVEL  = "nível",
+        COL_CHIPS  = "fichas",
+        COL_MULT   = "multi",
+        COL_PLAYED = "jogadas",
+    },
+
     EVENTS = {
         DESTROYED = "{name} destruída",
         ADDED     = "{name} adicionada",
