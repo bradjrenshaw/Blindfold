@@ -261,7 +261,7 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
         end
         if card.ability and card.ability.consumeable then
             vtable.on_use = function(ctx)
-                local blocked = M.tut_gate("use_card")
+                local blocked = M.tut_gate("use_card", card)
                 if blocked then say(ctx, blocked); return end
                 if card.can_use_consumeable and card:can_use_consumeable() then
                     M.tut_listen("use_card")
@@ -348,11 +348,24 @@ end
 -- engine's refusal is visual (everything else sits dimmed); ours must talk.
 -- The overlay is removed at every part's end (state_events.lua:1633), so
 -- this never gates outside the tutorial.
-function M.tut_gate(button)
+-- `target` (optional): the specific CARD being acted on. Steps that listen
+-- for a purchase/use highlight the one intended card — everything else sits
+-- under the dim for sighted players — so a matching action on the WRONG card
+-- (buying the Empress when the step wants the Joker) must refuse too. The
+-- step's resolved highlight list is stored on OVERLAY_TUTORIAL.highlights
+-- (common_events.lua:2254). No target = listen match alone decides (play /
+-- discard / blind select, whose highlights are containers, not the node).
+function M.tut_gate(button, target)
     local t = G and G.OVERLAY_TUTORIAL
     if not t then return nil end
-    if t.button_listen == button then return nil end
-    return "PLAY.TUT_BLOCKED"
+    if t.button_listen ~= button then return "PLAY.TUT_BLOCKED" end
+    if target and type(t.highlights) == "table" then
+        for _, h in ipairs(t.highlights) do
+            if h == target then return nil end
+        end
+        return "PLAY.TUT_BLOCKED"
+    end
+    return nil
 end
 
 -- --- Play / discard ------------------------------------------------------------
