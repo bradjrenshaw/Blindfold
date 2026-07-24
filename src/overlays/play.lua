@@ -249,6 +249,8 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
     end
     if opts and opts.actions then
         vtable.on_sell = function(ctx)
+            local blocked = M.tut_gate("sell_card")
+            if blocked then say(ctx, blocked); return end
             if card.can_sell_card and card:can_sell_card() then
                 M.tut_listen("sell_card")
                 G.FUNCS.sell_card({ config = { ref_table = card } })
@@ -259,6 +261,8 @@ local function add_card(b, card, area, opts, pos_index, pos_total)
         end
         if card.ability and card.ability.consumeable then
             vtable.on_use = function(ctx)
+                local blocked = M.tut_gate("use_card")
+                if blocked then say(ctx, blocked); return end
                 if card.can_use_consumeable and card:can_use_consumeable() then
                     M.tut_listen("use_card")
                     G.FUNCS.use_card({ config = { ref_table = card } })
@@ -333,6 +337,24 @@ function M.tut_listen(button)
     end
 end
 
+-- The engine FORCES the tutorial's path: UIElement:click (ui.lua:966)
+-- refuses any button under the dim overlay, so sighted players can only use
+-- what the current step highlights — the listened action, or Jimbo's Next.
+-- Our direct-FUNCS actions bypassed that, letting a run deviate (discard
+-- when the step wanted a play) and desync the tutorial's step machine —
+-- stranding the run with later buttons stuck under the dim (the reported
+-- cash-out lock). Mirror the gate: while a tutorial step is up, only its
+-- listened action fires. Returns a loc key to SPEAK on refusal — the
+-- engine's refusal is visual (everything else sits dimmed); ours must talk.
+-- The overlay is removed at every part's end (state_events.lua:1633), so
+-- this never gates outside the tutorial.
+function M.tut_gate(button)
+    local t = G and G.OVERLAY_TUTORIAL
+    if not t then return nil end
+    if t.button_listen == button then return nil end
+    return "PLAY.TUT_BLOCKED"
+end
+
 -- --- Play / discard ------------------------------------------------------------
 --
 -- Shared by the button-row nodes AND the direct X / C key handlers (wired in
@@ -349,6 +371,8 @@ function M.do_play()
     -- Boss-blind intro: block_play holds while the debuff banner animates in
     -- (the native Play button greys out for it; discard is NOT blocked).
     if G.GAME and G.GAME.blind and G.GAME.blind.block_play then return nil end
+    local blocked = M.tut_gate("play_cards_from_highlighted")
+    if blocked then return blocked end
     M.tut_listen("play_cards_from_highlighted")
     G.FUNCS.play_cards_from_highlighted()
     return nil
@@ -364,6 +388,8 @@ function M.do_discard()
     if not cr or (cr.discards_left or 0) <= 0 then
         return "PLAY.NO_DISCARDS"
     end
+    local blocked = M.tut_gate("discard_cards_from_highlighted")
+    if blocked then return blocked end
     M.tut_listen("discard_cards_from_highlighted")
     G.FUNCS.discard_cards_from_highlighted()
     return nil
@@ -381,6 +407,8 @@ end
 
 local function sort_click(func_key, spoken_key)
     return function(ctx)
+        local blocked = M.tut_gate(func_key)
+        if blocked then say(ctx, blocked); return end
         M.tut_listen(func_key)
         if G.FUNCS and G.FUNCS[func_key] then G.FUNCS[func_key]() end
         say(ctx, spoken_key)

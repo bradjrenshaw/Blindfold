@@ -189,6 +189,14 @@ do
             return function()
                 if not (G and G.STAGES and G.STAGE == G.STAGES.RUN
                     and not G.OVERLAY_MENU and G.FUNCS and G.FUNCS[func_key]) then return end
+                -- Tutorial path enforcement, same as every other owned action
+                -- (one step DOES listen for run_info; deck view never opens
+                -- for sighted players mid-tutorial either).
+                local ok, blocked = pcall(PlayOverlay.tut_gate, listen or func_key)
+                if ok and blocked then
+                    speech.say(Message.localized(blocked):resolve())
+                    return
+                end
                 if listen then pcall(PlayOverlay.tut_listen, listen) end
                 G.FUNCS[func_key]()
             end

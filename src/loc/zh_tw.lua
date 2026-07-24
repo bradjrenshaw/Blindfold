@@ -188,6 +188,7 @@ return {
         PICKED_UP   = "已拿起，{name}",
         PICKUP_CANCELLED = "已取消",
         SELECTION_CLEARED = "已取消選擇",
+        TUT_BLOCKED = "請按照教學指示繼續",
         MOVED       = "已移動",
         PINNED_CANT_MOVE = "已釘選，無法移動",
         PLACE_LEFT    = "放到{name}左邊",

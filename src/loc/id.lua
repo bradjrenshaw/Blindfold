@@ -188,6 +188,7 @@ return {
         PICKED_UP   = "Diambil, {name}",
         PICKUP_CANCELLED = "Dibatalkan",
         SELECTION_CLEARED = "Pilihan dibersihkan",
+        TUT_BLOCKED = "Ikuti petunjuk tutorial untuk melanjutkan",
         MOVED       = "Dipindahkan",
         PINNED_CANT_MOVE = "Disematkan, tidak bisa dipindah",
         PLACE_LEFT    = "letakkan di kiri {name}",

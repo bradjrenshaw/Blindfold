@@ -188,6 +188,7 @@ return {
         PICKED_UP   = "Взята, {name}",
         PICKUP_CANCELLED = "Отменено",
         SELECTION_CLEARED = "Выбор снят",
+        TUT_BLOCKED = "Следуйте указаниям обучения, чтобы продолжить",
         MOVED       = "Перемещена",
         PINNED_CANT_MOVE = "Закреплено, нельзя переместить",
         PLACE_LEFT    = "положить слева от {name}",

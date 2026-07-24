@@ -188,6 +188,7 @@ return {
         PICKED_UP   = "Prise, {name}",
         PICKUP_CANCELLED = "Annulé",
         SELECTION_CLEARED = "Sélection annulée",
+        TUT_BLOCKED = "Suivez les instructions du tutoriel pour continuer",
         MOVED       = "Déplacée",
         PINNED_CANT_MOVE = "Épinglé, déplacement impossible",
         PLACE_LEFT    = "poser à gauche de {name}",

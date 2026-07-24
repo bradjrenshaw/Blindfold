@@ -211,6 +211,7 @@ return {
         PICKED_UP   = "Picked up, {name}",
         PICKUP_CANCELLED = "Cancelled",
         SELECTION_CLEARED = "Selection cleared",
+        TUT_BLOCKED = "Follow the tutorial instructions to continue",
         MOVED       = "Moved",
         PINNED_CANT_MOVE = "Pinned, cannot move",
         PLACE_LEFT    = "place left of {name}",

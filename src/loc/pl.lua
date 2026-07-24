@@ -188,6 +188,7 @@ return {
         PICKED_UP   = "Podniesiono, {name}",
         PICKUP_CANCELLED = "Anulowano",
         SELECTION_CLEARED = "Zaznaczenie wyczyszczone",
+        TUT_BLOCKED = "Postępuj zgodnie z instrukcjami samouczka, aby kontynuować",
         MOVED       = "Przeniesiono",
         PINNED_CANT_MOVE = "Przyszpilony, nie można przenieść",
         PLACE_LEFT    = "połóż na lewo od {name}",

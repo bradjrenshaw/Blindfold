@@ -99,6 +99,8 @@ local function pick_click(card)
                 return
             end
         end
+        local blocked = Play.tut_gate("use_card")
+        if blocked then say(ctx, blocked); return end
         Play.tut_listen("use_card")
         G.FUNCS.use_card({ config = { ref_table = card } })
     end
