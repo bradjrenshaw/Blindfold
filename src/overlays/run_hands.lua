@@ -125,7 +125,7 @@ local function hand_description(name)
     return nil
 end
 
-local HEADERS = { "RUNINFO.COL_LEVEL", "RUNINFO.COL_CHIPS", "RUNINFO.COL_MULT", "RUNINFO.COL_PLAYED" }
+local HEADERS = { "RUNINFO.COL_LEVEL", "RUNINFO.COL_CHIPS", "RUNINFO.COL_MULT", "RUNINFO.COL_PLAYED", "RUNINFO.COL_REQS" }
 local function header(col)   -- crossing label for columns 1..4; none for 0
     if col < 1 then return nil end
     return function(ctx) ctx.message:fragment(Message.localized(HEADERS[col])) end
@@ -168,6 +168,7 @@ function M:build(b)
                 tostring(h.chips),
                 tostring(h.mult),
                 tostring(h.played),
+                hand_description(name) or "",
             }
             local cells = {}
             cells[0] = Id.structural("h:" .. name)
@@ -175,26 +176,25 @@ function M:build(b)
                 -- The primary reads the WHOLE ROW (wotr's tables: walking the
                 -- name column gives full-row readouts; the value cells exist
                 -- for single-column comparison walks). The level text is
-                -- self-describing; the bare numbers carry their headers.
+                -- self-describing, the bare numbers carry their headers, and
+                -- the requirements text closes the row unprefixed (it
+                -- explains itself).
                 label = function(ctx)
                     local parts = { disp, values[1] }
                     for col = 2, 4 do
                         parts[#parts + 1] =
                             Message.localized(HEADERS[col]):resolve() .. " " .. values[col]
                     end
+                    if values[5] ~= "" then parts[#parts + 1] = values[5] end
                     ctx.message:fragment(Message.raw(table.concat(parts, ", ")))
                 end,
-                deferred = function()
-                    local d = hand_description(name)
-                    return d and Message.raw(d) or nil
-                end,
             })
-            for col = 1, 4 do
+            for col = 1, 5 do
                 cells[col] = Id.structural("h:" .. name .. ":c" .. col)
                 b:add_node(cells[col], { label = text_label(values[col]) })
             end
             -- Horizontal: crossings speak the destination column's header.
-            for col = 0, 3 do
+            for col = 0, 4 do
                 b:connect(cells[col], "right", cells[col + 1], header(col + 1))
                 b:connect(cells[col + 1], "left", cells[col], header(col))
             end
@@ -205,7 +205,7 @@ function M:build(b)
     -- Vertical: same column, destination row named when off-primary.
     for i = 1, #rows - 1 do
         local a, z = rows[i], rows[i + 1]
-        for col = 0, 4 do
+        for col = 0, 5 do
             b:connect(a.cells[col], "down", z.cells[col], col > 0 and text_label(z.name) or nil)
             b:connect(z.cells[col], "up", a.cells[col], col > 0 and text_label(a.name) or nil)
         end
@@ -218,11 +218,11 @@ function M:build(b)
         local first, last = rows[1], rows[#rows]
         if top then
             b:connect(top, "down", first.cells[0])
-            for col = 0, 4 do b:connect(first.cells[col], "up", top) end
+            for col = 0, 5 do b:connect(first.cells[col], "up", top) end
         end
         if below then
             b:connect(below, "up", last.cells[0])
-            for col = 0, 4 do b:connect(last.cells[col], "down", below) end
+            for col = 0, 5 do b:connect(last.cells[col], "down", below) end
         end
         b:set_start(first.cells[0])
     end

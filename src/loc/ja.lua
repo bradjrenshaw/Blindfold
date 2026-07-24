@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "チップ",
         COL_MULT   = "倍率",
         COL_PLAYED = "プレイ回数",
+        COL_REQS   = "条件",
     },
 
     EVENTS = {

@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "gettoni",
         COL_MULT   = "molt",
         COL_PLAYED = "giocate",
+        COL_REQS   = "requisiti",
     },
 
     EVENTS = {

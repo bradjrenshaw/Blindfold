@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "籌碼",
         COL_MULT   = "倍率",
         COL_PLAYED = "打出次數",
+        COL_REQS   = "要求",
     },
 
     EVENTS = {

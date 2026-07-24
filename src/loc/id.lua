@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "chip",
         COL_MULT   = "mult",
         COL_PLAYED = "dimainkan",
+        COL_REQS   = "syarat",
     },
 
     EVENTS = {

@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "żetony",
         COL_MULT   = "mnożnik",
         COL_PLAYED = "zagrane",
+        COL_REQS   = "wymagania",
     },
 
     EVENTS = {

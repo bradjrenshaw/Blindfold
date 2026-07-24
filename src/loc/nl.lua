@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "chips",
         COL_MULT   = "mult",
         COL_PLAYED = "gespeeld",
+        COL_REQS   = "vereisten",
     },
 
     EVENTS = {

@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "фишки",
         COL_MULT   = "множитель",
         COL_PLAYED = "сыграно",
+        COL_REQS   = "требования",
     },
 
     EVENTS = {

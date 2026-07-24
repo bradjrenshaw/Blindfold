@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "jetons",
         COL_MULT   = "multi",
         COL_PLAYED = "jouées",
+        COL_REQS   = "conditions",
     },
 
     EVENTS = {

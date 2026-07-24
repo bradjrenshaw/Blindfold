@@ -242,6 +242,7 @@ return {
         COL_CHIPS  = "칩",
         COL_MULT   = "배수",
         COL_PLAYED = "플레이 횟수",
+        COL_REQS   = "조건",
     },
 
     EVENTS = {
