@@ -224,13 +224,27 @@ function M:build(b)
             b:connect(below, "up", last.cells[0])
             for col = 0, 5 do b:connect(last.cells[col], "down", below) end
         end
-        b:set_start(first.cells[0])
     end
     for i = 2, #other_ids - 1 do
         b:connect(other_ids[i], "down", other_ids[i + 1])
         b:connect(other_ids[i + 1], "up", other_ids[i])
     end
-    if not rows[1] and other_ids[1] then b:set_start(other_ids[1]) end
+
+    -- Land on the TAB STRIP, like every tabbed menu (opening run info or
+    -- returning to this tab must not dump the cursor into the table). The
+    -- standalone current-hands popup has no strip, so it starts on the table.
+    local tab_strip
+    for i, n in ipairs(others) do
+        local fa = n.config and n.config.focus_args
+        if fa and fa.type == "tab" then tab_strip = other_ids[i]; break end
+    end
+    if tab_strip then
+        b:set_start(tab_strip)
+    elseif rows[1] then
+        b:set_start(rows[1].cells[0])
+    elseif other_ids[1] then
+        b:set_start(other_ids[1])
+    end
 end
 
 return M
