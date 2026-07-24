@@ -64,10 +64,10 @@ local function build_main()
         nav_button("SET.ANNOUNCEMENTS", "blindfold_announcements"),
         nav_button("SET.SCORING", "blindfold_scoring"),
         -- The game ships G.FUNCS.start_tutorial (reset progress + launch the
-        -- tutorial run) but no vanilla UI ever calls it. Handy for TESTING
-        -- the tutorial flow, but it's not a real game feature, so it stays
-        -- out of the shipped menu — uncomment to re-test.
-        -- nav_button("SET.TUTORIAL", "start_tutorial"),
+        -- tutorial run) but no vanilla UI ever calls it. Enabled while the
+        -- tutorial lockup reports are being chased — comment out again to
+        -- ship without it.
+        nav_button("SET.TUTORIAL", "start_tutorial"),
     }
     for _, c in ipairs(controls("speech")) do nodes[#nodes + 1] = c end
     -- Bundled docs, opened in the OS default handler (spoken confirmation in core).
