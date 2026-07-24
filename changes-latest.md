@@ -1,5 +1,3 @@
-* Fixed an issue where certain tags were not being read out when a card is focused (for example eternal.)
-* Keyword tooltips are now automatically read out when a card is focused. This can be configured under announcements in the mod settings.
-* Fixed an issue where clearing your hand selection would act inconsistently (often not clearing the selection or simply announcing nothing.)
-* Fixed an issue where some message text would not be read (the "Nope!" text on Wheel of fortune for example.)
-* Various new events spoken, including editions being announced when applied to jokers (for example Wheel of Fortune, Hex.) These can be configured from the options menu.
+* Fixed a bug where dragging a face-down card would reveal its name.
+* Fixed a bug where deviating from the tutorial (moving to another screen than the one it wants you to for example) would softlock the mod.
+* The Poker Hands section of the run info screen should now be a lot easier to read. In addition, you can now properly browse it as a table.

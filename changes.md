@@ -1,3 +1,8 @@
+## v1.0.5
+* Fixed a bug where dragging a face-down card would speak its name.
+* Fixed a bug where deviating from the tutorial (moving to another screen than the one it wants you to for example) would softlock the mod.
+* The Poker Hands section of the run info screen should now be a lot easier to read. You can also now properly browse it as a table.
+
 ## v1.0.4
 * Fixed an issue where certain tags were not being read out when a card is focused (for example eternal.)
 * Keyword tooltips are now automatically read out when a card is focused. This can be configured under announcements in the mod settings.
