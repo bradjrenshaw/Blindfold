@@ -46,6 +46,7 @@ return {
     MISC = {
         LOADED = "Blindfold {version} 已載入。",
         UPDATE_AVAILABLE = "Blindfold有可用更新：{current}到{latest}。",
+        TUTORIAL_DONE = "教學完成。",
     },
     RARITY = { COMMON = "普通", UNCOMMON = "罕見", RARE = "稀有", LEGENDARY = "傳奇" },
     POSITION = { OF = "第{index}個，共{total}個" },

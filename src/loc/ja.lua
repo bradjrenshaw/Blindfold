@@ -46,6 +46,7 @@ return {
     MISC = {
         LOADED = "Blindfold {version} を読み込みました。",
         UPDATE_AVAILABLE = "Blindfoldの更新があります：{current}から{latest}へ。",
+        TUTORIAL_DONE = "チュートリアル完了。",
     },
     RARITY = { COMMON = "コモン", UNCOMMON = "アンコモン", RARE = "レア", LEGENDARY = "レジェンダリー" },
     POSITION = { OF = "{total}枚中{index}枚目" },

@@ -54,6 +54,7 @@ return {
     MISC = {
         LOADED = "Blindfold {version} loaded.",
         UPDATE_AVAILABLE = "Blindfold update available: {current} to {latest}.",
+        TUTORIAL_DONE = "Tutorial complete.",
     },
     -- Joker rarity, announced as a subtype ("common joker").
     RARITY = { COMMON = "common", UNCOMMON = "uncommon", RARE = "rare", LEGENDARY = "legendary" },

@@ -46,6 +46,7 @@ return {
     MISC = {
         LOADED = "Blindfold {version} dimuat.",
         UPDATE_AVAILABLE = "Pembaruan Blindfold tersedia: {current} ke {latest}.",
+        TUTORIAL_DONE = "Tutorial selesai.",
     },
     RARITY = { COMMON = "umum", UNCOMMON = "tidak umum", RARE = "langka", LEGENDARY = "legendaris" },
     POSITION = { OF = "{index} dari {total}" },

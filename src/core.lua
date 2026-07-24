@@ -570,6 +570,21 @@ local function poll_update_check()
     end
 end
 
+-- Tutorial completion renders NO text — the dim lifts and Jimbo leaves
+-- (tutorial_complete flips at state_events.lua:1244, or via Skip). Watch the
+-- flip so the ending is spoken; otherwise a blind player waits for a next
+-- step that never comes.
+local _tutorial_seen = false
+local function tutorial_watch()
+    local complete = G and G.SETTINGS and G.SETTINGS.tutorial_complete
+    if G and G.OVERLAY_TUTORIAL and not complete then
+        _tutorial_seen = true
+    elseif _tutorial_seen and complete then
+        _tutorial_seen = false
+        speech.say(loc_line("MISC.TUTORIAL_DONE", "Tutorial complete."))
+    end
+end
+
 local BOOT_DELAY = 0.5
 local _boot_announced = false
 local function boot_announce()
@@ -585,6 +600,7 @@ end
 function BA.focus_tick(ctrl)
     pcall(boot_announce)
     pcall(poll_update_check)
+    pcall(tutorial_watch)
     pcall(log_state_transition)
     pcall(recover_dead_state)
     if Screens then pcall(Screens.tick) end

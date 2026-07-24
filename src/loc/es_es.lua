@@ -46,6 +46,7 @@ return {
     MISC = {
         LOADED = "Blindfold {version} cargado.",
         UPDATE_AVAILABLE = "Actualización de Blindfold disponible: {current} a {latest}.",
+        TUTORIAL_DONE = "Tutorial completado.",
     },
     RARITY = { COMMON = "común", UNCOMMON = "poco común", RARE = "raro", LEGENDARY = "legendario" },
     POSITION = { OF = "{index} de {total}" },
