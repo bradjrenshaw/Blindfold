@@ -78,6 +78,17 @@ local function blind_vtable(node, type_name, is_skip)
                 ctx.message:fragment(Message.localized("BLIND.NOT_CURRENT"))
                 return
             end
+            -- Tutorial path enforcement. The native click SHOULD refuse via
+            -- the dim's under_overlay flag, but that flag flip-flops at draw
+            -- time for nested UIBoxes (the skip tag's box) — so skipping the
+            -- small blind clicked through and desynced the tutorial's step
+            -- machine. Select is the listened action on its steps and passes;
+            -- skip is never listened, so it blocks with spoken feedback.
+            local blocked = Play.tut_gate(is_skip and "skip_blind" or "select_blind")
+            if blocked then
+                ctx.message:fragment(Message.localized(blocked))
+                return
+            end
             node:click()
             if is_skip then
                 -- Land on the NEW current blind. Left to the reconciler, the
