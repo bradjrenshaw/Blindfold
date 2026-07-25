@@ -1,3 +1,8 @@
+## v1.0.6
+* Fixed various cases where the mod would allow you to complete actions that the tutorial blocked, causing various game softlocks.
+* Fixed an issue where the hand requirements column of the Poker Hands table was missing.
+* Fixed an issue with the run info screen where your focus would be moved to the first element of each tab instead of remaining on the tab bar.
+
 ## v1.0.5
 * Fixed a bug where dragging a face-down card would speak its name.
 * Fixed a bug where deviating from the tutorial (moving to another screen than the one it wants you to for example) would softlock the mod.

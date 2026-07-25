@@ -1,3 +1,3 @@
-* Fixed a bug where dragging a face-down card would reveal its name.
-* Fixed a bug where deviating from the tutorial (moving to another screen than the one it wants you to for example) would softlock the mod.
-* The Poker Hands section of the run info screen should now be a lot easier to read. In addition, you can now properly browse it as a table.
+* Fixed various cases where the mod would allow you to complete actions that the tutorial blocked, causing various game softlocks.
+* Fixed an issue where the hand requirements column of the Poker Hands table was missing.
+* Fixed an issue with the run info screen where your focus would be moved to the first element of each tab instead of remaining on the tab bar.
