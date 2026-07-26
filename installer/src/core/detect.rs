@@ -3,6 +3,10 @@ use std::path::{Path, PathBuf};
 
 use super::paths::{mod_dir, steam_defaults, GAME_DIR_NAME};
 
+#[cfg(target_os = "macos")]
+const VALIDATION_MARKERS: &[&str] = &["Balatro.app"];
+
+#[cfg(not(target_os = "macos"))]
 const VALIDATION_MARKERS: &[&str] = &["Balatro.exe"];
 
 pub fn detect_game_path() -> Option<PathBuf> {
@@ -122,9 +126,10 @@ mod tests {
     }
 
     #[test]
-    fn validate_game_path_with_exe() {
+    fn validate_game_path_with_marker() {
         let dir = tempfile::tempdir().unwrap();
-        fs::write(dir.path().join("Balatro.exe"), "").unwrap();
+        let marker = VALIDATION_MARKERS[0];
+        fs::write(dir.path().join(marker), "").unwrap();
         assert!(validate_game_path(dir.path()));
     }
 

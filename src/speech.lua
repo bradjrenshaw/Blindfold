@@ -16,11 +16,18 @@ local bit = require("bit")
 
 local M = { loaded = false, prism = nil, ctx = nil, backend = nil }
 
-ffi.cdef([[
-    int   MultiByteToWideChar(unsigned int cp, unsigned long flags,
-                              const char* mb, int cbmb, wchar_t* wc, int cchwc);
-    void* LoadLibraryW(const wchar_t* path);
+local is_win = ffi.os == "Windows"
+local is_osx = ffi.os == "OSX"
 
+if is_win then
+    ffi.cdef([[
+        int   MultiByteToWideChar(unsigned int cp, unsigned long flags,
+                                  const char* mb, int cbmb, wchar_t* wc, int cchwc);
+        void* LoadLibraryW(const wchar_t* path);
+    ]])
+end
+
+ffi.cdef([[
     typedef struct prism_ctx prism_ctx;
     typedef struct prism_backend prism_backend;
 
@@ -57,29 +64,40 @@ end
 M.log = log
 
 -- UTF-8 Lua string -> null-terminated UTF-16LE buffer (for the wide Win32 API).
-local CP_UTF8 = 65001
-local function to_wide(s)
-    local n = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
-    if n <= 0 then return nil end
-    local buf = ffi.new("wchar_t[?]", n)
-    ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
-    return buf
+local to_wide
+if is_win then
+    local CP_UTF8 = 65001
+    to_wide = function(s)
+        local n = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
+        if n <= 0 then return nil end
+        local buf = ffi.new("wchar_t[?]", n)
+        ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
+        return buf
+    end
 end
 
 -- Load Prism from the mod's lib/ folder and acquire the best available
 -- backend (prism's own preference order). mod_dir is the deployed mod path.
 function M.init(mod_dir)
-    local lib_dir = (mod_dir .. "/lib"):gsub("/", "\\")
     local ok, err = pcall(function()
-        -- ffi.load routes through the ANSI LoadLibraryA, which garbles
-        -- non-ASCII install paths (C:\Users\Usuário\... -> "module not
-        -- found"). Load the DLL ourselves through the wide API; ffi.load by
-        -- bare name then binds to the ALREADY-LOADED module (LoadLibrary
-        -- resolves loaded modules by name before searching disk).
-        local wide = to_wide(lib_dir .. "\\prism.dll")
-        assert(wide and ffi.C.LoadLibraryW(wide) ~= nil,
-            "LoadLibraryW failed for " .. lib_dir .. "\\prism.dll")
-        M.prism = ffi.load("prism")
+        if is_win then
+            local lib_dir = (mod_dir .. "/lib"):gsub("/", "\\")
+            -- ffi.load routes through the ANSI LoadLibraryA, which garbles
+            -- non-ASCII install paths (C:\Users\Usuário\... -> "module not
+            -- found"). Load the DLL ourselves through the wide API; ffi.load by
+            -- bare name then binds to the ALREADY-LOADED module (LoadLibrary
+            -- resolves loaded modules by name before searching disk).
+            local wide = to_wide(lib_dir .. "\\prism.dll")
+            assert(wide and ffi.C.LoadLibraryW(wide) ~= nil,
+                "LoadLibraryW failed for " .. lib_dir .. "\\prism.dll")
+            M.prism = ffi.load("prism")
+        elseif is_osx then
+            local lib_path = mod_dir .. "/lib/libprism.dylib"
+            M.prism = ffi.load(lib_path)
+        else
+            error("Unsupported operating system: " .. tostring(ffi.os))
+        end
+
         M.ctx = M.prism.prism_init(nil)
         assert(M.ctx ~= nil, "prism_init returned null")
         M.backend = M.prism.prism_registry_create_best(M.ctx)
@@ -93,8 +111,10 @@ function M.init(mod_dir)
         local name = M.prism.prism_backend_name(M.backend)
         log("Prism loaded (backend: " .. (name ~= nil and ffi.string(name) or "unknown") .. ").")
     else
+        local lib_name = is_osx and "libprism.dylib" or "prism.dll"
+        local lib_dir = is_win and (mod_dir .. "/lib"):gsub("/", "\\") or (mod_dir .. "/lib")
         log("Prism NOT loaded (" .. tostring(err) ..
-            "). Drop the x64 prism.dll into " .. lib_dir ..
+            "). Drop the " .. lib_name .. " into " .. lib_dir ..
             " . Running with log output only.")
     end
     return M.loaded

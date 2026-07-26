@@ -12,8 +12,23 @@ pub const GITHUB_MAIN_COMMIT_URL: &str =
     "https://api.github.com/repos/bradjrenshaw/Blindfold/commits/main";
 pub const USER_AGENT: &str = "BlindfoldInstaller";
 
-/// The Lovely Injector proxy DLL, installed next to Balatro.exe.
-pub const LOVELY_DLL: &str = "version.dll";
+#[cfg(target_os = "windows")]
+pub const LOVELY_FILES: &[&str] = &["version.dll"];
+
+#[cfg(target_os = "macos")]
+pub const LOVELY_FILES: &[&str] = &["liblovely.dylib", "run_lovely_macos.sh"];
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+pub const LOVELY_FILES: &[&str] = &[];
+
+#[cfg(target_os = "windows")]
+pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/libprism.dylib"];
+
+#[cfg(target_os = "macos")]
+pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/prism.dll"];
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+pub const EXCLUDED_MOD_FILES: &[&str] = &[];
 
 /// Top-level directory inside the release zip holding the mod payload.
 /// Everything under it is extracted into the Mods folder.
@@ -31,7 +46,13 @@ pub const USER_FILES: &[&str] = &[
 /// its Mods subfolder (not from the game install directory).
 pub fn balatro_data_dir() -> PathBuf {
     dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("C:\\Users\\Default\\AppData\\Roaming"))
+        .unwrap_or_else(|| {
+            #[cfg(target_os = "macos")]
+            if let Some(home) = dirs::home_dir() {
+                return home.join("Library").join("Application Support");
+            }
+            PathBuf::from("C:\\Users\\Default\\AppData\\Roaming")
+        })
         .join("Balatro")
 }
 
@@ -55,7 +76,9 @@ pub fn open_mods_folder() -> Result<(), String> {
         .map_err(|e| format!("Failed to create Mods folder: {}", e))?;
     #[cfg(target_os = "windows")]
     let opener = "explorer";
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    let opener = "open";
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     let opener = "xdg-open";
     std::process::Command::new(opener)
         .arg(&mods)
@@ -64,16 +87,26 @@ pub fn open_mods_folder() -> Result<(), String> {
     Ok(())
 }
 
-/// Steam roots to probe, best first: the registry-configured install (like
-/// scripts/deploy.ps1 uses), then the stock location.
+/// Steam roots to probe, best first.
 pub fn steam_defaults() -> Vec<PathBuf> {
     let mut roots = Vec::new();
-    if let Some(reg) = steam_registry_path() {
-        roots.push(reg);
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(reg) = steam_registry_path() {
+            roots.push(reg);
+        }
+        let stock = PathBuf::from("C:\\Program Files (x86)\\Steam");
+        if !roots.contains(&stock) {
+            roots.push(stock);
+        }
     }
-    let stock = PathBuf::from("C:\\Program Files (x86)\\Steam");
-    if !roots.contains(&stock) {
-        roots.push(stock);
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(data_dir) = dirs::data_dir() {
+            roots.push(data_dir.join("Steam"));
+        } else if let Some(home) = dirs::home_dir() {
+            roots.push(home.join("Library").join("Application Support").join("Steam"));
+        }
     }
     roots
 }
@@ -95,12 +128,8 @@ fn steam_registry_path() -> Option<PathBuf> {
     parse_reg_sz(&text).map(|v| PathBuf::from(v.replace('/', "\\")))
 }
 
-#[cfg(not(target_os = "windows"))]
-fn steam_registry_path() -> Option<PathBuf> {
-    None
-}
-
 /// Pull the value out of a `reg query` REG_SZ result line.
+#[cfg(target_os = "windows")]
 pub fn parse_reg_sz(output: &str) -> Option<String> {
     for line in output.lines() {
         let line = line.trim();
@@ -134,11 +163,13 @@ mod tests {
         assert!(balatro_data_dir().to_string_lossy().contains("Balatro"));
     }
 
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     #[test]
     fn steam_defaults_not_empty() {
         assert!(!steam_defaults().is_empty());
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn parse_reg_sz_typical_output() {
         let out = "\r\nHKEY_CURRENT_USER\\Software\\Valve\\Steam\r\n    SteamPath    REG_SZ    c:/program files (x86)/steam\r\n\r\n";
@@ -148,6 +179,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn parse_reg_sz_no_match() {
         assert_eq!(parse_reg_sz("ERROR: The system was unable to find it."), None);
