@@ -136,10 +136,15 @@ fn install_from_github(game_path: &PathBuf) {
 
     println!("Downloading {}...", asset.name);
 
-    match install::download_and_extract(&asset.browser_download_url, game_path, |pct| {
-        print!("\rProgress: {}%   ", pct);
-        io::stdout().flush().ok();
-    }) {
+    match install::download_and_extract(
+        &asset.browser_download_url,
+        game_path,
+        |pct| {
+            print!("\rProgress: {}%   ", pct);
+            io::stdout().flush().ok();
+        },
+        &mut ask_replace_dll,
+    ) {
         Ok(_) => {
             println!();
             if let Err(e) = install::save_installed_version(&release.tag_name) {
@@ -178,7 +183,7 @@ fn install_from_file(game_path: &PathBuf) {
         return;
     }
 
-    match install::install_from_file(&zip_path, game_path) {
+    match install::install_from_file(&zip_path, game_path, &mut ask_replace_dll) {
         Ok(_) => {
             println!(
                 "Installed from {}.",
@@ -220,6 +225,7 @@ fn install_dev_build(game_path: &PathBuf) {
             print!("\rProgress: {}%   ", pct);
             io::stdout().flush().ok();
         },
+        &mut ask_replace_dll,
     ) {
         Ok(_) => {
             println!();
@@ -294,6 +300,18 @@ fn open_mods_folder() {
         Ok(_) => println!("Opened {}", crate::core::paths::mods_dir().display()),
         Err(e) => println!("Error: {}", e),
     }
+}
+
+/// Asked mid-extraction when the game folder holds a version.dll that
+/// DIFFERS from the bundled one (identical is silently kept). Defaults to
+/// Yes: an outdated Lovely crashes at launch on Blindfold's lovely.toml.
+fn ask_replace_dll() -> bool {
+    println!();
+    println!("A different Lovely Injector (version.dll) is already installed in the");
+    println!("game folder. An outdated Lovely crashes at launch with a lovely.toml");
+    println!("parse error; answer no only if other mods need your current version.");
+    let answer = prompt("Replace it with the version bundled with Blindfold? (Y/n): ");
+    answer != "n" && answer != "no"
 }
 
 fn prompt(msg: &str) -> String {

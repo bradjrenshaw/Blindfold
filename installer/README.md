@@ -12,9 +12,11 @@ What it does:
    a local zip, or — "Install dev build" — the latest commit on main via the
    branch zipball, remapping `src/**` and `third_party/lovely/version.dll` to
    the same destinations) and extracts it, routed:
-   - `version.dll` → the game folder (Lovely Injector; only written when
-     missing — an existing one is never touched, so we can't downgrade a
-     multi-mod setup's newer Lovely, and updates stay elevation-free)
+   - `version.dll` → the game folder (Lovely Injector; written when missing,
+     silently skipped when identical — so updates stay elevation-free. When
+     it DIFFERS, the user is asked: an outdated Lovely crashes at launch on
+     Blindfold's `lovely.toml`, but a newer one may be serving other mods,
+     so neither direction is replaced silently)
    - `Blindfold/**` → `%APPDATA%\Balatro\Mods` (replaced wholesale, so updates
      never leave stale files; settings live outside and survive)
 3. Tracks the installed version in `Mods\Blindfold\version` and offers

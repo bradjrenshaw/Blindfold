@@ -246,7 +246,9 @@ pub fn run() {
                 log_append(&log_c, "Downloading...");
                 status_c.set_label("Downloading...");
 
-                let result = install::download_and_extract(&url, &game_path, |_pct| {});
+                let result = install::download_and_extract(&url, &game_path, |_pct| {}, &mut || {
+                    ask_replace_dll(&frame_c)
+                });
 
                 install_btn_c.enable(true);
                 install_file_btn_c.enable(true);
@@ -319,7 +321,9 @@ pub fn run() {
                 let Some(zip_path_str) = dialog.get_path() else { return };
                 let zip_path = PathBuf::from(&zip_path_str);
 
-                match install::install_from_file(&zip_path, &game_path) {
+                match install::install_from_file(&zip_path, &game_path, &mut || {
+                    ask_replace_dll(&frame_c)
+                }) {
                     Ok(_) => {
                         log_append(
                             &log_c,
@@ -425,6 +429,7 @@ pub fn run() {
                     crate::core::paths::GITHUB_MAIN_ZIP_URL,
                     &game_path,
                     |_pct| {},
+                    &mut || ask_replace_dll(&frame_c),
                 );
 
                 install_btn_c.enable(true);
@@ -728,6 +733,23 @@ fn is_up_to_date(installed: Option<&str>, latest: &str) -> bool {
         (Some(inst), Some(lat)) => inst >= lat,
         _ => installed == latest, // fallback to string comparison
     }
+}
+
+/// Asked mid-extraction when the game folder holds a version.dll that
+/// DIFFERS from the bundled one (identical is silently kept).
+fn ask_replace_dll(parent: &Frame) -> bool {
+    MessageDialog::builder(
+        parent,
+        "A different Lovely Injector (version.dll) is already installed in the \
+         game folder.\n\nReplace it with the version bundled with Blindfold? \
+         An outdated Lovely crashes at launch with a lovely.toml parse error. \
+         Choose No only if other mods need your current version.",
+        "Replace Lovely Injector?",
+    )
+    .with_style(MessageDialogStyle::YesNo | MessageDialogStyle::IconQuestion)
+    .build()
+    .show_modal()
+        == ID_YES
 }
 
 fn log_append(log: &TextCtrl, msg: &str) {

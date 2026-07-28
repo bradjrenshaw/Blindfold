@@ -66,13 +66,19 @@ pub fn download(url: &str, progress: impl Fn(u32)) -> Result<Vec<u8>, String> {
     Ok(buffer)
 }
 
+/// `replace_dll` is consulted when an existing version.dll DIFFERS from the
+/// bundled one (identical is silently skipped): true = replace it. The
+/// frontends ask the user — an outdated Lovely crashes at launch on our
+/// lovely.toml (a 0.5-beta in the wild lacked [manifest] support), but a
+/// NEWER one may be serving other mods, so neither direction is silent.
 pub fn download_and_extract(
     url: &str,
     game_path: &Path,
     progress: impl Fn(u32),
+    replace_dll: &mut dyn FnMut() -> bool,
 ) -> Result<(), String> {
     let data = download(url, progress)?;
-    install_zip(&data, game_path)
+    install_zip(&data, game_path, replace_dll)
 }
 
 /// Download and install the latest commit on main (GitHub branch zipball).
@@ -80,14 +86,19 @@ pub fn download_and_install_repo(
     url: &str,
     game_path: &Path,
     progress: impl Fn(u32),
+    replace_dll: &mut dyn FnMut() -> bool,
 ) -> Result<(), String> {
     let data = download(url, progress)?;
-    install_repo_zip(&data, game_path)
+    install_repo_zip(&data, game_path, replace_dll)
 }
 
-pub fn install_from_file(zip_path: &Path, game_path: &Path) -> Result<(), String> {
+pub fn install_from_file(
+    zip_path: &Path,
+    game_path: &Path,
+    replace_dll: &mut dyn FnMut() -> bool,
+) -> Result<(), String> {
     let data = fs::read(zip_path).map_err(|e| format!("Failed to read zip: {}", e))?;
-    install_zip(&data, game_path)
+    install_zip(&data, game_path, replace_dll)
 }
 
 /// Where a zip entry belongs.
@@ -128,34 +139,54 @@ fn route_repo(name: &str) -> Route {
     }
 }
 
-pub fn install_zip(data: &[u8], game_path: &Path) -> Result<(), String> {
-    extract_routed(data, game_path, &mods_dir(), route_release, "a Blindfold release")
+pub fn install_zip(
+    data: &[u8],
+    game_path: &Path,
+    replace_dll: &mut dyn FnMut() -> bool,
+) -> Result<(), String> {
+    extract_routed(data, game_path, &mods_dir(), route_release, "a Blindfold release", replace_dll)
 }
 
-pub fn install_repo_zip(data: &[u8], game_path: &Path) -> Result<(), String> {
-    extract_routed(data, game_path, &mods_dir(), route_repo, "a Blindfold repository")
+pub fn install_repo_zip(
+    data: &[u8],
+    game_path: &Path,
+    replace_dll: &mut dyn FnMut() -> bool,
+) -> Result<(), String> {
+    extract_routed(data, game_path, &mods_dir(), route_repo, "a Blindfold repository", replace_dll)
 }
 
 #[cfg(test)]
-pub fn install_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result<(), String> {
-    extract_routed(data, game_path, mods_root, route_release, "a Blindfold release")
+pub fn install_zip_to(
+    data: &[u8],
+    game_path: &Path,
+    mods_root: &Path,
+    replace_dll: &mut dyn FnMut() -> bool,
+) -> Result<(), String> {
+    extract_routed(data, game_path, mods_root, route_release, "a Blindfold release", replace_dll)
 }
 
 #[cfg(test)]
-pub fn install_repo_zip_to(data: &[u8], game_path: &Path, mods_root: &Path) -> Result<(), String> {
-    extract_routed(data, game_path, mods_root, route_repo, "a Blindfold repository")
+pub fn install_repo_zip_to(
+    data: &[u8],
+    game_path: &Path,
+    mods_root: &Path,
+    replace_dll: &mut dyn FnMut() -> bool,
+) -> Result<(), String> {
+    extract_routed(data, game_path, mods_root, route_repo, "a Blindfold repository", replace_dll)
 }
 
 /// Extract a zip, sending each entry where its route says. The existing
 /// Blindfold folder is replaced wholesale so updates never leave stale files
 /// behind; user settings live outside it (%APPDATA%\Balatro) and are
-/// untouched. An existing version.dll is never overwritten (see below).
+/// untouched. A differing version.dll is replaced only when `replace_dll`
+/// says so (see the docs on download_and_extract).
 fn extract_routed(
     data: &[u8],
     game_path: &Path,
     mods_root: &Path,
     route: impl Fn(&str) -> Route,
     expected: &str,
+    replace_dll: &mut dyn FnMut() -> bool,
 ) -> Result<(), String> {
     let cursor = Cursor::new(data);
     let mut archive =
@@ -221,12 +252,19 @@ fn extract_routed(
         file.read_to_end(&mut contents)
             .map_err(|e| format!("Failed to read {}: {}", name, e))?;
 
-        // An existing version.dll is left alone entirely: the user may run
-        // other Lovely mods with a newer injector than our bundled one, and
-        // overwriting would downgrade their whole setup. Only a missing DLL
-        // is written (also keeps updates elevation-free).
-        if is_dll && dest.exists() {
-            continue;
+        // version.dll conflict handling: identical is a silent no-op (keeps
+        // updates elevation-free); a DIFFERING one is replaced only with the
+        // user's consent via replace_dll — theirs may be newer (serving
+        // other mods) or older (crashes at launch on our lovely.toml).
+        if is_dll {
+            if let Ok(existing) = fs::read(&dest) {
+                if existing == contents {
+                    continue;
+                }
+                if !replace_dll() {
+                    continue;
+                }
+            }
         }
 
         fs::write(&dest, &contents).map_err(|e| {
@@ -278,7 +316,7 @@ mod tests {
             ("Blindfold/lib/prism.dll", b"prism"),
         ]);
 
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
 
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
         let md = mods.path().join("Blindfold");
@@ -300,7 +338,7 @@ mod tests {
             ("Blindfold\\lib\\prism.dll", b"prism"),
         ]);
 
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
 
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
         let md = mods.path().join("Blindfold");
@@ -322,7 +360,7 @@ mod tests {
             ("Blindfold-main/scripts/deploy.ps1", b"# script"),
         ]);
 
-        install_repo_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_repo_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
 
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
         let md = mods.path().join("Blindfold");
@@ -340,7 +378,7 @@ mod tests {
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[("Blindfold-main/README.md", b"no src here")]);
-        let err = install_repo_zip_to(&zip, game.path(), mods.path()).unwrap_err();
+        let err = install_repo_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap_err();
         assert!(err.contains("repository"));
     }
 
@@ -353,7 +391,7 @@ mod tests {
         fs::write(old.join("stale").join("gone.lua"), "old").unwrap();
 
         let zip = make_zip(&[("Blindfold/lovely.toml", b"new")]);
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
 
         assert!(!old.join("stale").exists());
         assert_eq!(fs::read(old.join("lovely.toml")).unwrap(), b"new");
@@ -364,7 +402,7 @@ mod tests {
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         let zip = make_zip(&[("readme.txt", b"hi")]);
-        let err = install_zip_to(&zip, game.path(), mods.path()).unwrap_err();
+        let err = install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap_err();
         assert!(err.contains("Blindfold"));
     }
 
@@ -376,15 +414,15 @@ mod tests {
             ("Blindfold/lovely.toml", b"ok"),
             ("stray.txt", b"ignored"),
         ]);
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
         assert!(!game.path().join("stray.txt").exists());
         assert!(!mods.path().join("stray.txt").exists());
     }
 
     #[test]
-    fn install_leaves_existing_dll_alone() {
-        // A user's existing Lovely (possibly newer, shared with other mods)
-        // must never be overwritten.
+    fn install_leaves_existing_dll_alone_when_declined() {
+        // A differing Lovely (possibly newer, shared with other mods) is kept
+        // when the user declines the replacement.
         let game = tempfile::tempdir().unwrap();
         let mods = tempfile::tempdir().unwrap();
         fs::write(game.path().join("version.dll"), b"newer lovely").unwrap();
@@ -392,11 +430,53 @@ mod tests {
             ("version.dll", b"bundled lovely"),
             ("Blindfold/lovely.toml", b"ok"),
         ]);
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        let mut asked = false;
+        install_zip_to(&zip, game.path(), mods.path(), &mut || {
+            asked = true;
+            false
+        })
+        .unwrap();
+        assert!(asked);
         assert_eq!(
             fs::read(game.path().join("version.dll")).unwrap(),
             b"newer lovely"
         );
+    }
+
+    #[test]
+    fn install_replaces_differing_dll_when_confirmed() {
+        // An outdated Lovely crashes at launch on our lovely.toml; when the
+        // user confirms, the bundled one replaces it.
+        let game = tempfile::tempdir().unwrap();
+        let mods = tempfile::tempdir().unwrap();
+        fs::write(game.path().join("version.dll"), b"old lovely").unwrap();
+        let zip = make_zip(&[
+            ("version.dll", b"bundled lovely"),
+            ("Blindfold/lovely.toml", b"ok"),
+        ]);
+        install_zip_to(&zip, game.path(), mods.path(), &mut || true).unwrap();
+        assert_eq!(
+            fs::read(game.path().join("version.dll")).unwrap(),
+            b"bundled lovely"
+        );
+    }
+
+    #[test]
+    fn install_never_asks_for_identical_dll() {
+        // Same bytes → silent no-op: updates stay elevation-free and the
+        // user is never bothered.
+        let game = tempfile::tempdir().unwrap();
+        let mods = tempfile::tempdir().unwrap();
+        fs::write(game.path().join("version.dll"), b"lovely").unwrap();
+        let zip = make_zip(&[
+            ("version.dll", b"lovely"),
+            ("Blindfold/lovely.toml", b"ok"),
+        ]);
+        install_zip_to(&zip, game.path(), mods.path(), &mut || {
+            panic!("asked to replace an identical version.dll")
+        })
+        .unwrap();
+        assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
     }
 
     #[test]
@@ -407,7 +487,7 @@ mod tests {
             ("version.dll", b"lovely"),
             ("Blindfold/lovely.toml", b"ok"),
         ]);
-        install_zip_to(&zip, game.path(), mods.path()).unwrap();
+        install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
         assert_eq!(fs::read(game.path().join("version.dll")).unwrap(), b"lovely");
     }
 
@@ -428,7 +508,7 @@ mod tests {
         assert!(status.success());
 
         let zip = make_zip(&[("Blindfold/lovely.toml", b"ok")]);
-        let err = install_zip_to(&zip, game.path(), mods.path()).unwrap_err();
+        let err = install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap_err();
         assert!(err.contains("git pull"));
         // The link target is untouched
         assert!(target.exists());
