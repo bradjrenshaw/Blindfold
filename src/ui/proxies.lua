@@ -325,7 +325,9 @@ function Proxy.center_hidden(card)
         and card.ability and (card.ability.set == "Joker" or card.ability.set == "Edition"
             or card.ability.consumeable or card.ability.set == "Voucher"
             or card.ability.set == "Booster")
-        and not (G and (card.area == G.jokers or card.area == G.consumeables)) then
+        -- card.area must be non-nil: nil == nil would false-exempt an
+        -- area-less card whenever G.consumeables doesn't exist yet.
+        and not (G and card.area and (card.area == G.jokers or card.area == G.consumeables)) then
         return "NOT_DISCOVERED"
     end
     return nil
@@ -491,6 +493,36 @@ function Proxy.card_description(card)
     if not card then return nil end
     -- Never describe a face-down card — that would reveal its hidden identity.
     if card.facing == "back" then return nil end
+    local ab = card.ability
+    -- Misprint's body is pure theater (card.lua:766): a DynaText cycling every
+    -- integer min..max plus glitch flavor strings. The generic scrape read the
+    -- DynaTexts' birth frames — "+0 rand()" — so speak the real contract
+    -- (a random roll in the range) instead. Undiscovered stays on the generic
+    -- path, which speaks the game's own "?" description.
+    if ab and ab.name == "Misprint" and type(ab.extra) == "table"
+        and not Proxy.center_hidden(card) then
+        local okm, mult = pcall(localize, "k_mult")
+        return Message.localized("CARD.RANDOM_MULT", {
+            min = tostring(ab.extra.min or 0),
+            max = tostring(ab.extra.max or 0),
+            mult = (okm and type(mult) == "string" and mult) or "Mult",
+        }):resolve()
+    end
+    -- Blueprint/Brainstorm render a Compatible/Incompatible box whose text is
+    -- ref-bound to ability.blueprint_compat_ui — filled by a draw func only
+    -- while the game's hover popup is on screen, so it reads empty for us.
+    -- Pre-sync it from the live state (Card:update keeps blueprint_compat
+    -- fresh every frame), exactly as G.FUNCS.blueprint_compat would; the
+    -- scrape then picks it up in its rendered position.
+    if ab and (ab.name == "Blueprint" or ab.name == "Brainstorm") then
+        local compat = ab.blueprint_compat
+        if compat == "compatible" or compat == "incompatible" then
+            local okc, w = pcall(localize, "k_" .. compat)
+            if okc and type(w) == "string" then
+                ab.blueprint_compat_ui = " " .. w .. " "
+            end
+        end
+    end
     local t
     if type(card.generate_UIBox_ability_table) == "function" then
         local ok, res = pcall(function() return card:generate_UIBox_ability_table() end)

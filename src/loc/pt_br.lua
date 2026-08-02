@@ -106,6 +106,7 @@ return {
         SELECTED   = "selecionada",
         DESELECTED = "desmarcada",
         TIP        = "{name}, {desc}",
+        RANDOM_MULT = "+{min} a +{max} {mult}, aleatório",
     },
     EDITION = {
         foil = "laminada", holographic = "holográfica",
