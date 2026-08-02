@@ -10,15 +10,18 @@ local Message = require("ui.message")
 local KeyboardBinding = require("input.binding")
 local InputAction = require("input.action")
 
--- Modifier keys, skipped during rebind capture so combos (e.g. Ctrl+X) bind on
--- the X press with Ctrl folded into the held state.
-local MODIFIER_KEYS = { lctrl = true, rctrl = true, lshift = true, rshift = true, lalt = true, ralt = true }
+-- Modifier keys mapped to their group. During rebind capture a combo (e.g.
+-- Ctrl+X) binds on the X press with Ctrl folded into the held state; a
+-- modifier pressed AND released alone binds bare (Shift is the default Back
+-- key), mirroring the pad trigger capture.
+local MODIFIER_KEYS = { lctrl = "ctrl", rctrl = "ctrl", lshift = "shift", rshift = "shift", lalt = "alt", ralt = "alt" }
 
 local M = {
     actions = {},
     by_key = {},
     _active = {},        -- pressed keyboard key -> gamepad button currently held
     _listen_cb = nil,    -- rebind capture callback (settings menu)
+    _listen_mod_down = {}, -- modifiers pressed during capture (release alone = bare bind)
     kb_active = false,   -- has the keyboard driven nav yet (gates the mouse lock)
     lock_focus_mode = true,
     silence = nil,       -- optional fn() run when a key is consumed (speech.silence)
@@ -129,13 +132,32 @@ function M.ensure_kb_nav(ctrl)
     M.kb_active = true
 end
 
-local function mods_from(ctrl)
-    local h = ctrl.held_keys or {}
-    return {
-        ctrl = (h.lctrl or h.rctrl) and true or false,
-        shift = (h.lshift or h.rshift) and true or false,
-        alt = (h.lalt or h.ralt) and true or false,
-    }
+-- Held-modifier state, polled straight from LÖVE (the STS2 lesson: read the
+-- input layer, not the game's table). Controller.held_keys only records
+-- presses our key_press wrap did NOT consume — during rebind capture every
+-- key is consumed, so a held Ctrl was invisible there and combos bound bare.
+-- `key` is the key this press is for: its own modifier group is excluded so
+-- a bare modifier press (Shift as Back) still matches its unmodified binding.
+local function mods_from(ctrl, key)
+    local kb = love and love.keyboard
+    local m
+    if kb and kb.isDown then
+        m = {
+            ctrl = kb.isDown("lctrl", "rctrl") and true or false,
+            shift = kb.isDown("lshift", "rshift") and true or false,
+            alt = kb.isDown("lalt", "ralt") and true or false,
+        }
+    else
+        local h = ctrl and ctrl.held_keys or {}
+        m = {
+            ctrl = (h.lctrl or h.rctrl) and true or false,
+            shift = (h.lshift or h.rshift) and true or false,
+            alt = (h.lalt or h.ralt) and true or false,
+        }
+    end
+    local own = MODIFIER_KEYS[key]
+    if own then m[own] = false end
+    return m
 end
 
 -- Returns true if the key was consumed (the caller then suppresses the game's
@@ -144,10 +166,13 @@ function M.on_key_down(ctrl, key)
     -- Rebind capture for the settings menu: the next non-modifier keypress
     -- becomes a binding (held modifiers are folded in).
     if M._listen_cb then
-        if not MODIFIER_KEYS[key] then
+        if MODIFIER_KEYS[key] then
+            -- Held for a combo, or bound bare on its lone release (on_key_up).
+            M._listen_mod_down[key] = true
+        else
             local cb = M._listen_cb
             M._listen_cb = nil
-            local mods = mods_from(ctrl)
+            local mods = mods_from(ctrl, key)
             cb(KeyboardBinding.new(key, mods.ctrl, mods.shift, mods.alt))
         end
         return true
@@ -155,7 +180,7 @@ function M.on_key_down(ctrl, key)
     -- Let the game's text fields (seed / profile name) receive keys untouched.
     if ctrl.text_input_hook then return false end
 
-    local mods = mods_from(ctrl)
+    local mods = mods_from(ctrl, key)
     -- Most-specific match wins (a Ctrl+X binding beats a bare X binding).
     local best, best_score
     for _, a in ipairs(M.actions) do
@@ -194,7 +219,17 @@ function M.on_key_down(ctrl, key)
 end
 
 function M.on_key_up(ctrl, key)
-    if M._listen_cb then return true end
+    if M._listen_cb then
+        -- A modifier pressed and released alone during capture binds bare —
+        -- Shift is the default Back key, so it must stay self-assignable.
+        if M._listen_mod_down[key] then
+            M._listen_mod_down[key] = nil
+            local cb = M._listen_cb
+            M._listen_cb = nil
+            cb(KeyboardBinding.new(key))
+        end
+        return true
+    end
     local btn = M._active[key]
     if btn then
         M._active[key] = nil
@@ -378,8 +413,8 @@ function M.update_pad_axes(ctrl)
 end
 
 -- Settings-menu rebind: capture the next keypress as a binding via cb(binding).
-function M.start_listening(cb) M._listen_cb = cb end
-function M.stop_listening() M._listen_cb = nil end
+function M.start_listening(cb) M._listen_cb = cb; M._listen_mod_down = {} end
+function M.stop_listening() M._listen_cb = nil; M._listen_mod_down = {} end
 
 -- Restore every action's bindings (keyboard AND pad) to the defaults (keeps
 -- the action list, so mod-only actions like the debug dump survive).
