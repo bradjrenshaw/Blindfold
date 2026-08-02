@@ -509,6 +509,16 @@ local function make(id, get_sources, is_active)
         return tostring(src)
     end
 
+    -- The source INSTANCE, separate from the screen identity above. For a
+    -- tagged screen a rebuilt UIBox keeps the identity (cursor survives), but
+    -- the dispatcher re-announces the focused row, whose text the rebuild may
+    -- have changed (the keybinds screen after every rebind).
+    function M:refresh_identity()
+        local ok, sources = pcall(get_sources)
+        local src = ok and sources and sources[1]
+        return tostring(src)
+    end
+
     function M:build(b)
         b:capture_input()
         local ok, sources = pcall(get_sources)

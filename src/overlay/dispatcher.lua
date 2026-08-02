@@ -25,6 +25,12 @@
 -- stays active, treat as a fresh open (reset focus to the start node, ignore a
 -- same-frame nav command).
 --
+-- refresh_identity (optional) marks CONTENT REBUILDS of the same screen: when
+-- it changes while sub_identity holds, the cursor is kept (the positional
+-- reconcile lands it on the same row) but the focused node is re-announced —
+-- the keybinds screen rebuilds its UIBox after every rebind, and the row under
+-- the cursor has new text to speak.
+--
 -- tick(command) returns nil or a result table:
 --   { message = <string?>, focus_ref = <backing object?>, moved/clicked/entered }
 -- The caller speaks the message and syncs whatever follows focus (buffers,
@@ -40,6 +46,7 @@ local D = {
     overlays = {},
     cache = {},        -- [id] = { state = KeyGraph state, overlay = overlay }
     subid = {},        -- [id] = last reported sub-identity
+    refreshid = {},    -- [id] = last reported refresh-identity
     active_last = nil, -- id active last tick (sleeping/pending count as active)
     last_spoken = nil, -- structural key last spoken via the no-command path
     _captures = false,
@@ -161,6 +168,15 @@ local function build_and_process(overlay, command)
             command = nil
         end
     end
+    if overlay.refresh_identity then
+        local now = overlay:refresh_identity()
+        local prev = D.refreshid[overlay.id]
+        D.refreshid[overlay.id] = now
+        if prev ~= nil and prev ~= now then
+            -- Same screen, rebuilt content: keep the cursor, re-announce it.
+            D.last_spoken = nil
+        end
+    end
 
     local message = MB.new()
     local ctx = { message = message, mods = (command and command.mods) or {} }
@@ -170,6 +186,7 @@ local function build_and_process(overlay, command)
         -- The overlay built nothing this tick — treat as closed, drop its cache.
         D.cache[overlay.id] = nil
         D.subid[overlay.id] = nil
+        D.refreshid[overlay.id] = nil
         D.active_last = nil
         D.last_spoken = nil
         D._captures = false
@@ -213,6 +230,7 @@ function D.tick(command)
             if not ok or not v or v == "inactive" then
                 D.cache[id] = nil
                 D.subid[id] = nil
+                D.refreshid[id] = nil
             end
         end
     end
