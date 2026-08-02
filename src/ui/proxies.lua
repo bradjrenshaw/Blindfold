@@ -1119,9 +1119,11 @@ local function blind_effect(cfg)
     return #parts > 0 and table.concat(parts, " ") or nil
 end
 
--- Exported for the blinds collection gallery (works on raw P_BLINDS entries).
+-- Exported for the blinds collection gallery and the run-info blinds tab
+-- (work on raw P_BLINDS entries).
 Proxy.blind_name = blind_name
 Proxy.blind_effect = blind_effect
+Proxy.blind_requirement = blind_requirement
 
 -- A skip tag's description, via the game's own builder (mirrors a card's
 -- ability_UIBox_table). get_uibox_table populates it with the right loc vars.

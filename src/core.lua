@@ -135,6 +135,7 @@ do
         -- Above the mirror: the poker-hands listing as a 2D table (run info
         -- tab + the standalone current-hands popup).
         Overlays.register(ba_require("overlays.run_hands"))
+        Overlays.register(ba_require("overlays.run_blinds"))
         -- The deck view is an overlay menu the mirror would otherwise claim;
         -- registered above it, the bespoke layout wins while G.VIEWING_DECK.
         Overlays.register(ba_require("overlays.deck_view"))
