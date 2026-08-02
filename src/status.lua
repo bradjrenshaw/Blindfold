@@ -35,11 +35,12 @@ end
 function M.discards()
     if not in_run() then return say("GAME.NOT_NOW") end
     -- In the shop the discard key rerolls (core's handler rerouting), so its
-    -- status readout speaks the reroll cost instead.
+    -- status readout speaks the reroll cost — just the amount ("$5"), the
+    -- context is implied by the key.
     if G.STATES and G.STATE == G.STATES.SHOP then
         local cost = G.GAME.current_round and G.GAME.current_round.reroll_cost
         if type(cost) == "number" then
-            return say("SHOP.REROLL", { cost = tostring(cost) })
+            return say("GAME.MONEY", { amount = tostring(cost) })
         end
         return say("GAME.NOT_NOW")
     end
