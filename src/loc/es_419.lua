@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "Presiona una tecla o botón de mando para {action}",
         BOUND           = "{action} asignado a {key}",
         CANCELLED       = "Reasignación cancelada",
+        CONFLICT        = "{key} ya está asignado a {action}, reasignación cancelada",
         ANN_TYPE        = "Anunciar tipo",
         ANN_SUBTYPE     = "Anunciar rareza",
         ANN_SELECTED    = "Anunciar selección",

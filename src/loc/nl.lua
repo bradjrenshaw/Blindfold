@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "Druk op een toets of controllerknop voor {action}",
         BOUND           = "{action} toegewezen aan {key}",
         CANCELLED       = "Opnieuw toewijzen geannuleerd",
+        CONFLICT        = "{key} is al toegewezen aan {action}, opnieuw toewijzen geannuleerd",
         ANN_TYPE        = "Type aankondigen",
         ANN_SUBTYPE     = "Zeldzaamheid aankondigen",
         ANN_SELECTED    = "Selectie aankondigen",

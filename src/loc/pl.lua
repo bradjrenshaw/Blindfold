@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "Naciśnij klawisz lub przycisk kontrolera dla {action}",
         BOUND           = "{action} przypisano do {key}",
         CANCELLED       = "Anulowano zmianę przypisania",
+        CONFLICT        = "{key} jest już przypisany do {action}, anulowano zmianę przypisania",
         ANN_TYPE        = "Ogłaszaj typ",
         ANN_SUBTYPE     = "Ogłaszaj rzadkość",
         ANN_SELECTED    = "Ogłaszaj zaznaczenie",

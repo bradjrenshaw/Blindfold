@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "Taste oder Controller-Knopf für {action} drücken",
         BOUND           = "{action} belegt mit {key}",
         CANCELLED       = "Neubelegung abgebrochen",
+        CONFLICT        = "{key} ist bereits mit {action} belegt, Neubelegung abgebrochen",
         ANN_TYPE        = "Typ ansagen",
         ANN_SUBTYPE     = "Seltenheit ansagen",
         ANN_SELECTED    = "Auswahl ansagen",

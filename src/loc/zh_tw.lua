@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "請按下要指派給{action}的按鍵或手把按鈕",
         BOUND           = "{action}已綁定到{key}",
         CANCELLED       = "已取消重新綁定",
+        CONFLICT        = "{key}已綁定到{action}，已取消重新綁定",
         ANN_TYPE        = "朗讀類型",
         ANN_SUBTYPE     = "朗讀稀有度",
         ANN_SELECTED    = "朗讀選取狀態",

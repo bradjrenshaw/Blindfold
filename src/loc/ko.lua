@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "{action}에 할당할 키 또는 컨트롤러 버튼을 누르세요",
         BOUND           = "{action}이(가) {key}에 할당됨",
         CANCELLED       = "재할당 취소됨",
+        CONFLICT        = "{key}은(는) 이미 {action}에 할당되어 있어 재할당이 취소됨",
         ANN_TYPE        = "종류 읽기",
         ANN_SUBTYPE     = "희귀도 읽기",
         ANN_SELECTED    = "선택 상태 읽기",

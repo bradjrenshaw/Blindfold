@@ -416,6 +416,29 @@ end
 function M.start_listening(cb) M._listen_cb = cb; M._listen_mod_down = {} end
 function M.stop_listening() M._listen_cb = nil; M._listen_mod_down = {} end
 
+-- Conflict lookups for the rebind screen: the OTHER action (if any) already
+-- holding this exact binding. Rebinding an action to a key it already holds
+-- is not a conflict.
+function M.conflict(self_key, binding)
+    for _, a in ipairs(M.actions) do
+        if a.key ~= self_key then
+            for _, b in ipairs(a.bindings or {}) do
+                if b.key == binding.key and b.ctrl == binding.ctrl
+                    and b.shift == binding.shift and b.alt == binding.alt then
+                    return a
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function M.pad_conflict(self_key, button)
+    local k = M.PAD_ACTIONS and M.PAD_ACTIONS[button]
+    if k and k ~= self_key then return M.by_key[k] end
+    return nil
+end
+
 -- Restore every action's bindings (keyboard AND pad) to the defaults (keeps
 -- the action list, so mod-only actions like the debug dump survive).
 function M.reset_defaults()

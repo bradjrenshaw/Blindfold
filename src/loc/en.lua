@@ -318,6 +318,7 @@ return {
         PRESS_KEY       = "Press a key or controller button for {action}",
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",
+        CONFLICT        = "{key} is already bound to {action}, rebinding cancelled",
         ANN_TYPE        = "Announce type",
         ANN_SUBTYPE     = "Announce rarity",
         ANN_SELECTED    = "Announce selected",

@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "{action}に割り当てるキーまたはボタンを押してください",
         BOUND           = "{action}を{key}に割り当てました",
         CANCELLED       = "割り当てをキャンセルしました",
+        CONFLICT        = "{key}は既に{action}に割り当てられています。割り当てをキャンセルしました",
         ANN_TYPE        = "種類を読み上げる",
         ANN_SUBTYPE     = "レアリティを読み上げる",
         ANN_SELECTED    = "選択状態を読み上げる",

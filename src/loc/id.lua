@@ -287,6 +287,7 @@ return {
         PRESS_KEY       = "Tekan tombol keyboard atau kontroler untuk {action}",
         BOUND           = "{action} diatur ke {key}",
         CANCELLED       = "Pengaturan ulang dibatalkan",
+        CONFLICT        = "{key} sudah diatur ke {action}, pengaturan ulang dibatalkan",
         ANN_TYPE        = "Bacakan jenis",
         ANN_SUBTYPE     = "Bacakan kelangkaan",
         ANN_SELECTED    = "Bacakan status pilihan",

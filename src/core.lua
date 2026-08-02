@@ -342,17 +342,31 @@ do
             local label = (action.label_key and Message.localized(action.label_key):resolve()) or action.key
             speech.say(Message.localized("SET.PRESS_KEY", { action = label }):resolve())
             Input.start_listening(function(binding)
+                -- A binding another action already holds is refused (it would
+                -- silently shadow one of the two): report the holder instead.
+                local conflict
                 if binding.pad_button then
-                    -- A gamepad press: rebind the action's controller button.
-                    Input.set_pad_binding(action.key, binding.pad_button)
-                    speech.say(Message.localized("SET.BOUND",
-                        { action = label, key = Input.pad_display(binding.pad_button) }):resolve())
+                    conflict = Input.pad_conflict(action.key, binding.pad_button)
+                    if not conflict then
+                        -- A gamepad press: rebind the action's controller button.
+                        Input.set_pad_binding(action.key, binding.pad_button)
+                        speech.say(Message.localized("SET.BOUND",
+                            { action = label, key = Input.pad_display(binding.pad_button) }):resolve())
+                    end
                 elseif binding.key == "escape" then
                     speech.say(Message.localized("SET.CANCELLED"):resolve())
                 else
-                    action.bindings = { binding }
-                    Input.save_bindings()
-                    speech.say(Message.localized("SET.BOUND", { action = label, key = binding:display() }):resolve())
+                    conflict = Input.conflict(action.key, binding)
+                    if not conflict then
+                        action.bindings = { binding }
+                        Input.save_bindings()
+                        speech.say(Message.localized("SET.BOUND", { action = label, key = binding:display() }):resolve())
+                    end
+                end
+                if conflict then
+                    local holder = (conflict.label_key and Message.localized(conflict.label_key):resolve()) or conflict.key
+                    local disp = binding.pad_button and Input.pad_display(binding.pad_button) or binding:display()
+                    speech.say(Message.localized("SET.CONFLICT", { key = disp, action = holder }):resolve())
                 end
                 -- Rebuild the screen (deferred out of the input event).
                 G.E_MANAGER:add_event(Event({ blocking = false, blockable = false,
