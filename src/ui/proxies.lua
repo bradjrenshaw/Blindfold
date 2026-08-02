@@ -1177,7 +1177,12 @@ function ProxyBlind:select_announcements()
     if action then parts[#parts + 1] = action end
     local req = blind_requirement(cfg)
     if req then parts[#parts + 1] = req end
-    if cfg and type(cfg.dollars) == "number" and cfg.dollars > 0 then
+    -- The panel omits its reward row under no_blind_reward (Red Stake+
+    -- strips the Small Blind's; UI_definitions.lua:1552) — the static
+    -- config.dollars doesn't know that.
+    local mods = G and G.GAME and G.GAME.modifiers
+    local no_reward = ty and mods and mods.no_blind_reward and mods.no_blind_reward[ty]
+    if not no_reward and cfg and type(cfg.dollars) == "number" and cfg.dollars > 0 then
         parts[#parts + 1] = Message.localized("BLIND.REWARD", { dollars = tostring(cfg.dollars) }):resolve()
     end
     if #parts > 0 then anns[#anns + 1] = A.status(table.concat(parts, ", ")) end
