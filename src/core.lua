@@ -179,8 +179,21 @@ do
                 if ok and err then speech.say(Message.localized(err):resolve()) end
             end
         end
-        Input.handlers.play_hand = direct(PlayOverlay.do_play)
-        Input.handlers.discard = direct(PlayOverlay.do_discard)
+        -- In the shop, the same keys drive the shop's button row instead:
+        -- X = Next Round, C = Reroll.
+        local ShopOverlay = ba_require("overlays.shop")
+        Input.handlers.play_hand = direct(function()
+            if G and G.STATES and G.STATE == G.STATES.SHOP then
+                return ShopOverlay.do_next_round()
+            end
+            return PlayOverlay.do_play()
+        end)
+        Input.handlers.discard = direct(function()
+            if G and G.STATES and G.STATE == G.STATES.SHOP then
+                return ShopOverlay.do_reroll()
+            end
+            return PlayOverlay.do_discard()
+        end)
         -- View Deck / Run Info: direct FUNCS calls (both ignore their button
         -- arg) — deterministic on owned screens instead of riding the game's
         -- pip routing. Guarded to a live run with no menu already on top;

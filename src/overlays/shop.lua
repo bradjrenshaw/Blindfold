@@ -225,6 +225,45 @@ local function reroll_node()
     return parent and parent.children and parent.children[2] or nil
 end
 
+-- --- Direct-action shortcuts -----------------------------------------------------
+--
+-- X / C in the shop (core reroutes the play/discard handlers here): X presses
+-- Next Round, C presses Reroll. Same contract as Play.do_play: returns a loc
+-- key to announce, or nil. Real node clicks, so the engine's own gating and
+-- tutorial listening apply as if the button row were used.
+
+local function shop_ready()
+    if not (G and G.STATES and G.STATE == G.STATES.SHOP) then return false end
+    if G.OVERLAY_MENU then return false end
+    -- A pack can be on screen while G.STATE reads SHOP (the handler's lesson).
+    if type(G.pack_cards) == "table" and not G.pack_cards.REMOVED then return false end
+    return true
+end
+
+function M.do_next_round()
+    if not shop_ready() then return nil end
+    local nr = next_round_node()
+    if not (nr and nr.config and nr.config.button) then return nil end
+    local blocked = Play.tut_gate("toggle_shop")
+    if blocked then return blocked end
+    nr:click()
+    return nil
+end
+
+function M.do_reroll()
+    if not shop_ready() then return nil end
+    local rr = reroll_node()
+    if not rr then return nil end
+    local blocked = Play.tut_gate("reroll_shop")
+    if blocked then return blocked end
+    -- can_reroll strips the button config when unaffordable.
+    if rr.config and rr.config.button then
+        rr:click()
+        return nil
+    end
+    return "SHOP.CANT_AFFORD"
+end
+
 -- --- Overlay contract ------------------------------------------------------------
 
 -- Initial-load gate: the Next Round button exists almost immediately, but the

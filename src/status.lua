@@ -33,7 +33,17 @@ function M.hands()
 end
 
 function M.discards()
-    if not (in_run() and in_blind()) then return say("GAME.NOT_NOW") end
+    if not in_run() then return say("GAME.NOT_NOW") end
+    -- In the shop the discard key rerolls (core's handler rerouting), so its
+    -- status readout speaks the reroll cost instead.
+    if G.STATES and G.STATE == G.STATES.SHOP then
+        local cost = G.GAME.current_round and G.GAME.current_round.reroll_cost
+        if type(cost) == "number" then
+            return say("SHOP.REROLL", { cost = tostring(cost) })
+        end
+        return say("GAME.NOT_NOW")
+    end
+    if not in_blind() then return say("GAME.NOT_NOW") end
     say("GAME.DISCARDS", { count = num(G.GAME.current_round.discards_left) })
 end
 
