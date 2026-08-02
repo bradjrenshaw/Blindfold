@@ -59,6 +59,15 @@ local function inside_panel(node)
     return false
 end
 
+-- The mirror's fallback for a control-less tab surfaces the WHOLE tab's text
+-- as one item (menu_mirror "information panel"); on this tab that item is the
+-- tab root CONTAINING the panels — redundant next to the row.
+local function contains_panel(node)
+    local out = {}
+    pcall(collect_panels, node, 0, out)
+    return #out > 0
+end
+
 function M:handler()
     local ov = G and G.OVERLAY_MENU
     if type(ov) ~= "table" or not ov.UIRoot then return "inactive" end
@@ -149,9 +158,9 @@ function M:build(b)
     local ok, gathered = pcall(Mirror.gather, { ov })
     if ok then
         for _, n in ipairs(gathered) do
-            if not (type(n) == "table" and n.UIT and inside_panel(n)) then
-                others[#others + 1] = n
-            end
+            local drop = type(n) == "table" and n.UIT
+                and (inside_panel(n) or contains_panel(n))
+            if not drop then others[#others + 1] = n end
         end
     end
     local other_ids = {}
