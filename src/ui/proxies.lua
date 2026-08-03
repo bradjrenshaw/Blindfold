@@ -495,17 +495,29 @@ function Proxy.card_description(card)
     if card.facing == "back" then return nil end
     local ab = card.ability
     -- Misprint's body is pure theater (card.lua:766): a DynaText cycling every
-    -- integer min..max plus glitch flavor strings. The generic scrape read the
-    -- DynaTexts' birth frames — "+0 rand()" — so speak the real contract
-    -- (a random roll in the range) instead. Undiscovered stays on the generic
-    -- path, which speaks the game's own "?" description.
+    -- integer min..max, and a second one that mostly shows the Mult word but
+    -- randomly flashes 'rand()' or a '#@<rank><suit>' glitch built from the
+    -- BOTTOM card of the deck — real hidden information sighted players can
+    -- glimpse. The generic scrape read the DynaTexts' birth frames ("+0
+    -- rand()" forever), so per Brad: speak ONE churn snapshot, rolled exactly
+    -- like the render's random_element cyclers (13x Mult word + rand() + the
+    -- glitch, uniform over 15), then the explanation. Undiscovered stays on
+    -- the generic path, which speaks the game's own "?" description.
     if ab and ab.name == "Misprint" and type(ab.extra) == "table"
         and not Proxy.center_hidden(card) then
         local okm, mult = pcall(localize, "k_mult")
-        return Message.localized("CARD.RANDOM_MULT", {
+        mult = (okm and type(mult) == "string" and mult) or "Mult"
+        local roll = math.random(ab.extra.min or 0, ab.extra.max or 0)
+        local bottom = G and G.deck and G.deck.cards and G.deck.cards[1]
+            and G.deck.cards[#G.deck.cards]
+        local glitch = "#@" .. ((bottom and bottom.base and bottom.base.id) or 11)
+            .. ((bottom and bottom.base and bottom.base.suit:sub(1, 1)) or "D")
+        local r = math.random(15)
+        local tail = (r == 1 and "rand()") or (r == 2 and glitch) or mult
+        return "+" .. roll .. " " .. tail .. ", " .. Message.localized("CARD.RANDOM_MULT", {
             min = tostring(ab.extra.min or 0),
             max = tostring(ab.extra.max or 0),
-            mult = (okm and type(mult) == "string" and mult) or "Mult",
+            mult = mult,
         }):resolve()
     end
     -- Blueprint/Brainstorm render a Compatible/Incompatible box whose text is
