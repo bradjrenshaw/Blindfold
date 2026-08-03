@@ -320,6 +320,7 @@ return {
         BOUND           = "{action} bound to {key}",
         CANCELLED       = "Rebinding cancelled",
         CONFLICT        = "{key} is already bound to {action}, rebinding cancelled",
+        CLICK_ORDER     = "Score cards in selection order",
         ANN_TYPE        = "Announce type",
         ANN_SUBTYPE     = "Announce rarity",
         ANN_SELECTED    = "Announce selected",

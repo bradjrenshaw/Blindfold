@@ -289,6 +289,7 @@ return {
         BOUND           = "{action} diatur ke {key}",
         CANCELLED       = "Pengaturan ulang dibatalkan",
         CONFLICT        = "{key} sudah diatur ke {action}, pengaturan ulang dibatalkan",
+        CLICK_ORDER     = "Nilai kartu sesuai urutan pemilihan",
         ANN_TYPE        = "Bacakan jenis",
         ANN_SUBTYPE     = "Bacakan kelangkaan",
         ANN_SELECTED    = "Bacakan status pilihan",

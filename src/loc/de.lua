@@ -289,6 +289,7 @@ return {
         BOUND           = "{action} belegt mit {key}",
         CANCELLED       = "Neubelegung abgebrochen",
         CONFLICT        = "{key} ist bereits mit {action} belegt, Neubelegung abgebrochen",
+        CLICK_ORDER     = "Karten in Auswahlreihenfolge werten",
         ANN_TYPE        = "Typ ansagen",
         ANN_SUBTYPE     = "Seltenheit ansagen",
         ANN_SELECTED    = "Auswahl ansagen",

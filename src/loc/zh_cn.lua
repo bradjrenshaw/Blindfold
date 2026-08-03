@@ -289,6 +289,7 @@ return {
         BOUND           = "{action}已绑定到{key}",
         CANCELLED       = "已取消重新绑定",
         CONFLICT        = "{key}已绑定到{action}，已取消重新绑定",
+        CLICK_ORDER     = "按选择顺序计分卡牌",
         ANN_TYPE        = "朗读类型",
         ANN_SUBTYPE     = "朗读稀有度",
         ANN_SELECTED    = "朗读选中状态",

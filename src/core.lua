@@ -291,6 +291,12 @@ do
             options = { "auto" }, labels = { "SET.BACKEND_AUTO" },
             apply = function(v) speech.set_backend(v) end }
 
+        -- Alternative play style (a friend's request): cards score in the
+        -- order they were SELECTED, not their hand position — do_play/
+        -- do_discard "quick-drag" the clicked cards into that order.
+        Settings.register{ key = "play.click_order", type = "bool",
+            label_key = "SET.CLICK_ORDER", default = false, category = "speech" }
+
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings

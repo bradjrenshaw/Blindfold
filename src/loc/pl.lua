@@ -289,6 +289,7 @@ return {
         BOUND           = "{action} przypisano do {key}",
         CANCELLED       = "Anulowano zmianę przypisania",
         CONFLICT        = "{key} jest już przypisany do {action}, anulowano zmianę przypisania",
+        CLICK_ORDER     = "Punktuj karty w kolejności wyboru",
         ANN_TYPE        = "Ogłaszaj typ",
         ANN_SUBTYPE     = "Ogłaszaj rzadkość",
         ANN_SELECTED    = "Ogłaszaj zaznaczenie",

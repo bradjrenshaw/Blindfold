@@ -375,6 +375,22 @@ end
 -- round/scoring hooks speak the feedback — or not applicable in this state,
 -- which stays silent like the native buttons).
 
+-- The click-order play style (settings toggle): score cards in the order
+-- they were SELECTED instead of their hand position. G.hand.highlighted is
+-- append-ordered — it IS the click order — and the play/discard FUNCS sort
+-- it by the cards' visual x (state_events.lua:392/463). So the "quick drag":
+-- give the clicked cards each other's x slots, ascending in click order, and
+-- the game's own sort reproduces it.
+local function apply_click_order()
+    if not Settings.value("play.click_order") then return end
+    local hl = G and G.hand and G.hand.highlighted
+    if not (type(hl) == "table" and #hl > 1) then return end
+    local xs = {}
+    for i, c in ipairs(hl) do xs[i] = c.T.x end
+    table.sort(xs)
+    for i, c in ipairs(hl) do c.T.x = xs[i] end
+end
+
 function M.do_play()
     if not (G and G.STATES and G.STATE == G.STATES.SELECTING_HAND) then return nil end
     if not (G.hand and G.hand.highlighted and #G.hand.highlighted > 0) then
@@ -387,6 +403,7 @@ function M.do_play()
     local blocked = M.tut_gate("play_cards_from_highlighted")
     if blocked then return blocked end
     M.tut_listen("play_cards_from_highlighted")
+    apply_click_order()
     G.FUNCS.play_cards_from_highlighted()
     return nil
 end
@@ -404,6 +421,7 @@ function M.do_discard()
     local blocked = M.tut_gate("discard_cards_from_highlighted")
     if blocked then return blocked end
     M.tut_listen("discard_cards_from_highlighted")
+    apply_click_order()
     G.FUNCS.discard_cards_from_highlighted()
     return nil
 end

@@ -289,6 +289,7 @@ return {
         BOUND           = "{action} asignado a {key}",
         CANCELLED       = "Reasignación cancelada",
         CONFLICT        = "{key} ya está asignado a {action}, reasignación cancelada",
+        CLICK_ORDER     = "Puntuar cartas en orden de selección",
         ANN_TYPE        = "Anunciar tipo",
         ANN_SUBTYPE     = "Anunciar rareza",
         ANN_SELECTED    = "Anunciar selección",
