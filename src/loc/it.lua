@@ -107,6 +107,7 @@ return {
         DESELECTED = "deselezionata",
         TIP        = "{name}, {desc}",
         RANDOM_MULT = "da +{min} a +{max} {mult}, casuale",
+        SEL_POS    = "selezione {index}",
     },
     EDITION = {
         foil = "laminata", holographic = "olografica",

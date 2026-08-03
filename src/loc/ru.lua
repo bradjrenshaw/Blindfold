@@ -107,6 +107,7 @@ return {
         DESELECTED = "снята",
         TIP        = "{name}, {desc}",
         RANDOM_MULT = "от +{min} до +{max} {mult}, случайно",
+        SEL_POS    = "выбор {index}",
     },
     EDITION = {
         foil = "фольга", holographic = "голографическая",

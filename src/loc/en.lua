@@ -123,6 +123,7 @@ return {
         DESELECTED = "deselected",
         TIP        = "{name}, {desc}",   -- keyword hover tip: "Foil, +50 chips"
         RANDOM_MULT = "+{min} to +{max} {mult}, random",   -- Misprint's cycling display
+        SEL_POS    = "selection {index}",   -- click-order mode: position in the selection
     },
     EDITION = {
         foil = "foil", holographic = "holographic",

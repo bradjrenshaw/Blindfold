@@ -107,6 +107,7 @@ return {
         DESELECTED = "已取消選取",
         TIP        = "{name}，{desc}",
         RANDOM_MULT = "+{min}至+{max}{mult}，隨機",
+        SEL_POS    = "選擇{index}",
     },
     EDITION = {
         foil = "閃箔", holographic = "雷射",

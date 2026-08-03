@@ -107,6 +107,7 @@ return {
         DESELECTED = "選択解除",
         TIP        = "{name}、{desc}",
         RANDOM_MULT = "+{min}～+{max}{mult}、ランダム",
+        SEL_POS    = "選択{index}",
     },
     EDITION = {
         foil = "フォイル", holographic = "ホログラフィック",

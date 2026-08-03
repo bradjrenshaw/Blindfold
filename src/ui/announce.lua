@@ -45,6 +45,9 @@ function A.eternal()       return { key = "eternal",    suffix = ",", render = b
 function A.perishable()    return { key = "perishable", suffix = ",", render = badge_word("perishable", "Perishable") } end
 function A.rental()        return { key = "rental",     suffix = ",", render = badge_word("rental", "Rental") } end
 function A.selected()      return { key = "selected",    suffix = ",", render = function() return Message.localized("CARD.SELECTED") end } end
+-- Click-order mode: the card's position in the selection ("selection 2") —
+-- that IS the scoring order, so it replaces the plain "selected" word.
+function A.sel_position(i) return { key = "sel_pos",     suffix = ",", render = function() return Message.localized("CARD.SEL_POS", { index = tostring(i) }) end } end
 function A.description(v)  return { key = "description", suffix = "",  render = function() return msg(v) end } end
 -- Secondary help/info text on a control (e.g. an option's explanatory line).
 function A.extras(v)       return { key = "extras",      suffix = ",", render = function() return msg(v) end } end

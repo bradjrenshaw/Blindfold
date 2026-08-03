@@ -107,6 +107,7 @@ return {
         DESELECTED = "batal dipilih",
         TIP        = "{name}, {desc}",
         RANDOM_MULT = "+{min} sampai +{max} {mult}, acak",
+        SEL_POS    = "pilihan {index}",
     },
     EDITION = {
         foil = "foil", holographic = "hologram",

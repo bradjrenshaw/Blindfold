@@ -847,7 +847,7 @@ local face_down_label
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyPlayingCard.announcement_order = { "label", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
+ProxyPlayingCard.announcement_order = { "label", "sel_pos", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 -- Collection modifier cards (the seals / enhancements screens) are built on
 -- the EMPTY card front — no rank or suit renders. Their identity is the
@@ -908,13 +908,26 @@ local function new_alert(node)
     return A.new_alert()
 end
 
+-- Click-order mode (play.click_order): a selected hand card announces its
+-- position in the selection right after its name — that IS the scoring
+-- order. Replaces the plain "selected" word; nil when the mode is off, the
+-- card isn't a highlighted hand card, or it isn't tracked (caller falls back).
+local function sel_position(node)
+    if not Settings.value("play.click_order") then return nil end
+    if not (node.highlighted and G and G.hand and node.area == G.hand) then return nil end
+    for i, c in ipairs(G.hand.highlighted or {}) do
+        if c == node then return A.sel_position(i) end
+    end
+    return nil
+end
+
 function ProxyPlayingCard:get_focus_announcements()
     local node = self.node
     -- Face down: the identity is hidden, so never reveal rank/suit/modifiers —
     -- just say it's a face-down card (selection still useful; position deferred).
     if node.facing == "back" then
         local anns = { A.label(Message.localized("CARD.FACE_DOWN")), A.type(self.type_key) }
-        if node.highlighted then anns[#anns + 1] = A.selected() end
+        if node.highlighted then anns[#anns + 1] = sel_position(node) or A.selected() end
         -- Cerulean Bell's forced card is visibly raised even when face down.
         if node.ability and node.ability.forced_selection then
             anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
@@ -924,7 +937,7 @@ function ProxyPlayingCard:get_focus_announcements()
     local label = self:get_label()
     if not label then return {} end
     local anns = { A.label(label), A.type(self.type_key) }
-    if node.highlighted then anns[#anns + 1] = A.selected() end
+    if node.highlighted then anns[#anns + 1] = sel_position(node) or A.selected() end
     if node.ability and node.ability.forced_selection then
         anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
     end

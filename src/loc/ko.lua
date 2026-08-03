@@ -107,6 +107,7 @@ return {
         DESELECTED = "선택 해제됨",
         TIP        = "{name}, {desc}",
         RANDOM_MULT = "+{min}~+{max} {mult}, 무작위",
+        SEL_POS    = "선택 {index}",
     },
     EDITION = {
         foil = "포일", holographic = "홀로그램",
