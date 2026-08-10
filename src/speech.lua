@@ -48,10 +48,33 @@ local NOT_IMPLEMENTED = 9
 local SUPPORTED_AT_RUNTIME = 0x1   -- engine actually present on this machine
 local SUPPORTS_OUTPUT = 0x20       -- backend supports prism_backend_output
 
+-- Rotate at boot: the log grows with every utterance and had reached
+-- multiple megabytes across sessions, making each synchronous append (and
+-- the antivirus scan behind it) pricier — implicated in main-thread stalls.
+-- The live file holds only the current session; the previous one is .old.
+pcall(function()
+    local info = love.filesystem.getInfo and love.filesystem.getInfo("blindfold.log")
+    if info and (info.size or 0) > 0 then
+        local data = love.filesystem.read("blindfold.log")
+        if data then love.filesystem.write("blindfold.log.old", data) end
+        love.filesystem.remove("blindfold.log")
+    end
+end)
+
 local function log(text)
     -- Lands at %APPDATA%/Balatro/blindfold.log
     pcall(function()
+        -- Lag forensics: the append itself is synchronous disk I/O on the
+        -- main thread — time it, so a stalling write names itself.
+        local t0 = love.timer and love.timer.getTime and love.timer.getTime()
         love.filesystem.append("blindfold.log", os.date("%H:%M:%S ") .. text .. "\n")
+        if t0 then
+            local dt = love.timer.getTime() - t0
+            if dt > 0.03 then
+                love.filesystem.append("blindfold.log", os.date("%H:%M:%S ")
+                    .. string.format("SLOW log append: %dms", math.floor(dt * 1000 + 0.5)) .. "\n")
+            end
+        end
     end)
 end
 M.log = log
