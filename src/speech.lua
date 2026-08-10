@@ -61,23 +61,49 @@ pcall(function()
     end
 end)
 
+-- Log writes go through a writer THREAD: the per-utterance append was
+-- synchronous disk I/O on the main thread, and the forensic timers caught it
+-- stalling ("SLOW log append: 80ms") — the game and the screen reader hitch
+-- together when that happens. The main thread only pushes lines onto a
+-- channel; the thread does the appends. Falls back to direct appends when
+-- love.thread is unavailable.
+local LOG_THREAD = [[
+require("love.filesystem")
+local channel = love.thread.getChannel("blindfold_log")
+while true do
+    local line = channel:demand()
+    if line == false then break end
+    pcall(love.filesystem.append, "blindfold.log", line)
+end
+]]
+local _log_channel
+pcall(function()
+    if love.thread and love.thread.newThread then
+        local t = love.thread.newThread(LOG_THREAD)
+        t:start()
+        _log_channel = love.thread.getChannel("blindfold_log")
+    end
+end)
+
+local function log_line(text) return os.date("%H:%M:%S ") .. text .. "\n" end
+
+-- Synchronous append, for the rare lines that MUST be on disk before the
+-- next native call (backend-switch forensics: if the switch hard-crashes,
+-- this line being last in the log is the whole point).
+local function log_sync(text)
+    pcall(function() love.filesystem.append("blindfold.log", log_line(text)) end)
+end
+
 local function log(text)
     -- Lands at %APPDATA%/Balatro/blindfold.log
-    pcall(function()
-        -- Lag forensics: the append itself is synchronous disk I/O on the
-        -- main thread — time it, so a stalling write names itself.
-        local t0 = love.timer and love.timer.getTime and love.timer.getTime()
-        love.filesystem.append("blindfold.log", os.date("%H:%M:%S ") .. text .. "\n")
-        if t0 then
-            local dt = love.timer.getTime() - t0
-            if dt > 0.03 then
-                love.filesystem.append("blindfold.log", os.date("%H:%M:%S ")
-                    .. string.format("SLOW log append: %dms", math.floor(dt * 1000 + 0.5)) .. "\n")
-            end
-        end
-    end)
+    if _log_channel then
+        local ok = pcall(function() _log_channel:push(log_line(text)) end)
+        if ok then return end
+    end
+    log_sync(text)
 end
 M.log = log
+M.log_sync = log_sync
 
 -- UTF-8 Lua string -> null-terminated UTF-16LE buffer (for the wide Win32 API).
 local CP_UTF8 = 65001
@@ -216,17 +242,17 @@ function M.set_backend(name)
     if not M.loaded then return end
     name = name or "auto"
     if name == M.current_backend then return end
-    -- Logged BEFORE any native call: if a switch hard-crashes the game, this
-    -- is the last line in the log and names the backend being switched TO
-    -- (and the live one being switched away from).
-    log("Prism: switching to '" .. name .. "' (from '" .. tostring(M.current_backend) .. "')")
+    -- Logged SYNCHRONOUSLY before any native call: if a switch hard-crashes
+    -- the game, this is the last line in the log and names the backend being
+    -- switched TO (and the live one being switched away from).
+    log_sync("Prism: switching to '" .. name .. "' (from '" .. tostring(M.current_backend) .. "')")
     pcall(function()
         local replacement = acquire(name)
         if replacement == nil then
             log("Prism: nothing acquirable for '" .. name .. "'; keeping current backend.")
             return
         end
-        log("Prism: acquired '" .. name .. "', stopping the old backend")
+        log_sync("Prism: acquired '" .. name .. "', stopping the old backend")
         if M.backend ~= nil and replacement ~= M.backend then
             M.prism.prism_backend_stop(M.backend)
             -- Deliberately NEVER freed at runtime. A backend switch crashed
