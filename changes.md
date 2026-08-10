@@ -1,3 +1,8 @@
+## v1.0.8
+* Moving in a direction with no UI element will no longer repeat the element you were already on.
+* Every number should now read properly in scientific notation once it becomes large enough (replicating the game's behavior and formatting exactly.)
+* Fixed extremely rare instances of lag due to logging. Only the logs for the current and previous session are now kept.
+
 ## v1.0.7
 * Fixed a bug where blind rewards would be read out even when disabled for that blind.
 * The blinds tab of Run Info is now rendered properly (a row of panels for the Small Blind, Big Blind, and Boss Blind.)
