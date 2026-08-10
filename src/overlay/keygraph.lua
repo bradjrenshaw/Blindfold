@@ -139,7 +139,8 @@ function KeyGraph:read_current_label(ctx)
 end
 
 -- Move one step in dir. On a real move, speaks the transition label (if any)
--- then the destination label; at an edge, re-reads the current label.
+-- then the destination label; at an edge, stays SILENT — re-reading the
+-- current control made users think focus had moved (user feedback).
 -- Returns true on a real move.
 function KeyGraph:move(ctx, dir)
     if not self:rerender(ctx) then return false end
@@ -149,9 +150,7 @@ function KeyGraph:move(ctx, dir)
     local t = node.trans[dir]
     local new_node = t and self.current.nodes[t.to]
     if not new_node or new_node == node then
-        -- Edge: nothing to move to. Re-read the current label.
-        read_label_of(self, self.state.cur.key, ctx)
-        return false
+        return false   -- edge: nothing to move to, nothing to say
     end
 
     if t.label then t.label(ctx) end

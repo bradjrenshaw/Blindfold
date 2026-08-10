@@ -141,7 +141,8 @@ local function apply_nav(graph, state, ctx, message, command)
     else
         moved = graph:move(ctx, dir)
     end
-    -- A move always speaks a label: the destination's, or the edge re-read.
+    -- A real move speaks the destination's label; an edge bump is silent
+    -- (empty message), which the caller's empty-gate turns into no speech.
     D.last_spoken = state.cur and state.cur.key
     return { message = message:build(), focus_ref = state.cur and state.cur.ref,
         moved = moved, spoke_label = true, deferred = cur_deferred(graph, state) }
