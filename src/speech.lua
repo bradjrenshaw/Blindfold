@@ -223,11 +223,28 @@ end
 
 -- Speak text. interrupt defaults to false to honor the SayTheSpire2 preference
 -- of never cutting off in-progress speech; pass true explicitly to override.
+-- Lag forensics: a prism call runs synchronously on the game's main thread —
+-- when the backend (NVDA controller, SAPI, ...) stalls, the window and the
+-- screen reader hitch TOGETHER. Log any call beyond 30ms with its duration.
+local function timer_now()
+    local ok, t = pcall(function() return love.timer.getTime() end)
+    return ok and t or nil
+end
+local function log_slow_call(t0, what, detail)
+    if not t0 then return end
+    local t1 = timer_now()
+    if t1 and (t1 - t0) > 0.03 then
+        log(string.format("SLOW prism %s: %dms%s", what,
+            math.floor((t1 - t0) * 1000 + 0.5), detail or ""))
+    end
+end
+
 function M.say(text, interrupt)
     if type(text) ~= "string" or text == "" then return end
     log(text)
     if not M.loaded then return end
     local cut = interrupt == true
+    local t0 = timer_now()
     pcall(function()
         -- output drives speech AND braille where the backend supports it;
         -- anything but a clean OK falls through to plain speak so we still
@@ -241,10 +258,14 @@ function M.say(text, interrupt)
         end
         M.prism.prism_backend_speak(M.backend, text, cut)
     end)
+    log_slow_call(t0, "speak", " (" .. #text .. " chars)")
 end
 
 function M.silence()
-    if M.loaded then pcall(function() M.prism.prism_backend_stop(M.backend) end) end
+    if not M.loaded then return end
+    local t0 = timer_now()
+    pcall(function() M.prism.prism_backend_stop(M.backend) end)
+    log_slow_call(t0, "stop")
 end
 
 return M

@@ -162,13 +162,30 @@ do
         Overlays.register(ba_require("overlays.tutorial"))
         BA.overlays = Overlays
         Input.dispatcher = Overlays
+        -- Lag forensics (Brad: rapid navigation sometimes hitches the window
+        -- and the screen reader together): log any main-thread stall beyond
+        -- 30ms in the overlay machinery. Prism-call stalls log in speech.lua.
+        BA.tick_now = function()
+            local ok, t = pcall(function() return love.timer.getTime() end)
+            return ok and t or nil
+        end
+        BA.log_slow = function(t0, what)
+            if not t0 then return end
+            local t1 = BA.tick_now()
+            if t1 and (t1 - t0) > 0.03 then
+                speech.log(string.format("SLOW %s: %dms (state=%s)", what,
+                    math.floor((t1 - t0) * 1000 + 0.5), tostring(G and G.STATE)))
+            end
+        end
         Input.overlay_tick = function(cmd)
+            local t0 = BA.tick_now()
             local ok, res = pcall(Overlays.tick, cmd)
             if ok then
                 BA.speak_overlay_result(res)
             else
                 speech.log("overlay tick error: " .. tostring(res))
             end
+            BA.log_slow(t0, "key tick " .. tostring(cmd and cmd.kind))
         end
         -- Direct-call actions (X / C): the guarded play/discard logic shared
         -- with the play overlay's button row. Feedback for a fired action comes
@@ -649,12 +666,14 @@ function BA.focus_tick(ctrl)
     -- Right-stick -> buffer navigation (polled; sticks are axes, not buttons).
     if Input and Input.update_pad_axes then pcall(Input.update_pad_axes, ctrl) end
     if Overlays then
+        local t0 = BA.tick_now and BA.tick_now()
         local ok, res = pcall(Overlays.tick)
         if ok then
             BA.speak_overlay_result(res)
         else
             speech.log("overlay tick error: " .. tostring(res))
         end
+        if BA.log_slow then BA.log_slow(t0, "frame tick") end
     end
 end
 
