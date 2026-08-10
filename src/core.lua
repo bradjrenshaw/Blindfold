@@ -666,6 +666,19 @@ local function boot_announce()
 end
 
 function BA.focus_tick(ctrl)
+    -- Frame-gap watchdog: a long gap between consecutive frames means the
+    -- WINDOW froze, whoever caused it. A gap line with the path timers quiet
+    -- points outside the mod's instrumented code (game, GC); felt lag with NO
+    -- gap line means the window never froze and the latency is on the screen
+    -- reader's side.
+    if BA.tick_now then
+        local t = BA.tick_now()
+        if t and BA._last_frame_t and (t - BA._last_frame_t) > 0.1 then
+            speech.log(string.format("frame gap: %dms (state=%s)",
+                math.floor((t - BA._last_frame_t) * 1000 + 0.5), tostring(G and G.STATE)))
+        end
+        BA._last_frame_t = t
+    end
     pcall(boot_announce)
     pcall(poll_update_check)
     pcall(tutorial_watch)
