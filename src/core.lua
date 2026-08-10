@@ -178,14 +178,17 @@ do
             end
         end
         Input.overlay_tick = function(cmd)
+            local kind = tostring(cmd and cmd.kind)
             local t0 = BA.tick_now()
             local ok, res = pcall(Overlays.tick, cmd)
+            BA.log_slow(t0, "graph tick " .. kind)
+            local t1 = BA.tick_now()
             if ok then
                 BA.speak_overlay_result(res)
             else
                 speech.log("overlay tick error: " .. tostring(res))
             end
-            BA.log_slow(t0, "key tick " .. tostring(cmd and cmd.kind))
+            BA.log_slow(t1, "result speak " .. kind)
         end
         -- Direct-call actions (X / C): the guarded play/discard logic shared
         -- with the play overlay's button row. Feedback for a fired action comes
@@ -447,8 +450,13 @@ function BA.speak_overlay_result(res)
     -- produced it.
     local ref = res.focus_ref
     if ref and type(ref) == "table" then
-        if FocusBuffers then pcall(FocusBuffers.bind_focus, ref) end
+        if FocusBuffers then
+            local tb = BA.tick_now and BA.tick_now()
+            pcall(FocusBuffers.bind_focus, ref)
+            if BA.log_slow then BA.log_slow(tb, "focus bind") end
+        end
         if res.spoke_label and res.message and res.message ~= "" then
+            local td = BA.tick_now and BA.tick_now()
             pcall(function()
                 local m
                 if res.deferred then
@@ -461,6 +469,7 @@ function BA.speak_overlay_result(res)
                 local s = type(m) == "string" and m or (m and m.resolve and m:resolve()) or ""
                 if s ~= "" then speech.say(s) end
             end)
+            if BA.log_slow then BA.log_slow(td, "deferred build") end
         end
     end
 end
