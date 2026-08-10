@@ -17,9 +17,10 @@ local Id = ba_require("overlay.id")
 local Message = ba_require("ui.message")
 
 -- A three-item vertical list, no wrapping.
+local active = true
 local ov = {
     id = "t",
-    handler = function() return "active" end,
+    handler = function() return active and "active" or "inactive" end,
     build = function(self, b)
         b:capture_input()
         for i = 1, 3 do
@@ -66,6 +67,32 @@ res = D.tick({ kind = "move_to_edge", dir = "left" })
 check(res and res.message == "item 1", "Home still announces the landing", res and res.message)
 res = D.tick({ kind = "move_to_edge", dir = "left" })
 check(res and res.message == "item 1", "Home at the start still confirms", res and res.message)
+
+-- The open-announce race: an arrow press that lands BEFORE the frame tick on
+-- a freshly opened screen and bumps an edge must NOT suppress the start
+-- announcement (the silent bump used to poison last_spoken; user report:
+-- screens opened mute).
+active = false
+D.tick(nil)   -- overlay closes, cache and last_spoken drop
+active = true
+res = D.tick({ kind = "move", dir = "up" })   -- races the open, hits the top edge
+check(res and (res.message == nil or res.message == ""),
+    "racing edge bump on a fresh screen is silent", res and res.message)
+res = D.tick(nil)
+check(res and res.message == "item 1",
+    "the open-announce still follows the racing bump", res and res.message)
+res = D.tick(nil)
+check(res == nil, "and speaks only once", res and res.message)
+
+-- Whereas a racing REAL move announces its destination and stands as the
+-- open announcement (nothing extra afterward).
+active = false
+D.tick(nil)
+active = true
+res = D.tick({ kind = "move", dir = "down" })
+check(res and res.message == "item 2", "racing real move speaks its destination", res and res.message)
+res = D.tick(nil)
+check(res == nil, "no duplicate announce after a racing move", res and res.message)
 
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

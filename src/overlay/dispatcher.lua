@@ -141,11 +141,15 @@ local function apply_nav(graph, state, ctx, message, command)
     else
         moved = graph:move(ctx, dir)
     end
-    -- A real move speaks the destination's label; an edge bump is silent
-    -- (empty message), which the caller's empty-gate turns into no speech.
-    D.last_spoken = state.cur and state.cur.key
+    -- A real move speaks the destination's label; Home/End always speak their
+    -- landing; an edge bump is SILENT. Mark last_spoken only when a label was
+    -- actually spoken — a silent edge must not claim the node was announced,
+    -- or a keypress racing a fresh screen suppressed the frame tick's pending
+    -- open-announce (screens opened mute; user report).
+    local spoke = moved or kind == "move_to_edge"
+    if spoke then D.last_spoken = state.cur and state.cur.key end
     return { message = message:build(), focus_ref = state.cur and state.cur.ref,
-        moved = moved, spoke_label = true, deferred = cur_deferred(graph, state) }
+        moved = moved, spoke_label = spoke, deferred = cur_deferred(graph, state) }
 end
 
 local function build_and_process(overlay, command)
