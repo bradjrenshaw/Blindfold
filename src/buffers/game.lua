@@ -9,6 +9,15 @@ local Message = require("ui.message")
 local function line(key, vars) return Message.localized(key, vars):resolve() end
 local function num(v) return v or 0 end
 
+-- Scores rendered like the HUD (game number_format: commas, scientific past
+-- 1e11, infinity's "naneinf"); falls back to tostring outside the game.
+local function fmt_num(n)
+    if type(n) ~= "number" then return n end
+    local ok, s = pcall(number_format, n)
+    if ok and s ~= nil then return tostring(s) end
+    return tostring(n)
+end
+
 local function in_run()
     return G and G.STAGES and G.STAGE == G.STAGES.RUN and G.GAME and G.GAME.current_round
 end
@@ -40,7 +49,7 @@ local function populate(self)
     if playing then
         local blind = g.blind
         if type(blind) == "table" and (blind.chips or 0) > 0 then
-            self:add(line("GAME.SCORE", { score = num(g.chips), req = blind.chips }))
+            self:add(line("GAME.SCORE", { score = fmt_num(num(g.chips)), req = fmt_num(blind.chips) }))
             local bname = blind.loc_name or blind.name
             if bname then self:add(line("GAME.BLIND", { name = tostring(bname) })) end
             -- The boss effect the HUD shows all round (The Ox's even names

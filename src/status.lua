@@ -10,6 +10,15 @@ local M = { say = nil }   -- speech.say, injected by core
 
 local function line(key, vars) return Message.localized(key, vars):resolve() end
 local function num(v) return v or 0 end
+
+-- Scores rendered like the HUD (game number_format: commas, scientific past
+-- 1e11, infinity's "naneinf"); falls back to tostring outside the game.
+local function fmt_num(n)
+    if type(n) ~= "number" then return n end
+    local ok, s = pcall(number_format, n)
+    if ok and s ~= nil then return tostring(s) end
+    return tostring(n)
+end
 local function say(key, vars) if M.say then M.say(line(key, vars)) end end
 
 local function in_run()
@@ -51,7 +60,7 @@ end
 function M.score()
     local blind = in_run() and in_blind() and G.GAME.blind
     if type(blind) ~= "table" or (blind.chips or 0) <= 0 then return say("GAME.NOT_NOW") end
-    say("GAME.SCORE", { score = num(G.GAME.chips), req = blind.chips })
+    say("GAME.SCORE", { score = fmt_num(num(G.GAME.chips)), req = fmt_num(blind.chips) })
 end
 
 function M.money()

@@ -15,6 +15,16 @@ local function speak(text)
 end
 local function loc(key, vars) return Message.localized(key, vars):resolve() end
 
+-- Hand-panel numbers rendered the way the HUD renders them (the game's
+-- number_format: comma groups, scientific past 1e11, and infinity's famous
+-- "naneinf") — the per-effect popups stay raw, matching THEIR render.
+local function fmt_num(n)
+    if type(n) ~= "number" then return n end
+    local ok, s = pcall(number_format, n)
+    if ok and s ~= nil then return tostring(s) end
+    return tostring(n)
+end
+
 -- Read a mod setting (or the default when the settings layer isn't loaded).
 local function setting(key, default)
     local s = M.settings
@@ -274,7 +284,7 @@ function M.on_level_down(hand)
     local ok, n = pcall(localize, hand, "poker_hands")
     if ok and type(n) == "string" and n ~= "" then name = n end
     local line = loc("SCORING.HAND_LEVEL_DOWN",
-        { name = name, level = h.level, chips = h.chips, mult = h.mult })
+        { name = name, level = h.level, chips = fmt_num(h.chips), mult = fmt_num(h.mult) })
     if G.E_MANAGER and Event then
         G.E_MANAGER:add_event(Event({
             trigger = "immediate",
@@ -334,7 +344,7 @@ function M.on_hand_text(config, vals)
         -- on exactly the same number as the previous hand's (the dedupe only
         -- guards against repeats WITHIN one scoring).
         M._last_score = nil
-        speak(loc("SCORING.HAND", { name = vals.handname, chips = vals.chips, mult = vals.mult }))
+        speak(loc("SCORING.HAND", { name = vals.handname, chips = fmt_num(vals.chips), mult = fmt_num(vals.mult) }))
     elseif type(vals.handname) == "string" and vals.handname ~= ""
         and type(vals.level) == "number"
         and type(vals.chips) == "number" and type(vals.mult) == "number" then
@@ -346,14 +356,14 @@ function M.on_hand_text(config, vals)
         -- post-upgrade in every path by then.
         M._last_hand = vals.handname
         local name = vals.handname
-        local fallback = { name = name, level = vals.level, chips = vals.chips, mult = vals.mult }
+        local fallback = { name = name, level = vals.level, chips = fmt_num(vals.chips), mult = fmt_num(vals.mult) }
         local function announce()
             local live
             pcall(function()
                 for key, h in pairs(G.GAME.hands) do
                     local ok, loc_name = pcall(localize, key, "poker_hands")
                     if ok and loc_name == name then
-                        live = { name = name, level = h.level, chips = h.chips, mult = h.mult }
+                        live = { name = name, level = h.level, chips = fmt_num(h.chips), mult = fmt_num(h.mult) }
                         break
                     end
                 end
@@ -381,9 +391,9 @@ function M.on_hand_text(config, vals)
         -- equals Z".
         M._last_score = vals.chip_total
         if type(M._cur_chips) == "number" and type(M._cur_mult) == "number" then
-            speak(loc("SCORING.TOTAL", { chips = M._cur_chips, mult = M._cur_mult, score = vals.chip_total }))
+            speak(loc("SCORING.TOTAL", { chips = fmt_num(M._cur_chips), mult = fmt_num(M._cur_mult), score = fmt_num(vals.chip_total) }))
         else
-            speak(loc("SCORING.SCORE", { score = vals.chip_total }))
+            speak(loc("SCORING.SCORE", { score = fmt_num(vals.chip_total) }))
         end
         M._cur_chips, M._cur_mult = nil, nil
     else
