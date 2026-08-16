@@ -77,10 +77,23 @@ local function skip_node()
     return find_skip(box.UIRoot)
 end
 
+-- A pick is only legal while the pack is genuinely LIVE: its state is
+-- current and the card area hasn't begun tearing down. Firing use_card
+-- outside that window — the close animation after the last pick, when
+-- G.STATE has already flipped back (e.g. to blind select for a tag pack) —
+-- crashes in the game's own continuation: with prev_state not a pack state,
+-- button_callbacks.lua:2298 indexes the dying pack area's cards (user crash
+-- report). The native mouse path is protected by can_* stripping the
+-- buttons every frame; our synthesized call must gate itself.
+function M.pick_allowed()
+    return in_pack_state() and pack_open()
+end
+
 -- Enter on a pack card: the game's activation (use_card — can_select_card /
 -- can_use_consumeable rewrite every pack button to it), with its gates spoken.
 local function pick_click(card)
     return function(ctx)
+        if not M.pick_allowed() then return end   -- closing: dead like the native buttons
         if card.ability and card.ability.consumeable then
             if not (card.can_use_consumeable and card:can_use_consumeable()) then
                 if type(card.ability.consumeable) == "table"
@@ -115,9 +128,15 @@ local stable, last_count = 0, -1
 
 function M:handler()
     -- Claim on the pack STATE (it flips before the card area exists, keeping
-    -- us engaged through the deal-in) OR on the pack actually being on screen
-    -- (the reload case above, where the state reads SHOP).
-    if not (G and G.STAGE == G.STAGES.RUN and (in_pack_state() or pack_open())) then
+    -- us engaged through the deal-in) OR on the pack being on screen with
+    -- G.STATE bounced to SHOP (the reload case above). A pack still on
+    -- screen while the state moved anywhere ELSE (blind select right after
+    -- the last pick of a tag pack) is the CLOSE animation: cede immediately,
+    -- so keys route to the incoming screen instead of the dying pack — the
+    -- old broad pack_open() claim kept us capturing there, which is where
+    -- the crash-window picks and the "cursor jumps" came from.
+    if not (G and G.STAGE == G.STAGES.RUN
+        and (in_pack_state() or (pack_open() and G.STATE == G.STATES.SHOP))) then
         settled, stable, last_count = false, 0, -1
         return "inactive"
     end
