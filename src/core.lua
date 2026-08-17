@@ -438,15 +438,20 @@ function BA.describe_focus(node)
     return m and m:resolve() or ""
 end
 
--- Cursor-follow (user request): park the game's own cursor on the element
+-- Cursor-follow (user request): move the game's own cursor to the element
 -- the mod focuses, so sighted co-players can follow along — with all native
 -- on-hover behavior (tooltips, card lift, hover sounds), because the
 -- controller's per-frame collision pass derives hover from the cursor
--- position. This replicates the engine's snap block (controller.lua:291-303)
--- directly instead of calling snap_to: that block only runs in controller
--- HID mode, and flipping HID would hide and lock out the mouse. Left in
--- mouse mode, a co-player's physical mouse naturally takes the cursor back
--- until the next navigation — last input wins.
+-- position. In MOUSE HID mode this is impossible: set_cursor_position
+-- (controller.lua:166) polls the hardware mouse and clears focused.target
+-- EVERY frame, so a parked cursor survives less than a frame (first-attempt
+-- lesson). Instead, flip to button HID mode exactly like native controller
+-- play — the game draws its own cursor sprite on the element — and let the
+-- engine's snap block (controller.lua:291-303) do the move. A physical
+-- mouse movement flips HID back (love.mousemoved → set_HID_flags 'mouse'),
+-- so a sighted co-player can still take the cursor between navigations;
+-- kb_active is deliberately NOT latched here, keeping the legacy mouse lock
+-- out of this path.
 local function cursor_follow(ref)
     if BA.settings and BA.settings.value("cursor.follow") == false then return end
     local ctrl = G and G.CONTROLLER
@@ -455,13 +460,16 @@ local function cursor_follow(ref)
     -- structural rows have no on-screen counterpart to park on.
     if type(ref.put_focused_cursor) ~= "function" then return end
     pcall(function()
-        local prev = ctrl.focused.target
-        ctrl.focused.prev_target = prev
-        ctrl.focused.target = ref
-        ctrl:update_cursor()
-        if prev and prev ~= ref and prev.states and prev.states.focus then
-            prev.states.focus.is = false
+        if not (ctrl.HID and ctrl.HID.controller) then
+            -- A real pad stays the gamepad; keyboard-only users get the
+            -- engine's keyboard stub (its zero axes keep update_axis safe).
+            if ctrl.GAMEPAD.object == nil then
+                ctrl:set_gamepad(ctrl.keyboard_controller)
+                ctrl.GAMEPAD.object = ctrl.keyboard_controller
+            end
+            ctrl:set_HID_flags("button")
         end
+        ctrl:snap_to({ node = ref })
     end)
 end
 
