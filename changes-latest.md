@@ -1,3 +1,2 @@
-* Moving in a direction with no UI element will no longer repeat the element you were already on.
-* Every number should now read properly in scientific notation once it becomes large enough (replicating the game's behavior and formatting exactly.)
-* Fixed extremely rare instances of lag due to logging. Only the logs for the current and previous session are now kept.
+* fix a crash that could occur when navigating the UI when the closing animation for free card packs is playing (specifically in blind select, such as the post-skip free packs.)
+* The mod UI navigation keys now properly update the location of the cursor on screen (triggering hover tooltips, etc.)
