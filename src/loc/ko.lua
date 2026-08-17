@@ -291,6 +291,7 @@ return {
         CANCELLED       = "재할당 취소됨",
         CONFLICT        = "{key}은(는) 이미 {action}에 할당되어 있어 재할당이 취소됨",
         CLICK_ORDER     = "선택한 순서대로 카드 점수 계산",
+        CURSOR_FOLLOW   = "게임 커서가 탐색을 따라 이동",
         ANN_TYPE        = "종류 읽기",
         ANN_SUBTYPE     = "희귀도 읽기",
         ANN_SELECTED    = "선택 상태 읽기",

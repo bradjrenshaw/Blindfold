@@ -291,6 +291,7 @@ return {
         CANCELLED       = "已取消重新綁定",
         CONFLICT        = "{key}已綁定到{action}，已取消重新綁定",
         CLICK_ORDER     = "按選擇順序計分卡牌",
+        CURSOR_FOLLOW   = "遊戲游標跟隨導航",
         ANN_TYPE        = "朗讀類型",
         ANN_SUBTYPE     = "朗讀稀有度",
         ANN_SELECTED    = "朗讀選取狀態",

@@ -291,6 +291,7 @@ return {
         CANCELLED       = "Neubelegung abgebrochen",
         CONFLICT        = "{key} ist bereits mit {action} belegt, Neubelegung abgebrochen",
         CLICK_ORDER     = "Karten in Auswahlreihenfolge werten",
+        CURSOR_FOLLOW   = "Spielcursor folgt der Navigation",
         ANN_TYPE        = "Typ ansagen",
         ANN_SUBTYPE     = "Seltenheit ansagen",
         ANN_SELECTED    = "Auswahl ansagen",

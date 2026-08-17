@@ -291,6 +291,7 @@ return {
         CANCELLED       = "Réassignation annulée",
         CONFLICT        = "{key} est déjà assigné à {action}, réassignation annulée",
         CLICK_ORDER     = "Compter les cartes dans l'ordre de sélection",
+        CURSOR_FOLLOW   = "Le curseur du jeu suit la navigation",
         ANN_TYPE        = "Annoncer le type",
         ANN_SUBTYPE     = "Annoncer la rareté",
         ANN_SELECTED    = "Annoncer la sélection",

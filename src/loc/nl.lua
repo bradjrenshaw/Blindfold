@@ -291,6 +291,7 @@ return {
         CANCELLED       = "Opnieuw toewijzen geannuleerd",
         CONFLICT        = "{key} is al toegewezen aan {action}, opnieuw toewijzen geannuleerd",
         CLICK_ORDER     = "Kaarten scoren in selectievolgorde",
+        CURSOR_FOLLOW   = "Spelcursor volgt de navigatie",
         ANN_TYPE        = "Type aankondigen",
         ANN_SUBTYPE     = "Zeldzaamheid aankondigen",
         ANN_SELECTED    = "Selectie aankondigen",

@@ -322,6 +322,7 @@ return {
         CANCELLED       = "Rebinding cancelled",
         CONFLICT        = "{key} is already bound to {action}, rebinding cancelled",
         CLICK_ORDER     = "Score cards in selection order",
+        CURSOR_FOLLOW   = "Move the game cursor with navigation",
         ANN_TYPE        = "Announce type",
         ANN_SUBTYPE     = "Announce rarity",
         ANN_SELECTED    = "Announce selected",

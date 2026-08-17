@@ -317,6 +317,12 @@ do
         Settings.register{ key = "play.click_order", type = "bool",
             label_key = "SET.CLICK_ORDER", default = false, category = "speech" }
 
+        -- Cursor-follow: the game cursor parks on whatever the mod focuses,
+        -- so sighted co-players can follow along (native hover behavior
+        -- included). See cursor_follow.
+        Settings.register{ key = "cursor.follow", type = "bool",
+            label_key = "SET.CURSOR_FOLLOW", default = true, category = "speech" }
+
         Settings.load()
         BA.settings = Settings
         Scoring.settings = Settings
@@ -432,6 +438,33 @@ function BA.describe_focus(node)
     return m and m:resolve() or ""
 end
 
+-- Cursor-follow (user request): park the game's own cursor on the element
+-- the mod focuses, so sighted co-players can follow along — with all native
+-- on-hover behavior (tooltips, card lift, hover sounds), because the
+-- controller's per-frame collision pass derives hover from the cursor
+-- position. This replicates the engine's snap block (controller.lua:291-303)
+-- directly instead of calling snap_to: that block only runs in controller
+-- HID mode, and flipping HID would hide and lock out the mouse. Left in
+-- mouse mode, a co-player's physical mouse naturally takes the cursor back
+-- until the next navigation — last input wins.
+local function cursor_follow(ref)
+    if BA.settings and BA.settings.value("cursor.follow") == false then return end
+    local ctrl = G and G.CONTROLLER
+    if not ctrl or ref.REMOVED then return end
+    -- The backing must be a real engine Node (cards, UIElements); the mod's
+    -- structural rows have no on-screen counterpart to park on.
+    if type(ref.put_focused_cursor) ~= "function" then return end
+    pcall(function()
+        local prev = ctrl.focused.target
+        ctrl.focused.prev_target = prev
+        ctrl.focused.target = ref
+        ctrl:update_cursor()
+        if prev and prev ~= ref and prev.states and prev.states.focus then
+            prev.states.focus.is = false
+        end
+    end)
+end
+
 -- ---------------------------------------------------------------------------
 -- Owned-overlay output: speak a dispatcher tick's result and sync what follows
 -- focus. Mirrors the legacy focus path: label first, then (for cards) the
@@ -450,6 +483,7 @@ function BA.speak_overlay_result(res)
     -- produced it.
     local ref = res.focus_ref
     if ref and type(ref) == "table" then
+        cursor_follow(ref)
         if FocusBuffers then
             local tb = BA.tick_now and BA.tick_now()
             pcall(FocusBuffers.bind_focus, ref)
