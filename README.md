@@ -4,10 +4,10 @@ An accessibility mod for **Balatro** that provides screen reader support for
 blind players. 
 
 For discussion of Blindfold, as well as my other modding projects, I have a
-[Discord](https://discord.gg/Dz8u2Pr9py/).
+[Discord](https://discord.gg/Dz8u2Pr9py).
 
 If you would like to support my modding work, I also have a
-[Patreon](https://www.patreon.com/bradjrenshaw/).
+[Patreon](https://www.patreon.com/bradjrenshaw).
 
 ## Features
 
