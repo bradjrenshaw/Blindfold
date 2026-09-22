@@ -4,8 +4,13 @@
   "id": "balatro",
   "name": "Balatro",
   "detect": {
-    "steam": { "dirName": "Balatro" },
-    "markers": ["Balatro.exe"]
+    "steam": {
+      "dirName": "Balatro"
+    },
+    "markers": [
+      "Balatro.exe",
+      "Balatro.app"
+    ]
   },
   "userData": {
     "windows": "${appData}/Balatro",

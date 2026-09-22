@@ -77,6 +77,18 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 try {
     Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
     Copy-Item $lovely (Join-Path $stage 'version.dll')
+    # macOS injector + launch scripts ride along in the same zip; each
+    # platform's installer keeps only its own files (and Loadstone routes the
+    # scripts by platform). Compress-Archive drops unix exec bits, which the
+    # installers restore on extraction.
+    foreach ($macFile in 'liblovely.dylib', 'run_lovely_macos.sh', 'steam_lovely_macos.sh') {
+        $from = Join-Path $repo "third_party\lovely\$macFile"
+        if (-not (Test-Path $from)) { throw "Bundled macOS Lovely file missing at '$from'." }
+        Copy-Item $from (Join-Path $stage $macFile)
+    }
+    if (-not (Test-Path (Join-Path $src 'lib\libprism.dylib'))) {
+        throw "Missing src\lib\libprism.dylib - macOS users would get a release without speech. Aborting."
+    }
     # Bundle the docs the in-game buttons open (<mod>/docs/*).
     $stagedDocs = Join-Path $stage 'Blindfold\docs'
     New-Item -ItemType Directory -Force -Path $stagedDocs | Out-Null
@@ -94,12 +106,18 @@ try {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
     Write-Host "   $zip"
 
-    # Payload-only zip for Loadstone Mod Manager: just Blindfold/** — no bundled
-    # Lovely (the manager installs tools as dependencies and keeps them current)
-    # and no root README. Manual installs keep using Blindfold.zip above.
+    # Payload zip for Loadstone Mod Manager: Blindfold/** plus the macOS launch
+    # scripts (routed into the game folder on macOS by loadstone-packages\
+    # blindfold.json) — no bundled Lovely (the manager installs tools as
+    # dependencies and keeps them current) and no root README. Manual installs
+    # keep using Blindfold.zip above.
     $managerZip = Join-Path $repo 'Blindfold-loadstone.zip'
     if (Test-Path $managerZip) { Remove-Item $managerZip -Force }
-    Compress-Archive -Path (Join-Path $stage 'Blindfold') -DestinationPath $managerZip
+    Compress-Archive -Path @(
+        (Join-Path $stage 'Blindfold'),
+        (Join-Path $stage 'run_lovely_macos.sh'),
+        (Join-Path $stage 'steam_lovely_macos.sh')
+    ) -DestinationPath $managerZip
     Write-Host "   $managerZip"
 } finally {
     Remove-Item $stage -Recurse -Force
