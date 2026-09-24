@@ -307,9 +307,17 @@ do
         -- load, BEFORE speech.init, so the real options are filled in at boot
         -- (see the boot pcall) once prism has enumerated.
         Settings.register{ key = "speech.backend", type = "choice",
-            label_key = "SET.SPEECH_BACKEND", default = "auto", category = "speech",
+            label_key = "SET.SPEECH_BACKEND", default = "auto", category = "voice",
             options = { "auto" }, labels = { "SET.BACKEND_AUTO" },
-            apply = function(v) speech.set_backend(v) end }
+            apply = function(v)
+                speech.set_backend(v)
+                -- The Voice screen's controls belong to the backend that
+                -- was active when it opened; rebuild it for the new one.
+                if type(G.OVERLAY_MENU) == "table" and G.OVERLAY_MENU.blindfold_title_key == "SET.VOICE"
+                   and G.FUNCS.blindfold_voice then
+                    G.FUNCS.blindfold_voice()
+                end
+            end }
 
         -- Alternative play style (a friend's request): cards score in the
         -- order they were SELECTED, not their hand position — do_play/
@@ -329,7 +337,22 @@ do
         Round.settings = Settings
 
         local Menu = ba_require("settings.menu")
+        Menu.speech = speech                  -- the Voice screen reads backend capabilities
         BA.settings_tab = Menu.settings_tab   -- referenced by the Options-tab patch
+        -- A freshly adopted backend asks the settings layer for its saved
+        -- volume/rate/pitch/voice (see speech.adopt).
+        speech.config_for = Menu.config_for
+
+        -- Sliders (number settings) write into Settings.values directly; the
+        -- callback persists and applies the value (create_slider passes its
+        -- args table, whose ref_value is the setting key).
+        G.FUNCS.blindfold_slider = function(rt)
+            local key = rt and rt.ref_value
+            if key and Settings.by_key[key] and rt.ref_table then
+                local v = rt.ref_table[key]
+                if type(v) == "number" then Settings.on_change(key, math.floor(v + 0.5)) end
+            end
+        end
 
         -- Choice (cycle) controls route their callback through here.
         G.FUNCS.blindfold_cycle = function(a)
@@ -351,6 +374,10 @@ do
         G.FUNCS.blindfold_scoring = function()
             G.FUNCS.overlay_menu{ definition = Menu.scoring_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.SCORING" end
+        end
+        G.FUNCS.blindfold_voice = function()
+            G.FUNCS.overlay_menu{ definition = Menu.voice_uibox() }
+            if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.VOICE" end
         end
         -- Bundled docs: README.md / changes.md, copied into <mod>/docs by
         -- deploy.ps1 and build_release.ps1, opened in the OS default handler.

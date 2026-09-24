@@ -45,15 +45,44 @@ ffi.cdef([[
     int            prism_backend_speak(prism_backend* backend, const char* text_utf8, bool interrupt);
     int            prism_backend_output(prism_backend* backend, const char* text_utf8, bool interrupt);
     int            prism_backend_stop(prism_backend* backend);
+    int            prism_backend_set_volume(prism_backend* backend, float volume);
+    int            prism_backend_set_rate(prism_backend* backend, float rate);
+    int            prism_backend_set_pitch(prism_backend* backend, float pitch);
+    int            prism_backend_get_volume(prism_backend* backend, float* out);
+    int            prism_backend_get_rate(prism_backend* backend, float* out);
+    int            prism_backend_get_pitch(prism_backend* backend, float* out);
+    int            prism_backend_refresh_voices(prism_backend* backend);
+    int            prism_backend_count_voices(prism_backend* backend, size_t* out);
+    int            prism_backend_get_voice_name(prism_backend* backend, size_t voice_id, const char** out);
+    int            prism_backend_get_voice_language(prism_backend* backend, size_t voice_id, const char** out);
+    int            prism_backend_set_voice(prism_backend* backend, size_t voice_id);
+    int            prism_backend_get_voice(prism_backend* backend, size_t* out);
 ]])
 
 -- prism_error values the binding reacts to (the rest just mean "didn't work").
 local OK = 0
 local ALREADY_INITIALIZED = 1
 local NOT_IMPLEMENTED = 9
--- prism_backend_get_features bits.
+-- prism_backend_get_features bits (PrismBackendFeature in prism.h).
 local SUPPORTED_AT_RUNTIME = 0x1   -- engine actually present on this machine
 local SUPPORTS_OUTPUT = 0x20       -- backend supports prism_backend_output
+local FEATURE = {
+    set_volume     = 2 ^ 10, get_volume = 2 ^ 11,
+    set_rate       = 2 ^ 12, get_rate   = 2 ^ 13,
+    set_pitch      = 2 ^ 14, get_pitch  = 2 ^ 15,
+    refresh_voices = 2 ^ 16, count_voices = 2 ^ 17,
+    get_voice_name = 2 ^ 18, get_voice_language = 2 ^ 19,
+    get_voice      = 2 ^ 20, set_voice  = 2 ^ 21,
+}
+-- Features live in a uint64; LuaJIT's bit ops are 32-bit, so test the
+-- high half separately (bits 10..21 all sit in the low word today, but
+-- keep the helper honest).
+local function has_feature(feat, flag)
+    if flag < 2 ^ 32 then
+        return bit.band(tonumber(feat % 2 ^ 32) or 0, flag) ~= 0
+    end
+    return bit.band(math.floor(tonumber(feat) / 2 ^ 32), flag / 2 ^ 32) ~= 0
+end
 
 -- Rotate at boot: the log grows with every utterance and had reached
 -- multiple megabytes across sessions, making each synchronous append (and
@@ -174,11 +203,125 @@ end
 local function adopt(backend, requested)
     M.backend = backend
     M.current_backend = requested
-    M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(backend)) or 0,
-        SUPPORTS_OUTPUT) ~= 0
+    M._features = M.prism.prism_backend_get_features(backend)
+    M.supports_output = has_feature(M._features, SUPPORTS_OUTPUT)
+    M._voices = nil
     local n = M.prism.prism_backend_name(backend)
-    log("Prism backend: " .. (n ~= nil and ffi.string(n) or "unknown")
-        .. " (requested " .. tostring(requested) .. ")")
+    M.backend_name = n ~= nil and ffi.string(n) or "unknown"
+    log("Prism backend: " .. M.backend_name .. " (requested " .. tostring(requested) .. ")")
+    -- The per-backend voice settings (rate, volume, pitch, voice) are the
+    -- user's, kept by the settings layer; it hands them back here so a
+    -- fresh backend starts out configured the way they left it.
+    if M.config_for then
+        local ok, cfg = pcall(M.config_for, M.backend_name)
+        if ok and type(cfg) == "table" then M.apply_config(cfg) end
+    end
+end
+
+-- What the active backend lets the user adjust: the Voice settings screen
+-- only shows a control when the backend can honor it.
+function M.capabilities()
+    local f = M._features
+    if not M.loaded or f == nil then return {} end
+    return {
+        volume = has_feature(f, FEATURE.set_volume),
+        rate   = has_feature(f, FEATURE.set_rate),
+        pitch  = has_feature(f, FEATURE.set_pitch),
+        voice  = has_feature(f, FEATURE.set_voice) and has_feature(f, FEATURE.count_voices)
+                 and has_feature(f, FEATURE.get_voice_name),
+    }
+end
+
+-- Prism normalizes volume, rate, and pitch to 0..1 (0.5 = the engine's
+-- default for rate and pitch). Getters return nil when unsupported.
+local function get_float(fn_name, flag)
+    if not M.loaded or not has_feature(M._features, flag) then return nil end
+    local out = ffi.new("float[1]")
+    local ok, e = pcall(function() return M.prism[fn_name](M.backend, out) end)
+    if ok and e == OK then return tonumber(out[0]) end
+    return nil
+end
+function M.get_volume() return get_float("prism_backend_get_volume", FEATURE.get_volume) end
+function M.get_rate()   return get_float("prism_backend_get_rate",   FEATURE.get_rate)   end
+function M.get_pitch()  return get_float("prism_backend_get_pitch",  FEATURE.get_pitch)  end
+
+local function set_float(fn_name, flag, v, what)
+    if not M.loaded or type(v) ~= "number" or not has_feature(M._features, flag) then return false end
+    v = math.max(0, math.min(1, v))
+    local ok, e = pcall(function() return M.prism[fn_name](M.backend, v) end)
+    if not ok or e ~= OK then
+        log("Prism set " .. what .. " failed (" .. tostring(ok and e or e) .. ")")
+        return false
+    end
+    return true
+end
+function M.set_volume(v) return set_float("prism_backend_set_volume", FEATURE.set_volume, v, "volume") end
+function M.set_rate(v)   return set_float("prism_backend_set_rate",   FEATURE.set_rate,   v, "rate")   end
+function M.set_pitch(v)  return set_float("prism_backend_set_pitch",  FEATURE.set_pitch,  v, "pitch")  end
+
+-- The active backend's voices as { {id=, name=, language=}, ... }, enumerated
+-- once per adoption (AVSpeech and SAPI need a refresh before they list any).
+function M.voices()
+    if not M.loaded or not M.capabilities().voice then return {} end
+    if M._voices then return M._voices end
+    local list = {}
+    pcall(function()
+        if has_feature(M._features, FEATURE.refresh_voices) then
+            M.prism.prism_backend_refresh_voices(M.backend)
+        end
+        local count = ffi.new("size_t[1]")
+        if M.prism.prism_backend_count_voices(M.backend, count) ~= OK then return end
+        local name = ffi.new("const char*[1]")
+        local lang = ffi.new("const char*[1]")
+        local can_lang = has_feature(M._features, FEATURE.get_voice_language)
+        for i = 0, tonumber(count[0]) - 1 do
+            if M.prism.prism_backend_get_voice_name(M.backend, i, name) == OK and name[0] ~= nil then
+                local l = nil
+                if can_lang and M.prism.prism_backend_get_voice_language(M.backend, i, lang) == OK
+                   and lang[0] ~= nil then
+                    l = ffi.string(lang[0])
+                end
+                list[#list + 1] = { id = i, name = ffi.string(name[0]), language = l }
+            end
+        end
+    end)
+    M._voices = list
+    return list
+end
+
+-- Name of the voice the backend is using now, or nil.
+function M.current_voice_name()
+    if not M.loaded or not has_feature(M._features, FEATURE.get_voice) then return nil end
+    local out = ffi.new("size_t[1]")
+    local ok, e = pcall(function() return M.prism.prism_backend_get_voice(M.backend, out) end)
+    if not (ok and e == OK) then return nil end
+    for _, v in ipairs(M.voices()) do
+        if v.id == tonumber(out[0]) then return v.name end
+    end
+    return nil
+end
+
+function M.set_voice_by_name(name)
+    if not M.loaded or type(name) ~= "string" then return false end
+    for _, v in ipairs(M.voices()) do
+        if v.name == name then
+            local ok, e = pcall(function() return M.prism.prism_backend_set_voice(M.backend, v.id) end)
+            if ok and e == OK then return true end
+            log("Prism set voice '" .. name .. "' failed (" .. tostring(ok and e or e) .. ")")
+            return false
+        end
+    end
+    return false
+end
+
+-- Apply a saved configuration table { volume=, rate=, pitch= (0..1), voice=name }.
+-- Missing entries leave the backend's own default in place.
+function M.apply_config(cfg)
+    if type(cfg) ~= "table" then return end
+    if cfg.volume ~= nil then M.set_volume(cfg.volume) end
+    if cfg.rate   ~= nil then M.set_rate(cfg.rate) end
+    if cfg.pitch  ~= nil then M.set_pitch(cfg.pitch) end
+    if cfg.voice  ~= nil then M.set_voice_by_name(cfg.voice) end
 end
 
 -- Backends we refuse to touch. UIA sat here briefly after a switch-away
