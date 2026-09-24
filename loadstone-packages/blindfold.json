@@ -112,6 +112,34 @@
     "${userData}/blindfold_keybinds.lua",
     "${userData}/blindfold.log"
   ],
+  "launch": [
+    {
+      "step": "open-url",
+      "when": {
+        "platform": "windows",
+        "distribution": "steam"
+      },
+      "url": "steam://rungameid/${steam.appId}"
+    },
+    {
+      "step": "run",
+      "when": {
+        "platform": "macos"
+      },
+      "program": "${gameDir}/Balatro.app/Contents/MacOS/love",
+      "cwd": "${gameDir}",
+      "env": {
+        "DYLD_INSERT_LIBRARIES": "${gameDir}/liblovely.dylib"
+      }
+    },
+    {
+      "step": "notice",
+      "when": {
+        "platform": "macos"
+      },
+      "message": "Balatro is starting with Blindfold loaded. To get the Steam overlay and playtime tracking as well, launch from Steam after setting its Launch Options (see the install notice)."
+    }
+  ],
   "packaging": {
     "artifacts": [
       {

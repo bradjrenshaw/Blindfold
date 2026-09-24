@@ -5,7 +5,8 @@
   "name": "Balatro",
   "detect": {
     "steam": {
-      "dirName": "Balatro"
+      "dirName": "Balatro",
+      "appId": "2379780"
     },
     "markers": [
       "Balatro.exe",
