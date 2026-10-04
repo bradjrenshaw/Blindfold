@@ -107,5 +107,55 @@ d = Proxy.card_description(blueprint)
 check(d == "Copies ability of Joker to the right",
     "no compat state yet: description alone", d)
 
+-- Issue #2: the game's builders instantiate live DynaTexts (card names, {E:}
+-- parts) that self-register in G.MOVEABLES, drawn and updated every frame
+-- until delete_run. Scraping must read their text, then remove them.
+local function fake_dynatext(s)
+    local o = { strings = { { string = s } } }
+    function o:remove()
+        for i, v in ipairs(G.MOVEABLES) do
+            if v == self then table.remove(G.MOVEABLES, i); break end
+        end
+        self.REMOVED = true
+    end
+    G.MOVEABLES[#G.MOVEABLES + 1] = o
+    return o
+end
+local resident = { remove = function() error("pre-existing object removed") end }
+G.MOVEABLES = { resident }
+local joker = {
+    ability = { name = "Joker", set = "Joker" },
+    config = { center = { unlocked = true, discovered = true } },
+    generate_UIBox_ability_table = function()
+        return {
+            name = { { n = 2, config = { object = fake_dynatext("Joker") } } },
+            main = { { n = 2, config = { object = fake_dynatext("+4 Mult") } } },
+            info = { { name = "Foil", { n = 2, config = { object = fake_dynatext("+50 chips") } } } },
+        }
+    end,
+}
+d = Proxy.card_description(joker)
+check(d == "+4 Mult", "leak: DynaText text still scraped", d)
+check(#G.MOVEABLES == 1 and G.MOVEABLES[1] == resident,
+    "leak: description build's objects removed, residents kept", #G.MOVEABLES)
+local tips = Proxy.card_info_tips(joker)
+check(tips[1] and tips[1]:find("+50 chips", 1, true), "leak: keyword tip still scraped", tips[1])
+check(#G.MOVEABLES == 1, "leak: keyword-tip build's objects removed", #G.MOVEABLES)
+-- A builder that errors midway still gets its partial objects cleaned up.
+joker.generate_UIBox_ability_table = function()
+    fake_dynatext("half")
+    error("boom")
+end
+Proxy.card_description(joker)
+check(#G.MOVEABLES == 1, "leak: failed build's partial objects removed", #G.MOVEABLES)
+-- Skip tags: get_uibox_table fills the sprite's cached table the same way.
+local tag = { get_uibox_table = function()
+    return { ability_UIBox_table = { main = { { n = 2, config = { object = fake_dynatext("Free Rare Joker") } } } } }
+end }
+d = Proxy.tag_description(tag)
+check(d == "Free Rare Joker", "leak: tag description scraped", d)
+check(#G.MOVEABLES == 1, "leak: tag build's objects removed", #G.MOVEABLES)
+G.MOVEABLES = nil
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

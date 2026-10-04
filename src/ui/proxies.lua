@@ -145,11 +145,12 @@ end
 local function deck_description()
     local back = G and G.GAME and G.GAME.viewed_back
     if not back or not back.generate_UI then return nil end
-    local ok, def = pcall(function() return back:generate_UI() end)
-    if not ok or type(def) ~= "table" then return nil end
-    local parts = {}
-    Proxy.collect_def_text(def, parts)
-    return #parts > 0 and table.concat(parts, " ") or nil
+    return Proxy.with_built(function() return back:generate_UI() end, function(def)
+        if type(def) ~= "table" then return nil end
+        local parts = {}
+        Proxy.collect_def_text(def, parts)
+        return #parts > 0 and table.concat(parts, " ") or nil
+    end)
 end
 
 local function stake_description()
@@ -157,12 +158,16 @@ local function stake_description()
     local pool = G and G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
     local center = n and pool and pool[n]
     if not center or not center.key then return nil end
-    local nodes = {}
-    local ok = pcall(localize, { type = "descriptions", key = center.key, set = "Stake", nodes = nodes })
-    if not ok then return nil end
-    local parts = {}
-    Proxy.collect_def_text(nodes, parts)
-    return #parts > 0 and table.concat(parts, " ") or nil
+    return Proxy.with_built(function()
+        local nodes = {}
+        localize({ type = "descriptions", key = center.key, set = "Stake", nodes = nodes })
+        return nodes
+    end, function(nodes)
+        if not nodes then return nil end
+        local parts = {}
+        Proxy.collect_def_text(nodes, parts)
+        return #parts > 0 and table.concat(parts, " ") or nil
+    end)
 end
 
 local CYCLE_DESCRIPTION = {
@@ -484,6 +489,51 @@ function Proxy.collect_def_text(node, parts, depth)
     end
 end
 
+-- Run one of the game's UI-definition builders (generate_card_ui and
+-- friends), hand its result to read(def) (nil if the build failed), then
+-- dispose of the engine objects the build spawned. A definition is just
+-- tables, but localize() instantiates live DynaTexts inside it (every card
+-- name, every {E:} part, Misprint's cyclers) and each registers itself in the
+-- engine's global lists (G.MOVEABLES, G.I.MOVEABLE, G.STAGE_OBJECTS) —
+-- updated and drawn every frame, wiped only by delete_run. Never removed,
+-- every description read leaked a few objects and the game slowed steadily
+-- over a run (issue #2). Everything appended to G.MOVEABLES during the build
+-- is ours; read first, then :remove() it.
+function Proxy.with_built(build, read)
+    local list = G and G.MOVEABLES
+    local n0 = type(list) == "table" and #list or nil
+    local ok, def = pcall(build)
+    local rok, res = pcall(read, ok and def or nil)
+    if n0 then
+        local spawned = {}
+        for i = n0 + 1, #list do spawned[#spawned + 1] = list[i] end
+        for i = #spawned, 1, -1 do
+            local o = spawned[i]
+            if type(o) == "table" and not o.REMOVED and type(o.remove) == "function" then
+                pcall(o.remove, o)
+            end
+        end
+    end
+    if rok then return res end
+    return nil
+end
+
+-- A card's ability table, built fresh and disposed after read(t).
+function Proxy.with_ability_table(card, read)
+    return Proxy.with_built(function() return card:generate_UIBox_ability_table() end, read)
+end
+
+-- A tag's sprite with its ability_UIBox_table freshly populated (the game's
+-- get_uibox_table), disposed after read(sprite). Safe to leave the sprite's
+-- table holding removed DynaTexts: both game hover paths rebuild it right
+-- before showing it.
+function Proxy.tag_built(tag, read)
+    return Proxy.with_built(function() return tag:get_uibox_table() end, function(sprite)
+        if type(sprite) ~= "table" then return nil end
+        return read(sprite)
+    end)
+end
+
 -- A card's description text. The game caches it in card.ability_UIBox_table but
 -- only rebuilds that on hover, which lags behind the animated cursor — so for
 -- scaling jokers (e.g. Ceremonial Dagger's mult) it goes stale. Rebuild it fresh
@@ -535,16 +585,21 @@ function Proxy.card_description(card)
             end
         end
     end
-    local t
-    if type(card.generate_UIBox_ability_table) == "function" then
-        local ok, res = pcall(function() return card:generate_UIBox_ability_table() end)
-        if ok then t = res end
+    local function scrape(t)
+        if type(t) ~= "table" or type(t.main) ~= "table" then return nil end
+        local parts = {}
+        Proxy.collect_def_text(t.main, parts)
+        return #parts > 0 and table.concat(parts, " ") or nil
     end
-    t = t or card.ability_UIBox_table
-    if type(t) ~= "table" or type(t.main) ~= "table" then return nil end
-    local parts = {}
-    Proxy.collect_def_text(t.main, parts)
-    return #parts > 0 and table.concat(parts, " ") or nil
+    if type(card.generate_UIBox_ability_table) == "function" then
+        local fresh_ok = false
+        local d = Proxy.with_ability_table(card, function(t)
+            fresh_ok = type(t) == "table"
+            return scrape(t)
+        end)
+        if fresh_ok then return d end
+    end
+    return scrape(card.ability_UIBox_table)
 end
 
 -- A card's keyword "hover tips": the related-concept boxes the game builds
@@ -572,8 +627,7 @@ end
 function Proxy.card_info_tips(card)
     if not card or card.facing == "back" then return {} end          -- hide face-down identity
     if type(card.generate_UIBox_ability_table) ~= "function" then return {} end
-    local ok, t = pcall(function() return card:generate_UIBox_ability_table() end)
-    return ok and Proxy.table_info_tips(t) or {}
+    return Proxy.with_ability_table(card, Proxy.table_info_tips) or {}
 end
 
 -- Detail lines for this element's review buffer (the depth offloaded from the
@@ -1186,9 +1240,7 @@ Proxy.blind_requirement = blind_requirement
 -- ability_UIBox_table). get_uibox_table populates it with the right loc vars.
 local function tag_description(tag)
     if type(tag) ~= "table" or type(tag.get_uibox_table) ~= "function" then return nil end
-    local ok, sprite = pcall(function() return tag:get_uibox_table() end)
-    if not ok or type(sprite) ~= "table" then return nil end
-    return Proxy.card_description(sprite)
+    return Proxy.tag_built(tag, function(sprite) return Proxy.card_description(sprite) end)
 end
 -- Exported for the tags collection gallery.
 Proxy.tag_description = tag_description
@@ -1281,9 +1333,10 @@ function ProxyBlind:fill_buffer(buf)
     local c = self.node.config
     if c and c.button == "skip_blind" and type(c.ref_table) == "table"
        and type(c.ref_table.get_uibox_table) == "function" then
-        local ok, sprite = pcall(function() return c.ref_table:get_uibox_table() end)
-        local t = ok and type(sprite) == "table" and sprite.ability_UIBox_table or nil
-        for _, tip in ipairs(Proxy.table_info_tips(t)) do buf:add(tip) end
+        local tips = Proxy.tag_built(c.ref_table, function(sprite)
+            return Proxy.table_info_tips(sprite.ability_UIBox_table)
+        end)
+        for _, tip in ipairs(tips or {}) do buf:add(tip) end
     end
 end
 
@@ -1312,11 +1365,8 @@ function ProxyCashOut:fill_buffer(buf)
             local d = Proxy.card_description(row.card)
             if d then buf:add(d) end
         elseif type(row.tag) == "table" and type(row.tag.get_uibox_table) == "function" then
-            local ok, sprite = pcall(function() return row.tag:get_uibox_table() end)
-            if ok and type(sprite) == "table" then
-                local d = Proxy.card_description(sprite)
-                if d then buf:add(d) end
-            end
+            local d = Proxy.tag_description(row.tag)
+            if d then buf:add(d) end
         end
     end
 end

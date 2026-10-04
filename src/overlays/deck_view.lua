@@ -215,13 +215,13 @@ function M:build(b)
     b:add_label(Id.structural("deck"), function(ctx)
         local back = G.GAME and G.GAME.selected_back
         local name = (back and back.loc_name) and tostring(back.loc_name) or ""
-        local desc = ""
-        pcall(function()
-            local def = back:generate_UI(nil, 0.7, 0.5, G.GAME.challenge)
+        local desc = Proxy.with_built(function()
+            return back:generate_UI(nil, 0.7, 0.5, G.GAME.challenge)
+        end, function(def)
             local parts = {}
             Proxy.collect_def_text(def, parts)
-            desc = table.concat(parts, " ")
-        end)
+            return table.concat(parts, " ")
+        end) or ""
         ctx.message:fragment(Message.localized("DECK_VIEW.NAME_DESC", { name = name, desc = desc }))
     end)
 

@@ -23,7 +23,7 @@ or one suite by hand (the optional argument is the repo root, default `.`):
 | `blinds_test.lua` | the run-info blinds row (panel readouts, reward gate, fallback drop) |
 | `rebind_test.lua` | rebind capture (modifier combos, bare modifiers) and binding conflicts |
 | `click_order_test.lua` | click-order play/discard reordering + the "selection N" announcement |
-| `desc_test.lua` | custom card bodies: Misprint churn+range, Blueprint/Brainstorm compat |
+| `desc_test.lua` | custom card bodies: Misprint churn+range, Blueprint/Brainstorm compat; description builds dispose their spawned DynaTexts (issue #2) |
 | `status_test.lua` | Ctrl+letter status readouts incl. shop reroll cost and naneinf parity |
 | `fmt_test.lua` | scoring verbosity styles, popup normalization, HUD number parity |
 | `events_test.lua` | run-event dispatcher: group toggles, always-on history, history cap |
