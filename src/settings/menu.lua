@@ -118,88 +118,126 @@ function M.announcements_uibox()
     return create_UIBox_generic_options({ back_func = "options", contents = { content } })
 end
 
--- Settings key for one adjustable of one backend ("speech.cfg.avspeech.rate").
-local function backend_key(backend_name, what)
-    local slug = tostring(backend_name or "unknown"):lower():gsub("[^%w]+", "_"):gsub("^_+", ""):gsub("_+$", "")
-    return "speech.cfg." .. slug .. "." .. what
-end
-M.backend_key = backend_key
+-- Voice settings. The voice is a hex id from the speech library's tree
+-- ("auto" = its best available: the running screen reader, else the system
+-- voice); rate, pitch and volume are integer percent (Loadstar's 0..1
+-- underneath, 50 = the voice's own default for rate and pitch) and apply to
+-- whichever voice speaks, which ignores what it cannot adjust.
+local ADJUSTABLES = {
+    { "rate",   "SET.RATE",   50 },
+    { "pitch",  "SET.PITCH",  50 },
+    { "volume", "SET.VOLUME", 100 },
+}
 
--- The saved configuration for a backend, in Prism's 0..1 units, or nil
--- for anything the user never touched (speech.adopt leaves those at the
--- engine's defaults). Sliders store integer percentages.
-function M.config_for(backend_name)
-    local cfg = {}
-    for _, what in ipairs({ "volume", "rate", "pitch" }) do
-        local v = Settings.values[backend_key(backend_name, what)]
-        if type(v) == "number" then cfg[what] = v / 100 end
+-- What the speech module should speak with, from the saved settings.
+function M.profile()
+    local cfg = { voice = Settings.value("speech.voice") or "auto" }
+    for _, a in ipairs(ADJUSTABLES) do
+        local v = Settings.value("speech." .. a[1])
+        if type(v) == "number" then cfg[a[1]] = v / 100 end
     end
-    local voice = Settings.values[backend_key(backend_name, "voice")]
-    if type(voice) == "string" and voice ~= "" then cfg.voice = voice end
     return cfg
 end
 
--- Register (or refresh) the per-backend settings for the ACTIVE backend:
--- one slider per adjustable it supports, a voice picker when it lists
--- voices. Defaults come from the backend's current values, so the first
--- visit shows the engine as it is rather than an invented midpoint.
--- Category "voice:<slug>" keeps each backend's controls together.
-local function ensure_backend_settings()
-    local name = speech.backend_name
-    if not name then return nil end
-    local caps = speech.capabilities()
-    local category = "voice:" .. backend_key(name, "")
-    local function pct(v) return v and math.floor(v * 100 + 0.5) or 50 end
-    local specs = {
-        { "volume", "SET.VOLUME", caps.volume, speech.get_volume, speech.set_volume, 100 },
-        { "rate",   "SET.RATE",   caps.rate,   speech.get_rate,   speech.set_rate,   50 },
-        { "pitch",  "SET.PITCH",  caps.pitch,  speech.get_pitch,  speech.set_pitch,  50 },
-    }
-    for _, spec in ipairs(specs) do
-        local what, label_key, supported, getter, setter, fallback = spec[1], spec[2], spec[3], spec[4], spec[5], spec[6]
-        if supported then
-            local current = getter()
-            Settings.register{ key = backend_key(name, what), type = "number",
-                label_key = label_key, category = category, min = 0, max = 100,
-                default = current and pct(current) or fallback,
-                apply = function(v) if type(v) == "number" then setter(v / 100) end end }
-        end
+-- Reopen the Voice screen in place when it is showing: the controls under
+-- the picker belong to the voice that was speaking when it opened.
+local function rebuild_voice_screen()
+    if type(G.OVERLAY_MENU) == "table" and G.OVERLAY_MENU.blindfold_title_key == "SET.VOICE"
+       and G.FUNCS.blindfold_voice then
+        G.FUNCS.blindfold_voice()
     end
-    if caps.voice then
-        local voices = speech.voices()
-        if #voices > 0 then
-            -- Voices for the game's language first, then the rest, each
-            -- group alphabetical; the label carries the language tag so a
-            -- long list stays navigable by ear.
-            local lang = (G and G.SETTINGS and G.SETTINGS.language or "en"):lower():sub(1, 2)
-            table.sort(voices, function(a, b)
-                local al = (a.language or ""):lower():sub(1, 2) == lang
-                local bl = (b.language or ""):lower():sub(1, 2) == lang
-                if al ~= bl then return al end
-                return a.name < b.name
-            end)
-            local names, labels = {}, {}
-            for i, v in ipairs(voices) do
-                names[i] = v.name
-                labels[i] = v.language and (v.name .. " (" .. v.language .. ")") or v.name
-            end
-            Settings.register{ key = backend_key(name, "voice"), type = "choice",
-                label_key = "SET.VOICE_NAME", category = category,
-                options = names, label_values = labels,
-                default = speech.current_voice_name() or names[1],
-                apply = function(v) speech.set_voice_by_name(v) end }
-        end
-    end
-    return category
 end
 
--- The Voice sub-screen: the backend picker on top, then whatever the active
--- backend lets the user adjust (volume, rate, pitch, voice). Switching the
--- backend rebuilds the screen (core reopens it from the picker's apply).
+-- Registered once at load (after Settings.load, so saved values win). The
+-- voice picker's options are filled in each time the Voice screen opens.
+function M.register_voice_settings()
+    Settings.register{ key = "speech.voice", type = "choice",
+        label_key = "SET.VOICE_NAME", default = "auto", category = "voice",
+        options = { "auto" }, labels = { "SET.BACKEND_AUTO" },
+        apply = function(v)
+            speech.set_profile({ voice = v })
+            rebuild_voice_screen()
+        end }
+    for _, a in ipairs(ADJUSTABLES) do
+        local what = a[1]
+        Settings.register{ key = "speech." .. what, type = "number",
+            label_key = a[2], category = "voice:" .. what, min = 0, max = 100, default = a[3],
+            apply = function(v)
+                if type(v) == "number" then speech.set_profile({ [what] = v / 100 }) end
+            end }
+    end
+end
+
+-- Built-in category keys the mod translates; product names (SAPI 5,
+-- AVSpeech, ...) pass through as the library names them.
+local CATEGORY_LABELS = { screen_readers = "SET.CAT_SCREEN_READERS", clipboard = "SET.CAT_CLIPBOARD" }
+
+-- Refill the voice picker from the library's tree: Auto (naming what it
+-- resolves to now), then each category's voices — the game's language first,
+-- then alphabetical — labelled with category and language so a long list
+-- stays navigable by ear.
+local function refresh_voice_options()
+    local s = Settings.by_key["speech.voice"]
+    if not s then return end
+    local voices = speech.voices()
+    local lang = (G and G.SETTINGS and G.SETTINGS.language or "en"):lower():sub(1, 2)
+    local order, groups = {}, {}
+    for _, v in ipairs(voices) do
+        if not groups[v.category] then
+            groups[v.category] = {}
+            order[#order + 1] = v.category
+        end
+        local g = groups[v.category]
+        g[#g + 1] = v
+    end
+    local auto = loc("SET.BACKEND_AUTO")
+    local now = speech.resolved()
+    if now and Settings.value("speech.voice") == "auto" then auto = auto .. ": " .. now.name end
+    local options, labels = { "auto" }, { auto }
+    local seen = {}
+    for _, key in ipairs(order) do
+        local g = groups[key]
+        table.sort(g, function(a, b)
+            local al = a.language:lower():sub(1, 2) == lang
+            local bl = b.language:lower():sub(1, 2) == lang
+            if al ~= bl then return al end
+            return a.name < b.name
+        end)
+        local cat = CATEGORY_LABELS[key] and loc(CATEGORY_LABELS[key]) or g[1].category_name
+        for _, v in ipairs(g) do
+            options[#options + 1] = v.id
+            local label = (#order > 1 and (cat .. ": ") or "") .. v.name
+            if v.language ~= "" then label = label .. " (" .. v.language .. ")" end
+            labels[#labels + 1] = label
+            seen[v.id] = true
+        end
+    end
+    -- A saved voice that is absent today (reader not running, voice removed)
+    -- stays selectable so the picker shows the truth; the library speaks
+    -- through its fallback meanwhile.
+    local saved = Settings.value("speech.voice")
+    if saved ~= "auto" and not seen[saved] then
+        local name = speech.voice_name(saved)
+        options[#options + 1] = saved
+        labels[#labels + 1] = (name ~= "" and name or saved) .. " (" .. loc("SET.VOICE_UNAVAILABLE") .. ")"
+    end
+    Settings.register{ key = "speech.voice", options = options, label_values = labels }
+end
+
+-- The Voice sub-screen: the voice picker on top, then whatever the voice
+-- now speaking lets the user adjust (rate, pitch, volume). Changing the voice
+-- rebuilds the screen (see the picker's apply).
 function M.voice_uibox()
+    speech.refresh()   -- a reader started since boot shows up on the next visit
+    refresh_voice_options()
     local nodes = controls("voice")
-    local category = ensure_backend_settings()
-    local extra = category and controls(category) or {}
+    local caps = speech.resolved() or {}
+    local extra = {}
+    for _, a in ipairs(ADJUSTABLES) do
+        if caps[a[1]] then
+            for _, c in ipairs(controls("voice:" .. a[1])) do extra[#extra + 1] = c end
+        end
+    end
     if #extra == 0 then
         nodes[#nodes + 1] = { n = G.UIT.R, config = { align = "cm", padding = 0.1 }, nodes = {
             { n = G.UIT.T, config = { text = loc("SET.NO_VOICE_OPTIONS"), scale = 0.35, colour = G.C.UI.TEXT_LIGHT } },

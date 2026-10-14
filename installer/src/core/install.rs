@@ -343,7 +343,8 @@ mod tests {
             ("Blindfold/lovely.toml", b"[manifest]"),
             ("Blindfold/core.lua", b"-- core"),
             ("Blindfold/lib/prism.dll", b"prism dll"),
-            ("Blindfold/lib/libprism.dylib", b"prism dylib"),
+            ("Blindfold/lib/loadstar.dll", b"loadstar dll"),
+            ("Blindfold/lib/libloadstar.dylib", b"loadstar dylib"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
@@ -356,18 +357,20 @@ mod tests {
             let md = mods.path().join("Blindfold");
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
-            assert!(!md.join("lib").join("libprism.dylib").exists());
+            assert_eq!(fs::read(md.join("lib").join("loadstar.dll")).unwrap(), b"loadstar dll");
+            assert!(!md.join("lib").join("libloadstar.dylib").exists());
         }
 
         #[cfg(target_os = "macos")]
         {
             assert!(!game.path().join("version.dll").exists());
+            assert!(!mods.path().join("Blindfold").join("lib").join("loadstar.dll").exists());
             assert_eq!(fs::read(game.path().join("liblovely.dylib")).unwrap(), b"lovely dylib");
             assert_eq!(fs::read(game.path().join("run_lovely_macos.sh")).unwrap(), b"lovely sh");
             let md = mods.path().join("Blindfold");
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert!(!md.join("lib").join("prism.dll").exists());
-            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+            assert_eq!(fs::read(md.join("lib").join("libloadstar.dylib")).unwrap(), b"loadstar dylib");
         }
         
         assert!(!game.path().join("Blindfold").exists());
@@ -383,7 +386,7 @@ mod tests {
             ("run_lovely_macos.sh", b"lovely sh"),
             ("Blindfold\\lovely.toml", b"[manifest]"),
             ("Blindfold\\lib\\prism.dll", b"prism dll"),
-            ("Blindfold\\lib\\libprism.dylib", b"prism dylib"),
+            ("Blindfold\\lib\\libloadstar.dylib", b"loadstar dylib"),
         ]);
 
         install_zip_to(&zip, game.path(), mods.path(), &mut || false).unwrap();
@@ -394,7 +397,7 @@ mod tests {
             let md = mods.path().join("Blindfold");
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
-            assert!(!md.join("lib").join("libprism.dylib").exists());
+            assert!(!md.join("lib").join("libloadstar.dylib").exists());
         }
 
         #[cfg(target_os = "macos")]
@@ -403,7 +406,7 @@ mod tests {
             let md = mods.path().join("Blindfold");
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert!(!md.join("lib").join("prism.dll").exists());
-            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+            assert_eq!(fs::read(md.join("lib").join("libloadstar.dylib")).unwrap(), b"loadstar dylib");
         }
     }
 
@@ -416,7 +419,7 @@ mod tests {
             ("Blindfold-main/src/lovely.toml", b"[manifest]"),
             ("Blindfold-main/src/core.lua", b"-- core"),
             ("Blindfold-main/src/lib/prism.dll", b"prism dll"),
-            ("Blindfold-main/src/lib/libprism.dylib", b"prism dylib"),
+            ("Blindfold-main/src/lib/libloadstar.dylib", b"loadstar dylib"),
             ("Blindfold-main/third_party/lovely/version.dll", b"lovely dll"),
             ("Blindfold-main/third_party/lovely/liblovely.dylib", b"lovely dylib"),
             ("Blindfold-main/third_party/lovely/run_lovely_macos.sh", b"lovely sh"),
@@ -432,7 +435,7 @@ mod tests {
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
             assert_eq!(fs::read(md.join("lib").join("prism.dll")).unwrap(), b"prism dll");
-            assert!(!md.join("lib").join("libprism.dylib").exists());
+            assert!(!md.join("lib").join("libloadstar.dylib").exists());
         }
 
         #[cfg(target_os = "macos")]
@@ -443,7 +446,7 @@ mod tests {
             assert_eq!(fs::read(md.join("lovely.toml")).unwrap(), b"[manifest]");
             assert_eq!(fs::read(md.join("core.lua")).unwrap(), b"-- core");
             assert!(!md.join("lib").join("prism.dll").exists());
-            assert_eq!(fs::read(md.join("lib").join("libprism.dylib")).unwrap(), b"prism dylib");
+            assert_eq!(fs::read(md.join("lib").join("libloadstar.dylib")).unwrap(), b"loadstar dylib");
         }
 
         let md = mods.path().join("Blindfold");

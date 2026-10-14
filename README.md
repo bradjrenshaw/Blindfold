@@ -84,8 +84,8 @@ Prefer to place files yourself? Each release also ships `Blindfold.zip`
    * **macOS**: Copy `liblovely.dylib`, `run_lovely_macos.sh` and `steam_lovely_macos.sh` from the zip into Balatro's game folder, next to `Balatro.app`, and make the two `.sh` files executable (`chmod +x *.sh`).
    This is the [Lovely Injector](https://github.com/ethangreen-dev/lovely-injector) mod loader — skip it if you already run other Lovely mods.
 2. **Copy Mod Payload**:
-   * **Windows**: Copy the zip's `Blindfold` folder (excluding `lib/libprism.dylib` which is Mac-only) into `%APPDATA%\Balatro\Mods`, so it ends up at `%APPDATA%\Balatro\Mods\Blindfold` (create `Mods` if it doesn't exist yet).
-   * **macOS**: Copy the zip's `Blindfold` folder (excluding `lib/prism.dll` which is Windows-only) into `~/Library/Application Support/Balatro/Mods`, so it ends up at `~/Library/Application Support/Balatro/Mods/Blindfold` (create `Mods` if it doesn't exist yet).
+   * **Windows**: Copy the zip's `Blindfold` folder (excluding `lib/libloadstar.dylib` which is Mac-only) into `%APPDATA%\Balatro\Mods`, so it ends up at `%APPDATA%\Balatro\Mods\Blindfold` (create `Mods` if it doesn't exist yet).
+   * **macOS**: Copy the zip's `Blindfold` folder (excluding `lib/loadstar.dll` and `lib/prism.dll`, which are Windows-only) into `~/Library/Application Support/Balatro/Mods`, so it ends up at `~/Library/Application Support/Balatro/Mods/Blindfold` (create `Mods` if it doesn't exist yet).
 3. Launch Balatro through Steam. On macOS, set the Steam launch options
    first — see **Launching on macOS** above; without them the game starts
    unmodded.
@@ -96,9 +96,9 @@ If you download these files with a browser, macOS quarantines them and refuses
 to load them. Both failures are quiet, so they are easy to misdiagnose:
 
 * A quarantined `liblovely.dylib` means the mod never loads at all.
-* A quarantined `lib/libprism.dylib` means the mod loads and writes to
+* A quarantined `lib/libloadstar.dylib` means the mod loads and writes to
   `blindfold.log` but never speaks. The log records the reason:
-  `Prism NOT loaded ... library load disallowed by system policy`.
+  `Loadstar NOT loaded ... library load disallowed by system policy`.
 
 Clear it either way:
 
@@ -110,7 +110,7 @@ Clear it either way:
 
   ```
   xattr -d com.apple.quarantine "<game folder>/liblovely.dylib"
-  xattr -d com.apple.quarantine "$HOME/Library/Application Support/Balatro/Mods/Blindfold/lib/libprism.dylib"
+  xattr -d com.apple.quarantine "$HOME/Library/Application Support/Balatro/Mods/Blindfold/lib/libloadstar.dylib"
   ```
 
 Installing through the installer avoids this entirely — files it extracts

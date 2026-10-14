@@ -40,10 +40,12 @@ $lovely = Join-Path $repo 'third_party\lovely\version.dll'
 if (-not (Test-Path $lovely)) {
     throw "Bundled Lovely missing at '$lovely'."
 }
-if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
-    throw "Missing src\lib\prism.dll - a release without the speech library would be log-only. Aborting."
+foreach ($lib in 'loadstar.dll', 'prism.dll') {
+    if (-not (Test-Path (Join-Path $src "lib\$lib"))) {
+        throw "Missing src\lib\$lib - a release without the speech libraries would be log-only. Aborting."
+    }
 }
-Write-Host "   Lovely + Prism present"
+Write-Host "   Lovely + Loadstar + Prism present"
 
 # --- Stamp the Lovely manifest ----------------------------------------------------
 # lovely.toml's [manifest] version is what Lovely reports for the mod. It is
@@ -86,8 +88,8 @@ try {
         if (-not (Test-Path $from)) { throw "Bundled macOS Lovely file missing at '$from'." }
         Copy-Item $from (Join-Path $stage $macFile)
     }
-    if (-not (Test-Path (Join-Path $src 'lib\libprism.dylib'))) {
-        throw "Missing src\lib\libprism.dylib - macOS users would get a release without speech. Aborting."
+    if (-not (Test-Path (Join-Path $src 'lib\libloadstar.dylib'))) {
+        throw "Missing src\lib\libloadstar.dylib - macOS users would get a release without speech. Aborting."
     }
     # Bundle the docs the in-game buttons open (<mod>/docs/*).
     $stagedDocs = Join-Path $stage 'Blindfold\docs'

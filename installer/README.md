@@ -17,7 +17,7 @@ What it does:
        it DIFFERS, the user is asked: an outdated Lovely crashes at launch on
        Blindfold's `lovely.toml`, but a newer one may be serving other mods,
        so neither direction is replaced silently)
-     * `Blindfold/**` (excluding `lib/libprism.dylib`) → `%APPDATA%\Balatro\Mods`
+     * `Blindfold/**` (excluding `lib/libloadstar.dylib`) → `%APPDATA%\Balatro\Mods`
        (replaced wholesale, so updates never leave stale files; settings live
        outside and survive)
    * **macOS**:
@@ -26,7 +26,7 @@ What it does:
        as `version.dll` above. The `.sh` files are made executable, since zip
        entries carry no unix mode and Steam cannot exec a launch wrapper
        without it.
-     * `Blindfold/**` (excluding `lib/prism.dll`) → `~/Library/Application Support/Balatro/Mods`
+     * `Blindfold/**` (excluding `lib/loadstar.dll` and `lib/prism.dll`) → `~/Library/Application Support/Balatro/Mods`
        (replaced wholesale, as above)
 3. Tracks the installed version in `Mods\Blindfold\version` and offers
    Update when GitHub has a newer tag (semver compare). Dev builds are

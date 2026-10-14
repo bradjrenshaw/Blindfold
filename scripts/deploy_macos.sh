@@ -102,11 +102,11 @@ xattr -d com.apple.quarantine "$game/liblovely.dylib" 2>/dev/null || true
 
 # --- 3. Speech library sanity check --------------------------------------------
 step "Checking speech library"
-if [ ! -f "$src/lib/libprism.dylib" ]; then
-    echo "   WARNING: missing src/lib/libprism.dylib - the mod will run LOG-ONLY (no speech)." >&2
+if [ ! -f "$src/lib/libloadstar.dylib" ]; then
+    echo "   WARNING: missing src/lib/libloadstar.dylib - the mod will run LOG-ONLY (no speech)." >&2
 else
-    xattr -d com.apple.quarantine "$src/lib/libprism.dylib" 2>/dev/null || true
-    echo "   Prism present"
+    xattr -d com.apple.quarantine "$src/lib/libloadstar.dylib" 2>/dev/null || true
+    echo "   Loadstar present"
 fi
 
 # --- 4. Version stamp -----------------------------------------------------------

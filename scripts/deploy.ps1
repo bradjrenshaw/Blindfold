@@ -112,10 +112,12 @@ if ($needCopy) {
 
 # --- 3. Speech library sanity check --------------------------------------------
 Write-Step "Checking speech library"
-if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
-    Write-Warning "Missing src\lib\prism.dll - the mod will run LOG-ONLY (no speech)."
+if (-not (Test-Path (Join-Path $src 'lib\loadstar.dll'))) {
+    Write-Warning "Missing src\lib\loadstar.dll - the mod will run LOG-ONLY (no speech)."
+} elseif (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
+    Write-Warning "Missing src\lib\prism.dll - speech works, but not through screen readers (SAPI only)."
 } else {
-    Write-Host "   Prism present"
+    Write-Host "   Loadstar + Prism present"
 }
 
 # --- 4. Version stamp -----------------------------------------------------------

@@ -23,10 +23,10 @@ pub const LOVELY_FILES: &[&str] =
 pub const LOVELY_FILES: &[&str] = &[];
 
 #[cfg(target_os = "windows")]
-pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/libprism.dylib"];
+pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/libloadstar.dylib"];
 
 #[cfg(target_os = "macos")]
-pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/prism.dll"];
+pub const EXCLUDED_MOD_FILES: &[&str] = &["lib/loadstar.dll", "lib/prism.dll"];
 
 #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
 pub const EXCLUDED_MOD_FILES: &[&str] = &[];

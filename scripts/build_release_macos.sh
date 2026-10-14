@@ -54,10 +54,10 @@ for f in "$lovely/version.dll" "$lovely/liblovely.dylib" "$lovely/run_lovely_mac
          "$lovely/steam_lovely_macos.sh"; do
     [ -f "$f" ] || { echo "Bundled Lovely file missing at '$f'." >&2; exit 1; }
 done
-for f in "$src/lib/prism.dll" "$src/lib/libprism.dylib"; do
+for f in "$src/lib/loadstar.dll" "$src/lib/prism.dll" "$src/lib/libloadstar.dylib"; do
     [ -f "$f" ] || { echo "Missing $f - a release without the speech library would be log-only. Aborting." >&2; exit 1; }
 done
-echo "   Lovely + Prism present (Windows and macOS)"
+echo "   Lovely + Loadstar present (Windows and macOS), Prism (Windows)"
 
 # --- Stamp the Lovely manifest ----------------------------------------------------
 # Stamped IN THE REPO so it ships committed with the release and dev builds

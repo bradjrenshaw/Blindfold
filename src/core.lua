@@ -301,24 +301,6 @@ do
         Settings.register{ key = "announce.keywords.enabled",    type = "bool", label_key = "SET.ANN_KEYWORDS",    default = true, category = "announce" }
         Events.register_settings()   -- events.<group>.enabled toggles (same screen)
 
-        -- Speech backend picker: "auto" plus whatever Prism says is usable on
-        -- this machine. Product names (NVDA, JAWS...) are not translated —
-        -- only the auto option carries a loc label. This block runs at module
-        -- load, BEFORE speech.init, so the real options are filled in at boot
-        -- (see the boot pcall) once prism has enumerated.
-        Settings.register{ key = "speech.backend", type = "choice",
-            label_key = "SET.SPEECH_BACKEND", default = "auto", category = "voice",
-            options = { "auto" }, labels = { "SET.BACKEND_AUTO" },
-            apply = function(v)
-                speech.set_backend(v)
-                -- The Voice screen's controls belong to the backend that
-                -- was active when it opened; rebuild it for the new one.
-                if type(G.OVERLAY_MENU) == "table" and G.OVERLAY_MENU.blindfold_title_key == "SET.VOICE"
-                   and G.FUNCS.blindfold_voice then
-                    G.FUNCS.blindfold_voice()
-                end
-            end }
-
         -- Alternative play style (a friend's request): cards score in the
         -- order they were SELECTED, not their hand position — do_play/
         -- do_discard "quick-drag" the clicked cards into that order.
@@ -337,11 +319,10 @@ do
         Round.settings = Settings
 
         local Menu = ba_require("settings.menu")
-        Menu.speech = speech                  -- the Voice screen reads backend capabilities
+        Menu.speech = speech                  -- the Voice screen reads the voice tree
         BA.settings_tab = Menu.settings_tab   -- referenced by the Options-tab patch
-        -- A freshly adopted backend asks the settings layer for its saved
-        -- volume/rate/pitch/voice (see speech.adopt).
-        speech.config_for = Menu.config_for
+        BA.speech_menu = Menu                 -- boot hands Menu.profile() to speech
+        Menu.register_voice_settings()
 
         -- Sliders (number settings) write into Settings.values directly; the
         -- callback persists and applies the value (create_slider passes its
@@ -1349,17 +1330,9 @@ end
 -- ---------------------------------------------------------------------------
 local ok, err = pcall(function()
     speech.init(MOD_DIR)
-    -- The backend picker registered before prism was up (module load time):
-    -- fill its options in now that the registry can enumerate, and apply the
-    -- saved choice (a no-op on "auto").
+    -- The saved voice, rate, pitch and volume (settings loaded at module load).
     pcall(function()
-        local s = BA.settings and BA.settings.by_key and BA.settings.by_key["speech.backend"]
-        if s then
-            local opts = { "auto" }
-            for _, name in ipairs(speech.backends()) do opts[#opts + 1] = name end
-            s.options = opts
-        end
-        speech.set_backend(BA.settings and BA.settings.value("speech.backend"))
+        if BA.speech_menu then speech.set_profile(BA.speech_menu.profile()) end
     end)
     BA.install()
     -- The loaded announcement is deliberately NOT here: it waits for the
