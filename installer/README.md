@@ -21,7 +21,14 @@ first.
 
 ## Building
 
-Both release scripts build it from a Loadstone checkout next to this repo
+Releases are cut by CI: in the Actions tab, run **Release** with the
+version (after stamping `src/lovely.toml` and writing `changes-latest.md`).
+`.github/workflows/release.yml` builds the zips, has Loadstone's reusable
+`build-installer.yml` build `BlindfoldInstaller.exe` and
+`BlindfoldInstaller.dmg` from the chosen Loadstone ref, packages
+`loadstone-release.json` with both, and publishes the release.
+
+For local builds, both release scripts build it from a Loadstone checkout next to this repo
 (`../loadstone`, or `$LOADSTONE_REPO`):
 
 - **macOS** (`scripts/build_release_macos.sh`): Loadstone's

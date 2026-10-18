@@ -3,10 +3,12 @@
 # release on macOS. The counterpart of scripts/build_release.ps1; both produce
 # the same cross-platform zips, so a release can be cut from either OS.
 #
-# Usage: scripts/build_release_macos.sh v1.2.0 [--no-installer | --installer-only]
+# Usage: scripts/build_release_macos.sh v1.2.0 [--no-installer | --installer-only | --zips-only]
 #
 # --installer-only builds just BlindfoldInstaller.dmg, for a release cut on
 # Windows (whose zips and loadstone-release.json must not be rebuilt here).
+# --zips-only builds just the two zips; CI (.github/workflows/release.yml)
+# builds the installers and the release manifest in later jobs.
 #
 # Produces at the repo root:
 #   Blindfold.zip              what the standalone installers download/extract:
@@ -37,11 +39,13 @@ set -euo pipefail
 version="${1:-}"
 no_installer=0
 installer_only=0
+no_manifest=0
 shift || true
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-installer) no_installer=1; shift ;;
         --installer-only) installer_only=1; shift ;;
+        --zips-only) no_installer=1; no_manifest=1; shift ;;
         *) echo "Unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -130,7 +134,7 @@ if [ "$no_installer" = 0 ] || [ "$installer_only" = 1 ]; then
     echo "   $repo/BlindfoldInstaller.dmg"
 fi
 
-if [ "$installer_only" = 0 ]; then
+if [ "$installer_only" = 0 ] && [ "$no_manifest" = 0 ]; then
     # --- Loadstone release manifest ----------------------------------------------------
     # Must be built from the same files that get uploaded, after the installer.
     step "Building loadstone-release.json (Loadstone)"
@@ -167,6 +171,11 @@ fi
 if [ "$installer_only" = 1 ]; then
     echo
     echo "Done: BlindfoldInstaller.dmg (copy it to the machine cutting the release)."
+    exit 0
+fi
+if [ "$no_manifest" = 1 ]; then
+    echo
+    echo "Done: Blindfold.zip and Blindfold-loadstone.zip."
     exit 0
 fi
 echo

@@ -1,0 +1,116 @@
+# Cut a Blindfold release: the mod zips, both Blindfold Installers (built by
+# Loadstone's reusable workflow), the Loadstone release manifest that lists
+# them all, and the GitHub release itself, from the commit this runs on.
+#
+# Before running: stamp the version in src/lovely.toml (and commit), and put
+# the release notes in changes-latest.md.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag, vX.Y.Z
+        type: string
+        required: true
+      prerelease:
+        description: Mark as a pre-release
+        type: boolean
+        default: false
+      loadstone-ref:
+        description: Loadstone branch, tag, or commit to build the installers and package with
+        type: string
+        default: master
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Full vX.Y.Z: installers compare tags as semver.
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version must look like v1.2.3 (got $VERSION)." >&2; exit 1; }
+          grep -q "^version = \"${VERSION#v}\"" src/lovely.toml || {
+            echo "src/lovely.toml is not stamped ${VERSION#v}; stamp and commit it first." >&2; exit 1; }
+          [ -s changes-latest.md ] || { echo "changes-latest.md is empty; write the release notes first." >&2; exit 1; }
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "$VERSION is already released." >&2; exit 1
+          fi
+
+  zips:
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/build_release_macos.sh "$VERSION" --zips-only
+        env:
+          VERSION: ${{ inputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zips
+          path: |
+            Blindfold.zip
+            Blindfold-loadstone.zip
+          if-no-files-found: error
+
+  installers:
+    needs: check
+    uses: bradjrenshaw/loadstone/.github/workflows/build-installer.yml@master
+    with:
+      profile: installer/profile.json
+      windows-name: BlindfoldInstaller
+      macos-name: Blindfold Installer
+      bundle-id: com.bradjrenshaw.blindfold.installer
+      dmg-name: BlindfoldInstaller.dmg
+      loadstone-ref: ${{ inputs.loadstone-ref }}
+
+  publish:
+    needs: [zips, installers]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: bradjrenshaw/loadstone
+          ref: ${{ inputs.loadstone-ref }}
+          path: loadstone
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: loadstone
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release manifest
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          (cd loadstone && cargo build -q --release -p loadstone-cli)
+          loadstone/target/release/loadstone package --version "$VERSION" \
+            --manifest loadstone-packages/blindfold.json \
+            --artifact dist/Blindfold-loadstone.zip \
+            --installer dist/BlindfoldInstaller.exe \
+            --installer dist/BlindfoldInstaller.dmg \
+            --out dist/loadstone-release.json
+          loadstone/target/release/loadstone validate dist/loadstone-release.json loadstone-packages
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          flags=()
+          [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+          # Blindfold.zip goes up alone first: old standalone installers take
+          # the first .zip asset on a release.
+          gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" \
+            --notes-file changes-latest.md ${flags[@]+"${flags[@]}"} dist/Blindfold.zip
+          gh release upload "$VERSION" dist/Blindfold-loadstone.zip dist/loadstone-release.json \
+            dist/BlindfoldInstaller.exe dist/BlindfoldInstaller.dmg
