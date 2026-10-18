@@ -7,10 +7,16 @@ resolves packages only from the Loadstone registry. Everything it does comes
 from `../loadstone-packages/blindfold.json`, so changing what gets installed
 where is a manifest change, not installer code.
 
-Self-update: a single-mod build checks Blindfold's own releases. The
-`installer` block that `loadstone package --installer` stamps into
-`loadstone-release.json` names the Windows exe; macOS builds do not
-self-update yet.
+Self-update: a single-mod build checks Blindfold's latest release and
+offers its own platform's installer when that was built from a newer
+Loadstone. The release scripts pass every installer build on hand to
+`loadstone package --installer`, so a release should be packaged with both
+`BlindfoldInstaller.exe` and `BlindfoldInstaller.app.zip` in the repo root:
+build the other platform's first (`build_release_macos.sh vX.Y.Z
+--installer-only` on a Mac, or the Windows script) and copy it over. On
+macOS the app updates itself in place unless it is running from Downloads
+without having been moved (macOS runs such apps from a read-only copy); it
+then asks to be moved to Applications.
 
 ## Building
 

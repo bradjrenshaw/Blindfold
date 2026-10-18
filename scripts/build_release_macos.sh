@@ -107,29 +107,6 @@ if [ "$installer_only" = 0 ]; then
     rm -f "$manager_zip"
     (cd "$stage" && zip -q -r -X "$manager_zip" Blindfold run_lovely_macos.sh steam_lovely_macos.sh)
     echo "   $manager_zip"
-
-    # --- Loadstone release manifest ----------------------------------------------------
-    # Must be built from the same zip that gets uploaded.
-    step "Building loadstone-release.json (Loadstone)"
-    loadstone_bin="${LOADSTONE:-}"
-    if [ -z "$loadstone_bin" ]; then
-        if command -v loadstone >/dev/null 2>&1; then
-            loadstone_bin="$(command -v loadstone)"
-        else
-            for cand in "$repo/../loadstone/target/release/loadstone" "$repo/../loadstone/target/debug/loadstone"; do
-                [ -x "$cand" ] && { loadstone_bin="$cand"; break; }
-            done
-        fi
-    fi
-    if [ -n "$loadstone_bin" ]; then
-        "$loadstone_bin" package --version "$version" \
-            --manifest "$repo/loadstone-packages/blindfold.json" \
-            --artifact "$manager_zip" \
-            --out "$repo/loadstone-release.json"
-        echo "   $repo/loadstone-release.json"
-    else
-        echo "   WARNING: loadstone CLI not found (PATH, \$LOADSTONE, or ../loadstone/target) - skipping loadstone-release.json (install: cargo install --path <loadstone repo>/crates/loadstone-cli)" >&2
-    fi
 fi
 
 # --- Installer ---------------------------------------------------------------------
@@ -153,6 +130,40 @@ if [ "$no_installer" = 0 ] || [ "$installer_only" = 1 ]; then
     echo "   $repo/BlindfoldInstaller.app.zip"
 fi
 
+if [ "$installer_only" = 0 ]; then
+    # --- Loadstone release manifest ----------------------------------------------------
+    # Must be built from the same files that get uploaded, after the installer.
+    step "Building loadstone-release.json (Loadstone)"
+    loadstone_bin="${LOADSTONE:-}"
+    if [ -z "$loadstone_bin" ]; then
+        if command -v loadstone >/dev/null 2>&1; then
+            loadstone_bin="$(command -v loadstone)"
+        else
+            for cand in "$repo/../loadstone/target/release/loadstone" "$repo/../loadstone/target/debug/loadstone"; do
+                [ -x "$cand" ] && { loadstone_bin="$cand"; break; }
+            done
+        fi
+    fi
+    if [ -n "$loadstone_bin" ]; then
+        # Every installer build on hand, so each platform's can self-update:
+        # the .app.zip built above, and a BlindfoldInstaller.exe copied over
+        # from a Windows build_release.ps1 run.
+        installer_args=()
+        for f in "$repo/BlindfoldInstaller.app.zip" "$repo/BlindfoldInstaller.exe"; do
+            [ "$no_installer" = 1 ] && [ "$f" = "$repo/BlindfoldInstaller.app.zip" ] && continue
+            [ -f "$f" ] && installer_args+=(--installer "$f")
+        done
+        "$loadstone_bin" package --version "$version" \
+            --manifest "$repo/loadstone-packages/blindfold.json" \
+            --artifact "$manager_zip" \
+            ${installer_args[@]+"${installer_args[@]}"} \
+            --out "$repo/loadstone-release.json"
+        echo "   $repo/loadstone-release.json"
+    else
+        echo "   WARNING: loadstone CLI not found (PATH, \$LOADSTONE, or ../loadstone/target) - skipping loadstone-release.json (install: cargo install --path <loadstone repo>/crates/loadstone-cli)" >&2
+    fi
+fi
+
 if [ "$installer_only" = 1 ]; then
     echo
     echo "Done: BlindfoldInstaller.app.zip (copy it to the machine cutting the release)."
@@ -160,8 +171,12 @@ if [ "$installer_only" = 1 ]; then
 fi
 echo
 echo "Done. Publish with:"
-echo "  gh release create $version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.app.zip --title $version --notes \"...\""
+exe_asset=""
+[ -f "$repo/BlindfoldInstaller.exe" ] && exe_asset=" BlindfoldInstaller.exe"
+echo "  gh release create $version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.app.zip$exe_asset --title $version --notes \"...\""
 echo "NOTE: keep Blindfold.zip FIRST in that list (old standalone installers download the first .zip asset)."
-echo "NOTE: a release cut here has no Windows BlindfoldInstaller.exe, so its loadstone-release.json"
-echo "      carries no installer block and Windows installers won't offer to update themselves."
-echo "      Cut from Windows (scripts/build_release.ps1) to ship the exe."
+if [ ! -f "$repo/BlindfoldInstaller.exe" ]; then
+    echo "NOTE: no BlindfoldInstaller.exe here, so Windows installers won't be offered this release's"
+    echo "      installer update. To include it, build it on Windows and copy it into the repo root before"
+    echo "      running this script, or cut the release from Windows (scripts/build_release.ps1)."
+fi
