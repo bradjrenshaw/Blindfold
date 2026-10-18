@@ -122,9 +122,37 @@
       "url": "steam://rungameid/${steam.appId}"
     },
     {
+      "step": "expect",
+      "when": {
+        "platform": "macos",
+        "distribution": "steam"
+      },
+      "checks": [
+        {
+          "processRunning": [
+            "steam",
+            "steam_osx"
+          ],
+          "message": "Steam isn't running. Balatro needs Steam to start: open Steam, sign in, then press Launch again."
+        }
+      ]
+    },
+    {
+      "step": "open-url",
+      "when": {
+        "platform": "macos",
+        "distribution": "steam",
+        "steamLaunchOptions": "steam_lovely_macos.sh"
+      },
+      "url": "steam://rungameid/${steam.appId}"
+    },
+    {
       "step": "run",
       "when": {
-        "platform": "macos"
+        "platform": "macos",
+        "not": {
+          "steamLaunchOptions": "steam_lovely_macos.sh"
+        }
       },
       "program": "${gameDir}/Balatro.app/Contents/MacOS/love",
       "cwd": "${gameDir}",
@@ -135,9 +163,12 @@
     {
       "step": "notice",
       "when": {
-        "platform": "macos"
+        "platform": "macos",
+        "not": {
+          "steamLaunchOptions": "steam_lovely_macos.sh"
+        }
       },
-      "message": "Balatro is starting with Blindfold loaded. To get the Steam overlay and playtime tracking as well, launch from Steam after setting its Launch Options (see the install notice)."
+      "message": "Balatro is starting with Blindfold loaded, outside Steam: achievements work, the Steam overlay does not. To start it through Steam instead, set Balatro's Launch Options in Steam to: \"${gameDir}/steam_lovely_macos.sh\" %command%  (keep the quotes). Launch then goes through Steam."
     }
   ],
   "packaging": {
