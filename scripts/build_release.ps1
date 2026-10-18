@@ -6,10 +6,16 @@
 #   Blindfold.zip            what the installer downloads/extracts:
 #                              version.dll     (bundled Lovely Injector -> game folder)
 #                              Blindfold/**    (src\ payload -> %APPDATA%\Balatro\Mods)
-#   BlindfoldInstaller.exe   the installer itself (skip with -NoInstaller)
+#   Blindfold-loadstone.zip  the Loadstone payload, plus loadstone-release.json
+#   BlindfoldInstaller.exe   the Blindfold Installer: Loadstone with
+#                              installer\profile.json baked in (skip with
+#                              -NoInstaller). Needs a Loadstone checkout at
+#                              ..\loadstone (or $env:LOADSTONE_REPO), a Visual
+#                              Studio developer prompt, Ninja, and static
+#                              wxWidgets at $env:LOADSTONE_WX_STATIC.
 #
-# Then publish both as assets on a GitHub release, e.g.:
-#   gh release create v0.1.0 Blindfold.zip BlindfoldInstaller.exe --title v0.1.0 --notes "..."
+# Then publish them as assets on a GitHub release (the command is printed at
+# the end).
 # The installer reads releases via the GitHub API, so the tag (vX.Y.Z) is the
 # version users see and update-checks compare against.
 
@@ -62,13 +68,6 @@ if ($stamped -ne $toml) {
     Write-Host "   version = $numeric  (repo file updated - commit it with the release)"
 } else {
     Write-Host "   already $numeric"
-}
-
-# The installer exe's own version is set by hand in installer\Cargo.toml;
-# just warn when it drifts from the release being cut.
-$cargoToml = [IO.File]::ReadAllText((Join-Path $repo 'installer\Cargo.toml'))
-if ($cargoToml -notmatch ('\[package\][^\[]*version = "' + [regex]::Escape($numeric) + '"')) {
-    Write-Warning "installer\Cargo.toml package version is not $numeric - bump it (and rebuild) if the exe should match."
 }
 
 # --- Stage and zip ---------------------------------------------------------------
@@ -125,40 +124,53 @@ try {
     Remove-Item $stage -Recurse -Force
 }
 
+# --- Installer ---------------------------------------------------------------------
+# Built before the release manifest so `loadstone package --installer` can stamp
+# the exe's hash into it: running installers read that to offer self-update.
+$installerExe = Join-Path $repo 'BlindfoldInstaller.exe'
+if (-not $NoInstaller) {
+    Write-Step "Building the installer (Loadstone, single-mod profile)"
+    $loadstoneRepo = if ($env:LOADSTONE_REPO) { $env:LOADSTONE_REPO } else { Join-Path $repo '..\loadstone' }
+    if (-not (Test-Path (Join-Path $loadstoneRepo 'app\CMakeLists.txt'))) {
+        throw "Loadstone checkout not found at $loadstoneRepo (set LOADSTONE_REPO)."
+    }
+    if (-not $env:LOADSTONE_WX_STATIC) {
+        throw "Set LOADSTONE_WX_STATIC to your static wxWidgets build (e.g. C:\dev\wx-static); see Loadstone's README."
+    }
+    $build = Join-Path $loadstoneRepo 'build-blindfold-installer'
+    $profile = Join-Path $repo 'installer\profile.json'
+    # cmake/cargo write progress to stderr; route through cmd so PowerShell 5.1
+    # doesn't promote those lines to errors under ErrorActionPreference Stop.
+    & cmd /c "cmake -S `"$loadstoneRepo\app`" -B `"$build`" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=`"$env:LOADSTONE_WX_STATIC`" -DLOADSTONE_EMBED_PROFILE=`"$profile`" -DLOADSTONE_APP_NAME=BlindfoldInstaller 2>&1"
+    if ($LASTEXITCODE -ne 0) { throw "cmake configure failed (run from a Visual Studio developer prompt)" }
+    & cmd /c "cmake --build `"$build`" 2>&1"
+    if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
+    Copy-Item (Join-Path $build 'BlindfoldInstaller.exe') $installerExe -Force
+    Write-Host "   $installerExe"
+}
+
 # --- Loadstone release manifest ----------------------------------------------------
 # loadstone-release.json describes this release to Loadstone Mod Manager: version, the
-# manager zip's sha256, and the frozen install steps. Must be built from the
-# same zip that gets uploaded — never regenerate it against a rebuilt zip.
+# manager zip's sha256, the frozen install steps, and the installer exe. Must be
+# built from the same files that get uploaded — never regenerate it against a
+# rebuilt zip or exe.
 Write-Step "Building loadstone-release.json (Loadstone)"
 if (Get-Command loadstone -ErrorAction SilentlyContinue) {
-    & loadstone package --version $Version `
-        --manifest (Join-Path $repo 'loadstone-packages\blindfold.json') `
-        --artifact $managerZip `
-        --out (Join-Path $repo 'loadstone-release.json')
+    $packageArgs = @('package', '--version', $Version,
+        '--manifest', (Join-Path $repo 'loadstone-packages\blindfold.json'),
+        '--artifact', $managerZip,
+        '--out', (Join-Path $repo 'loadstone-release.json'))
+    if (-not $NoInstaller) { $packageArgs += @('--installer', $installerExe) }
+    & loadstone @packageArgs
     if ($LASTEXITCODE -ne 0) { throw "loadstone package failed" }
 } else {
     Write-Warning "loadstone CLI not found on PATH - skipping loadstone-release.json (install: cargo install --path <loadstone repo>\crates\loadstone-cli)"
 }
 
-# --- Installer ---------------------------------------------------------------------
-if (-not $NoInstaller) {
-    Write-Step "Building the installer (cargo release)"
-    Push-Location (Join-Path $repo 'installer')
-    try {
-        # cargo writes progress to stderr; route through cmd so PowerShell 5.1
-        # doesn't promote those lines to errors under ErrorActionPreference Stop.
-        & cmd /c "cargo build --release 2>&1"
-        if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
-    } finally {
-        Pop-Location
-    }
-    Copy-Item (Join-Path $repo 'installer\target\release\blindfold-installer.exe') `
-              (Join-Path $repo 'BlindfoldInstaller.exe') -Force
-    Write-Host "   $(Join-Path $repo 'BlindfoldInstaller.exe')"
-}
-
 Write-Host ""
 Write-Host "Done. Publish with:"
-Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe --title $Version --notes `"...`""
+Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe BlindfoldInstaller.app.zip --title $Version --notes `"...`""
+Write-Host "  BlindfoldInstaller.app.zip is built on a Mac: scripts/build_release_macos.sh $Version --installer-only,"
+Write-Host "  then copy it here. (Only that file - the zips and loadstone-release.json must come from this run.)"
 Write-Host "NOTE: keep Blindfold.zip FIRST in that list. Old standalone installers"
 Write-Host "download the first .zip asset on the release; upload order preserves that."

@@ -21,36 +21,44 @@ If you would like to support my modding work, I also have a
 
 ## Installation
 
+The Blindfold Installer is [Loadstone](https://github.com/bradjrenshaw/loadstone)
+set up for Blindfold alone. It installs the mod and the Lovely Injector mod
+loader it needs, updates both, changes Blindfold's settings, and launches the
+game.
+
 ### Windows
 1. Download `BlindfoldInstaller.exe` from the
    [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest).
 2. Run it. It finds your Steam install of Balatro automatically (use
-   Browse... if you keep the game somewhere unusual) and shows one row of
-   buttons: press **Install**.
+   Browse... if you keep the game somewhere unusual): press **Install**.
 
    Windows SmartScreen may warn about an unrecognized app the first time:
    choose "More info", then "Run anyway".
-3. Launch Balatro through Steam. You should hear **"Blindfold loaded."**
-
-Prefer a console? Run `BlindfoldInstaller.exe --cli` for the same flows as a
-menu.
+3. Press **Launch game**, or launch Balatro through Steam as usual. You should
+   hear **"Blindfold loaded."**
 
 ### macOS
-1. Download `BlindfoldInstaller.app.zip` (extracting it to get `BlindfoldInstaller.app`) from the
-   [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest).
-2. Run it. It finds your Steam install of Balatro automatically and shows one row of
-   buttons: press **Install**.
-3. Tell Steam to launch the game through the Lovely Injector (see
-   **Launching on macOS** below) — without this the game starts unmodded.
-4. Launch Balatro through Steam. You should hear **"Blindfold loaded."**
-
-Prefer a console? Run `./BlindfoldInstaller.app/Contents/MacOS/blindfold-installer --cli` for the same flows as a menu.
+1. Download `BlindfoldInstaller.app.zip` from the
+   [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest)
+   and open it to get `Blindfold Installer.app`.
+2. Open the app. The first time, macOS says it can't verify the developer:
+   choose **Done**, then open System Settings → Privacy & Security, and
+   under Security press **Open Anyway** next to "Blindfold Installer". (Or
+   right-click the app → Open.)
+3. It finds your Steam install of Balatro automatically: press **Install**.
+4. Make sure Steam is running, then press **Launch game**. You should hear
+   **"Blindfold loaded."**
 
 #### Launching on macOS
 
 Lovely injects itself with `DYLD_INSERT_LIBRARIES`, which Steam does not set
-on its own, so a stock Steam launch loads Balatro without any mods. The
-installer puts `steam_lovely_macos.sh` in the game folder to handle this:
+on its own, so a stock Steam launch loads Balatro without any mods.
+
+The installer's **Launch game** button handles this for you: it starts the
+game with Lovely loaded while Steam is running (achievements work; Balatro
+won't start without Steam). To launch from Steam itself, and get the Steam
+overlay, point Steam at the `steam_lovely_macos.sh` script the installer puts
+in the game folder:
 
 1. Steam → right-click **Balatro** → **Properties** → **General**.
 2. Set **Launch Options** to the full path of that script followed by
@@ -60,19 +68,23 @@ installer puts `steam_lovely_macos.sh` in the game folder to handle this:
    ```
    "/Users/YOURNAME/Library/Application Support/Steam/steamapps/common/Balatro/steam_lovely_macos.sh" %command%
    ```
-3. Launch from Steam as usual.
+3. Launch from Steam as usual. Once this is set, the installer's **Launch
+   game** button goes through Steam too.
 
 Do **not** put `DYLD_INSERT_LIBRARIES=... %command%` in Launch Options
 directly. Steam does not parse that string with a shell, so it tries to run a
 program by that literal name and fails with *"Failed to start process for
 this game : OS Error 260"*.
 
-To launch without Steam (no playtime tracking, no overlay), run
-`run_lovely_macos.sh` from the game folder instead.
+**Updating:** open the installer again. It tells you when a newer version is
+out, and the Install button becomes **Update**. The version picker also
+offers the development build: the very latest work-in-progress code from
+this repository.
 
-**Updating:** run the installer again. It tells you when a newer version is
-out and the Install/Update button adjusts. "Install dev build" instead
-installs the very latest work-in-progress code from this repository.
+**Coming from the old installer?** Earlier releases shipped a different
+Blindfold Installer. The new one recognizes a copy of Blindfold the old one
+installed and takes it over; your settings are kept. You can delete the old
+installer.
 
 ### Manual installation
 
@@ -119,8 +131,8 @@ itself are not quarantined.
 To update manually, delete the `Blindfold` folder under `Mods` and copy in the new zip's folder — settings live outside it and survive. To uninstall manually, delete the `Blindfold` folder under `Mods` and the injector files.
 
 **Uninstalling:** the installer's Uninstall button removes the mod and
-offers to also remove the Lovely Injector and Blindfold's settings. Your
-game saves are never touched.
+offers to also remove Blindfold's settings. It leaves the Lovely Injector in
+place, since other mods may use it. Your game saves are never touched.
 
 ## Getting started
 

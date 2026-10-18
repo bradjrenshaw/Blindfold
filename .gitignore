@@ -16,9 +16,6 @@ BlindfoldInstaller.exe
 # macOS installer bundle (scripts/build_release_macos.sh)
 BlindfoldInstaller.app/
 
-# Rust build output
-installer/target/
-
 # Runtime log
 *.log
 

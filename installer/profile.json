@@ -1,0 +1,7 @@
+{
+  "mode": "single-mod",
+  "mod": "blindfold",
+  "title": "Blindfold Installer",
+  "registries": ["github:bradjrenshaw/loadstone-registry"],
+  "lockRegistries": true
+}
