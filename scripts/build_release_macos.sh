@@ -5,7 +5,7 @@
 #
 # Usage: scripts/build_release_macos.sh v1.2.0 [--no-installer | --installer-only]
 #
-# --installer-only builds just BlindfoldInstaller.app.zip, for a release cut on
+# --installer-only builds just BlindfoldInstaller.dmg, for a release cut on
 # Windows (whose zips and loadstone-release.json must not be rebuilt here).
 #
 # Produces at the repo root:
@@ -20,14 +20,15 @@
 #                                no bundled Lovely — the manager installs it as
 #                                a dependency.
 #   loadstone-release.json     the Loadstone release manifest for that zip
-#   BlindfoldInstaller.app.zip the macOS Blindfold Installer: Loadstone with
+#   BlindfoldInstaller.dmg     the macOS Blindfold Installer (the app plus an
+#                                Applications shortcut): Loadstone with
 #                                installer/profile.json baked in (skip with
 #                                --no-installer; needs a Loadstone checkout at
 #                                ../loadstone or $LOADSTONE_REPO)
 #
 # Then publish, e.g.:
 #   gh release create v1.2.0 Blindfold.zip Blindfold-loadstone.zip loadstone-release.json \
-#       BlindfoldInstaller.app.zip --title v1.2.0 --notes "..."
+#       BlindfoldInstaller.dmg --title v1.2.0 --notes "..."
 # Keep Blindfold.zip FIRST in that list: old standalone installers download the
 # first .zip asset on the release, and upload order preserves that.
 
@@ -123,11 +124,10 @@ if [ "$no_installer" = 0 ] || [ "$installer_only" = 1 ]; then
         --profile "$repo/installer/profile.json" \
         --name "Blindfold Installer" \
         --bundle-id com.bradjrenshaw.blindfold.installer \
-        --out "$out"
-    rm -f "$repo/BlindfoldInstaller.app.zip"
-    (cd "$out" && ditto -c -k --keepParent "Blindfold Installer.app" "$repo/BlindfoldInstaller.app.zip")
+        --out "$out" \
+        --dmg "$repo/BlindfoldInstaller.dmg"
     rm -rf "$out"
-    echo "   $repo/BlindfoldInstaller.app.zip"
+    echo "   $repo/BlindfoldInstaller.dmg"
 fi
 
 if [ "$installer_only" = 0 ]; then
@@ -146,11 +146,11 @@ if [ "$installer_only" = 0 ]; then
     fi
     if [ -n "$loadstone_bin" ]; then
         # Every installer build on hand, so each platform's can self-update:
-        # the .app.zip built above, and a BlindfoldInstaller.exe copied over
+        # the .dmg built above, and a BlindfoldInstaller.exe copied over
         # from a Windows build_release.ps1 run.
         installer_args=()
-        for f in "$repo/BlindfoldInstaller.app.zip" "$repo/BlindfoldInstaller.exe"; do
-            [ "$no_installer" = 1 ] && [ "$f" = "$repo/BlindfoldInstaller.app.zip" ] && continue
+        for f in "$repo/BlindfoldInstaller.dmg" "$repo/BlindfoldInstaller.exe"; do
+            [ "$no_installer" = 1 ] && [ "$f" = "$repo/BlindfoldInstaller.dmg" ] && continue
             [ -f "$f" ] && installer_args+=(--installer "$f")
         done
         "$loadstone_bin" package --version "$version" \
@@ -166,14 +166,14 @@ fi
 
 if [ "$installer_only" = 1 ]; then
     echo
-    echo "Done: BlindfoldInstaller.app.zip (copy it to the machine cutting the release)."
+    echo "Done: BlindfoldInstaller.dmg (copy it to the machine cutting the release)."
     exit 0
 fi
 echo
 echo "Done. Publish with:"
 exe_asset=""
 [ -f "$repo/BlindfoldInstaller.exe" ] && exe_asset=" BlindfoldInstaller.exe"
-echo "  gh release create $version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.app.zip$exe_asset --title $version --notes \"...\""
+echo "  gh release create $version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.dmg$exe_asset --title $version --notes \"...\""
 echo "NOTE: keep Blindfold.zip FIRST in that list (old standalone installers download the first .zip asset)."
 if [ ! -f "$repo/BlindfoldInstaller.exe" ]; then
     echo "NOTE: no BlindfoldInstaller.exe here, so Windows installers won't be offered this release's"

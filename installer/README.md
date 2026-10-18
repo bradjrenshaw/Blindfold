@@ -11,12 +11,13 @@ Self-update: a single-mod build checks Blindfold's latest release and
 offers its own platform's installer when that was built from a newer
 Loadstone. The release scripts pass every installer build on hand to
 `loadstone package --installer`, so a release should be packaged with both
-`BlindfoldInstaller.exe` and `BlindfoldInstaller.app.zip` in the repo root:
+`BlindfoldInstaller.exe` and `BlindfoldInstaller.dmg` in the repo root:
 build the other platform's first (`build_release_macos.sh vX.Y.Z
 --installer-only` on a Mac, or the Windows script) and copy it over. On
-macOS the app updates itself in place unless it is running from Downloads
-without having been moved (macOS runs such apps from a read-only copy); it
-then asks to be moved to Applications.
+macOS the app updates itself in place (installing from the new disk image)
+once it has been copied out of the disk image, typically into Applications;
+run from inside the image or from a read-only copy, it says to move it
+first.
 
 ## Building
 
@@ -27,7 +28,7 @@ Both release scripts build it from a Loadstone checkout next to this repo
   `scripts/build_macos_app.sh --profile installer/profile.json --name
   "Blindfold Installer"` produces a universal, statically linked,
   ad-hoc-signed `Blindfold Installer.app`, zipped as
-  `BlindfoldInstaller.app.zip`. The first run builds a static wxWidgets
+  `BlindfoldInstaller.dmg`. The first run builds a static wxWidgets
   (cached under `~/Library/Caches/loadstone`).
 - **Windows** (`scripts/build_release.ps1`): Loadstone's CMake build from a
   Visual Studio developer prompt, with static wxWidgets at

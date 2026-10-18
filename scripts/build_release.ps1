@@ -163,11 +163,11 @@ if (Get-Command loadstone -ErrorAction SilentlyContinue) {
     if (-not $NoInstaller) { $packageArgs += @('--installer', $installerExe) }
     # The macOS installer, built on a Mac (build_release_macos.sh --installer-only)
     # and copied here first, so Mac installers can self-update from this release too.
-    $macInstaller = Join-Path $repo 'BlindfoldInstaller.app.zip'
+    $macInstaller = Join-Path $repo 'BlindfoldInstaller.dmg'
     if (Test-Path $macInstaller) {
         $packageArgs += @('--installer', $macInstaller)
     } else {
-        Write-Warning "No BlindfoldInstaller.app.zip in the repo root - this release won't offer macOS installers an update."
+        Write-Warning "No BlindfoldInstaller.dmg in the repo root - this release won't offer macOS installers an update."
     }
     & loadstone @packageArgs
     if ($LASTEXITCODE -ne 0) { throw "loadstone package failed" }
@@ -177,8 +177,8 @@ if (Get-Command loadstone -ErrorAction SilentlyContinue) {
 
 Write-Host ""
 Write-Host "Done. Publish with:"
-Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe BlindfoldInstaller.app.zip --title $Version --notes `"...`""
-Write-Host "  BlindfoldInstaller.app.zip is built on a Mac (scripts/build_release_macos.sh $Version --installer-only)"
+Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe BlindfoldInstaller.dmg --title $Version --notes `"...`""
+Write-Host "  BlindfoldInstaller.dmg is built on a Mac (scripts/build_release_macos.sh $Version --installer-only)"
 Write-Host "  and copied here BEFORE this script runs, so loadstone-release.json lists it for self-update."
 Write-Host "NOTE: keep Blindfold.zip FIRST in that list. Old standalone installers"
 Write-Host "download the first .zip asset on the release; upload order preserves that."

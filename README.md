@@ -38,15 +38,20 @@ game.
    hear **"Blindfold loaded."**
 
 ### macOS
-1. Download `BlindfoldInstaller.app.zip` from the
+1. Download `BlindfoldInstaller.dmg` from the
    [latest release](https://github.com/bradjrenshaw/Blindfold/releases/latest)
-   and open it to get `Blindfold Installer.app`.
-2. Open the app. The first time, macOS says it can't verify the developer:
-   choose **Done**, then open System Settings → Privacy & Security, and
-   under Security press **Open Anyway** next to "Blindfold Installer". (Or
-   right-click the app → Open.)
-3. It finds your Steam install of Balatro automatically: press **Install**.
-4. Make sure Steam is running, then press **Launch game**. You should hear
+   and open it. It holds **Blindfold Installer** and a shortcut to your
+   **Applications** folder.
+2. Copy Blindfold Installer into Applications: drag it onto the shortcut, or
+   select it, press Command-C, open Applications, and press Command-V. Then
+   eject the disk image. (Run from Applications, the installer can also
+   update itself.)
+3. Open Blindfold Installer from Applications. The first time, macOS says it
+   can't verify the developer: choose **Done**, then open System Settings →
+   Privacy & Security, and under Security press **Open Anyway** next to
+   "Blindfold Installer". (Or right-click the app → Open.)
+4. It finds your Steam install of Balatro automatically: press **Install**.
+5. Make sure Steam is running, then press **Launch game**. You should hear
    **"Blindfold loaded."**
 
 #### Launching on macOS
