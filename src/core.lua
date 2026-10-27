@@ -103,6 +103,8 @@ do
         local Buffers = ba_require("buffers.manager")
         Buffers.say = speech.say
         Buffers.add(ba_require("buffers.game"))
+        -- Everything on screen as text (unfamiliar screens, mod panels).
+        Buffers.add(ba_require("buffers.screen"))
         -- Focus buffers: per-kind review of the focused element's detail
         -- (description + keyword tips), bound on focus in BA.focus_tick.
         FocusBuffers = ba_require("buffers.focus")

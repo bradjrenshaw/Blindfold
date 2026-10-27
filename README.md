@@ -160,8 +160,13 @@ Start Balatro through Steam and wait for "Blindfold loaded." From there:
   (Ctrl+X, controller LT+X), discards left (Ctrl+C, LT+Y), score and goal
   (Ctrl+S, LT+B), money (Ctrl+M, RT+X), joker slots (Ctrl+J, RT+Y).
 - **Ctrl+arrows** (controller right stick) open the review buffers:
-  Left/Right switch buffers (game status, card detail), Up/Down step through
-  their lines — for re-reading anything at your own pace.
+  Left/Right switch buffers (game status, everything on screen, card
+  detail), Up/Down step through their lines — for re-reading anything at
+  your own pace. The Screen buffer reads all the text and controls the game
+  is drawing, top to bottom, so even a screen or mod panel Blindfold doesn't
+  know is readable.
+- Controls a mod adds to the play, shop, blind select, pack or cash-out
+  screens appear in an **Other controls** row at the bottom of the screen.
 - Announcement toggles, speech options, and rebinding all live in
   **Options → Blindfold**.
 

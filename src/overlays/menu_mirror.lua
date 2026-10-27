@@ -523,14 +523,33 @@ end
 -- text around one button), in reading order: { text = line } entries for
 -- the rendered text lines and { node = control } entries for the controls.
 -- Opt-in for screens whose surrounding text matters; the generic walk reads
--- controls only (their captions come through their own labels).
-local function panel_items(root)
+-- controls only (their captions come through their own labels). With
+-- opts.boxes, a nested UIBox (tab contents, an embedded panel) is reported
+-- in place as a { box = uibox } entry instead of being skipped.
+local function panel_items(root, opts)
     local out = {}
+    local boxes = opts and opts.boxes
+    -- The nested boxes under a node the walk doesn't otherwise descend.
+    local function find_boxes(m, d)
+        if type(m) ~= "table" or d > 12 then return end
+        if m.states and m.states.visible == false then return end
+        local o = m.config and m.config.object
+        if type(o) == "table" and o.is and UIBox and o:is(UIBox) then
+            out[#out + 1] = { box = o }
+            return
+        end
+        for _, ch in ipairs(ordered_kids(m)) do find_boxes(ch, d + 1) end
+    end
     local function walk(n, depth)
         if type(n) ~= "table" or depth > 12 then return end
         if n.states and n.states.visible == false then return end
         if Proxy.node_is_control(n) then
             if focusable_state(n) then out[#out + 1] = { node = n } end
+            -- A control can hold a box (the tab strip holds the tab's
+            -- contents): report it after the control.
+            if boxes then
+                for _, ch in ipairs(ordered_kids(n)) do find_boxes(ch, 1) end
+            end
             return
         end
         local has_control = false
@@ -553,6 +572,8 @@ local function panel_items(root)
                         out[#out + 1] = { text = l }
                     end
                 end
+            elseif boxes then
+                find_boxes(n, 0)
             end
             return
         end
