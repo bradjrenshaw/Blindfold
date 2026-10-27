@@ -420,8 +420,8 @@ do
         -- Tag the credits overlay for its bespoke reader (nothing structural
         -- identifies it: anonymous tab closures, raw-string tab labels).
         if G.FUNCS.show_credits then
-            hook(G.FUNCS, "show_credits", function(orig_credits) return function(e)
-                orig_credits(e)
+            hook(G.FUNCS, "show_credits", function(orig_credits) return function(e, ...)
+                orig_credits(e, ...)
                 if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_credits = true end
             end end)
         end
@@ -838,8 +838,8 @@ function BA.install()
     BA._installed = true
 
     -- 1) Announce focus changes + reactive value changes, once per frame.
-    hook(Controller, "update_focus", function(orig_update_focus) return function(self, dir)
-        orig_update_focus(self, dir)
+    hook(Controller, "update_focus", function(orig_update_focus) return function(self, dir, ...)
+        orig_update_focus(self, dir, ...)
         pcall(BA.focus_tick, self)
     end end)
 
@@ -847,9 +847,9 @@ function BA.install()
     -- engine's queue_R_cursor_press (controller.lua:1026), which clears the
     -- hand's highlights silently. Speak only when a selection actually
     -- cleared (the engine's own guards may refuse — mid-scoring, locked).
-    hook(Controller, "queue_R_cursor_press", function(orig_r_cursor) return function(self, x, y)
+    hook(Controller, "queue_R_cursor_press", function(orig_r_cursor) return function(self, x, y, ...)
         local before = (G and G.hand and G.hand.highlighted and #G.hand.highlighted) or 0
-        orig_r_cursor(self, x, y)
+        orig_r_cursor(self, x, y, ...)
         local after = (G and G.hand and G.hand.highlighted and #G.hand.highlighted) or 0
         if before > 0 and after == 0 then
             pcall(function()
@@ -864,14 +864,14 @@ function BA.install()
     -- engine focus, so it's stale and B "sometimes works". When an overlay
     -- owns the screen (and no game menu is up), route b straight to
     -- queue_R_cursor_press — same call, same gameplay guards, no focus check.
-    hook(Controller, "button_press_update", function(orig_bpu) return function(self, button, dt)
+    hook(Controller, "button_press_update", function(orig_bpu) return function(self, button, dt, ...)
         if button == "b" and Overlays and Overlays.captures and Overlays.captures()
             and not (G and G.OVERLAY_MENU)
             and G and G.hand and G.hand.highlighted and G.hand.highlighted[1] then
             self:queue_R_cursor_press()
             return
         end
-        return orig_bpu(self, button, dt)
+        return orig_bpu(self, button, dt, ...)
     end end)
 
     -- ---- Run events (through the events dispatcher: grouped toggles in the
@@ -896,7 +896,7 @@ function BA.install()
     -- (back.lua:139). Everything else attention_text shows announces through
     -- paths we already hook or is decorative.
     if type(attention_text) == "function" then
-        hook(_G, "attention_text", function(orig_attention) return function(args)
+        hook(_G, "attention_text", function(orig_attention) return function(args, ...)
             pcall(function()
                 local text = args and type(args.text) == "string" and args.text or nil
                 if not text then return end
@@ -906,7 +906,7 @@ function BA.install()
                     emit("resources", text, { instant = true })
                 end
             end)
-            return orig_attention(args)
+            return orig_attention(args, ...)
         end end)
     end
 
@@ -914,8 +914,11 @@ function BA.install()
     -- Ectoplasm): set_edition's celebration (juice + per-edition sound,
     -- card.lua:432) never names the card or edition. Announce exactly when
     -- the game celebrates — the silent calls are spawn-time decoration.
-    hook(Card, "set_edition", function(orig_set_edition) return function(self, edition, immediate, silent)
-        orig_set_edition(self, edition, immediate, silent)
+    hook(Card, "set_edition", function(orig_set_edition) return function(self, edition, immediate, silent, ...)
+        -- Steamodded spawns cards with silent editions through a flag rather
+        -- than the argument (and adds a trailing delay argument).
+        silent = silent or (SMODS and SMODS.create_card_silent_edition)
+        orig_set_edition(self, edition, immediate, silent, ...)
         if not (self.edition and not silent) then return end
         pcall(function()
             local Proxy = ba_require("ui.proxies").Proxy
@@ -937,22 +940,22 @@ function BA.install()
             local ok, name = pcall(localize, { type = "name_text", set = "Tag", key = tag.key })
             return (ok and type(name) == "string" and name ~= "" and name ~= "ERROR") and name or nil
         end
-        hook(Tag, "yep", function(orig_yep) return function(self, message, _colour, func)
+        hook(Tag, "yep", function(orig_yep) return function(self, message, _colour, func, ...)
             pcall(function()
                 local name = tag_name(self)
                 local text = tostring(message or "")
                 emit("tags", name and loc_line("CARD.TIP", "{name}, {desc}",
                     { name = name, desc = text }) or text)
             end)
-            return orig_yep(self, message, _colour, func)
+            return orig_yep(self, message, _colour, func, ...)
         end end)
-        hook(Tag, "nope", function(orig_nope) return function(self)
+        hook(Tag, "nope", function(orig_nope) return function(self, ...)
             pcall(function()
                 local name = tag_name(self)
                 emit("tags", name and loc_line("CARD.TIP", "{name}, {desc}",
                     { name = name, desc = "NOPE" }) or "NOPE")
             end)
-            return orig_nope(self)
+            return orig_nope(self, ...)
         end end)
     end
 
@@ -961,21 +964,26 @@ function BA.install()
     -- and the hand; NOT sells (sell_card dissolves too — flagged below, the
     -- sell announcement covers it), used consumables (G.consumeables), pack
     -- skips, or scoring shatters (G.play — the eval message names those).
-    hook(Card, "sell_card", function(orig_sell_card) return function(self)
+    hook(Card, "sell_card", function(orig_sell_card) return function(self, ...)
         self._ba_selling = true
-        return orig_sell_card(self)
+        return orig_sell_card(self, ...)
     end end)
     hook(Card, "start_dissolve", function(orig_dissolve) return function(self, ...)
+        -- Named before the dissolve (the card is still in its row), spoken
+        -- after it: Steamodded lets an effect cancel a joker's destruction,
+        -- and start_dissolve then returns false.
+        local name
         pcall(function()
             if self._ba_selling then return end
             if not (G and self.area and (self.area == G.jokers or self.area == G.hand)) then return end
-            local name = card_label(self)
-            if name then
-                emit("cards", loc_line("EVENTS.DESTROYED", "{name} destroyed",
-                    { name = name }), { instant = true })
-            end
+            name = card_label(self)
         end)
-        return orig_dissolve(self, ...)
+        local r = orig_dissolve(self, ...)
+        if name and r ~= false then
+            pcall(emit, "cards", loc_line("EVENTS.DESTROYED", "{name} destroyed",
+                { name = name }), { instant = true })
+        end
+        return r
     end end)
 
     -- 1h) Cards created mid-run (Judgement, Riff-Raff, Ankh and Invisible
@@ -983,23 +991,23 @@ function BA.install()
     -- joker/consumable rows via emplace. Purchases and pack picks arrive
     -- through the same emplace — flagged at their FUNCS below, since buying
     -- already announces.
-    hook(G.FUNCS, "buy_from_shop", function(orig_buy) return function(e)
+    hook(G.FUNCS, "buy_from_shop", function(orig_buy) return function(e, ...)
         pcall(function()
             local c = e and e.config and e.config.ref_table
             if c then c._ba_acquired = true end
         end)
-        return orig_buy(e)
+        return orig_buy(e, ...)
     end end)
-    hook(G.FUNCS, "use_card", function(orig_use) return function(e, mute, nosave)
+    hook(G.FUNCS, "use_card", function(orig_use) return function(e, mute, nosave, ...)
         pcall(function()
             local c = e and e.config and e.config.ref_table
             if c then c._ba_acquired = true end
         end)
-        return orig_use(e, mute, nosave)
+        return orig_use(e, mute, nosave, ...)
     end end)
-    hook(CardArea, "emplace", function(orig_emplace) return function(self, card, location, stay_flipped)
+    hook(CardArea, "emplace", function(orig_emplace) return function(self, card, location, stay_flipped, ...)
         local from = card and card.area
-        orig_emplace(self, card, location, stay_flipped)
+        orig_emplace(self, card, location, stay_flipped, ...)
         pcall(function()
             if not (G and (self == G.jokers or self == G.consumeables)) then return end
             if from ~= nil then return end            -- moved, not created
@@ -1038,49 +1046,49 @@ function BA.install()
     -- 1j) "No space!" — a joker/consumable-creating effect firing with full
     -- slots (alert_no_space, misc_functions.lua:885). The game's word.
     if type(alert_no_space) == "function" then
-        hook(_G, "alert_no_space", function(orig_no_space) return function(card, area)
+        hook(_G, "alert_no_space", function(orig_no_space) return function(card, area, ...)
             pcall(function()
                 local ok, text = pcall(localize, "k_no_space_ex")
                 emit("cards", (ok and type(text) == "string") and text or "No space!",
                     { instant = true })
             end)
-            return orig_no_space(card, area)
+            return orig_no_space(card, area, ...)
         end end)
     end
 
     -- 2) Drive the engine from the keyboard via the InputAction layer.
-    hook(Controller, "key_press", function(orig_key_press) return function(self, key)
+    hook(Controller, "key_press", function(orig_key_press) return function(self, key, ...)
         if Input then
             local ok, consumed = pcall(Input.on_key_down, self, key)
             if ok and consumed then return end
         end
-        return orig_key_press(self, key)
+        return orig_key_press(self, key, ...)
     end end)
 
-    hook(Controller, "key_release", function(orig_key_release) return function(self, key)
+    hook(Controller, "key_release", function(orig_key_release) return function(self, key, ...)
         if Input then
             local ok, consumed = pcall(Input.on_key_up, self, key)
             if ok and consumed then return end
         end
-        return orig_key_release(self, key)
+        return orig_key_release(self, key, ...)
     end end)
 
     -- 3) Once keyboard nav is active, refuse to fall back to mouse/touch mode.
     --    Otherwise any mouse movement (or a non-nav keypress, which the release
     --    build forces into mouse mode) snaps the game cursor to the physical
     --    mouse, the focused node stops colliding, and focus is lost.
-    hook(Controller, "set_HID_flags", function(orig_set_HID) return function(self, HID_type, button)
+    hook(Controller, "set_HID_flags", function(orig_set_HID) return function(self, HID_type, button, ...)
         if Input and Input.lock_focus_mode and Input.kb_active
            and (HID_type == "mouse" or HID_type == "touch" or HID_type == "axis_cursor") then
             HID_type = "button"
         end
-        return orig_set_HID(self, HID_type, button)
+        return orig_set_HID(self, HID_type, button, ...)
     end end)
 
     -- 4) Keep mod localization in sync when the player changes game language.
     if Game and Game.set_language then
-        hook(Game, "set_language", function(orig_set_language) return function(self)
-            orig_set_language(self)
+        hook(Game, "set_language", function(orig_set_language) return function(self, ...)
+            orig_set_language(self, ...)
             if BA.loc then
                 pcall(function() BA.loc.set_language(G.SETTINGS and G.SETTINGS.language) end)
             end
@@ -1092,7 +1100,7 @@ function BA.install()
     --    fire as timed events, so the spoken sequence follows the animation.
     if Scoring then
         if card_eval_status_text then
-            hook(_G, "card_eval_status_text", function(orig_status) return function(card, eval_type, amt, percent, dir, extra)
+            hook(_G, "card_eval_status_text", function(orig_status) return function(card, eval_type, amt, percent, dir, extra, ...)
                 -- Speech BEFORE the original: both queue onto the sequential
                 -- base event queue, and 'before' events run their func the
                 -- moment they reach the queue front, holding the queue for
@@ -1100,21 +1108,21 @@ function BA.install()
                 -- utterance fires in the same beat as its popup; queued after,
                 -- it would land one popup late.
                 pcall(Scoring.on_status, card, eval_type, amt, extra)
-                orig_status(card, eval_type, amt, percent, dir, extra)
+                orig_status(card, eval_type, amt, percent, dir, extra, ...)
             end end)
         end
         if update_hand_text then
-            hook(_G, "update_hand_text", function(orig_hand) return function(config, vals)
-                orig_hand(config, vals)
+            hook(_G, "update_hand_text", function(orig_hand) return function(config, vals, ...)
+                orig_hand(config, vals, ...)
                 pcall(Scoring.on_hand_text, config, vals)
             end end)
         end
         -- The play-area banner ("Not Allowed!" from The Eye / The Mouth).
         -- Speech queued before the original for the same reason as above.
         if play_area_status_text then
-            hook(_G, "play_area_status_text", function(orig_pas) return function(text, silent, delay)
+            hook(_G, "play_area_status_text", function(orig_pas) return function(text, silent, delay, ...)
                 pcall(Scoring.on_play_area_status, text)
-                return orig_pas(text, silent, delay)
+                return orig_pas(text, silent, delay, ...)
             end end)
         end
     end
@@ -1124,17 +1132,17 @@ function BA.install()
     if BA.round and G and G.FUNCS then
         local Round = BA.round
         if G.FUNCS.play_cards_from_highlighted then
-            hook(G.FUNCS, "play_cards_from_highlighted", function(orig_play) return function(e)
-                orig_play(e)
+            hook(G.FUNCS, "play_cards_from_highlighted", function(orig_play) return function(e, ...)
+                orig_play(e, ...)
                 pcall(Round.on_play)
             end end)
         end
         if G.FUNCS.discard_cards_from_highlighted then
-            hook(G.FUNCS, "discard_cards_from_highlighted", function(orig_discard) return function(e, hook)
+            hook(G.FUNCS, "discard_cards_from_highlighted", function(orig_discard) return function(e, hook, ...)
                 -- The Hook's forced discard: name the victims BEFORE the game
                 -- consumes the highlight.
                 if hook then pcall(Round.on_hook_discard) end
-                orig_discard(e, hook)
+                orig_discard(e, hook, ...)
                 pcall(Round.on_discard, hook)
             end end)
         end
@@ -1143,26 +1151,26 @@ function BA.install()
         -- The Tooth's per-card drain.
         if Blind then
             if Blind.drawn_to_hand then
-                hook(Blind, "drawn_to_hand", function(orig_dth) return function(self)
+                hook(Blind, "drawn_to_hand", function(orig_dth) return function(self, ...)
                     local before = {}
                     for _, c in ipairs((G.jokers and G.jokers.cards) or {}) do
                         before[c] = c.debuff and true or false
                     end
-                    local r = orig_dth(self)
+                    local r = orig_dth(self, ...)
                     pcall(Round.on_joker_debuffs, before)
                     return r
                 end end)
             end
             if Blind.debuff_hand then
-                hook(Blind, "debuff_hand", function(orig_dbh) return function(self, cards, hand, handname, check)
-                    local r = orig_dbh(self, cards, hand, handname, check)
+                hook(Blind, "debuff_hand", function(orig_dbh) return function(self, cards, hand, handname, check, ...)
+                    local r = orig_dbh(self, cards, hand, handname, check, ...)
                     pcall(Round.on_blind_hand, self, check)
                     return r
                 end end)
             end
             if Blind.press_play then
-                hook(Blind, "press_play", function(orig_bpp) return function(self)
-                    local r = orig_bpp(self)
+                hook(Blind, "press_play", function(orig_bpp) return function(self, ...)
+                    local r = orig_bpp(self, ...)
                     pcall(Round.on_blind_played, self)
                     return r
                 end end)
@@ -1195,8 +1203,8 @@ function BA.install()
         local okp, ProxyMod = pcall(ba_require, "ui.proxies")
         local P = okp and ProxyMod and ProxyMod.Proxy or nil
         if P then
-            hook(Card_Character, "add_speech_bubble", function(orig_bubble) return function(self, text_key, align, loc_vars)
-                local r = orig_bubble(self, text_key, align, loc_vars)
+            hook(Card_Character, "add_speech_bubble", function(orig_bubble) return function(self, text_key, align, loc_vars, ...)
+                local r = orig_bubble(self, text_key, align, loc_vars, ...)
                 pcall(function()
                     local bubble = self.children and self.children.speech_bubble
                     local root = bubble and bubble.UIRoot
@@ -1219,7 +1227,7 @@ function BA.install()
         local okp, ProxyMod = pcall(ba_require, "ui.proxies")
         local P = okp and ProxyMod and ProxyMod.Proxy or nil
         local SUBTEXT_KEYS = { Joker = "k_joker", Voucher = "k_voucher", Back = "k_deck" }
-        hook(_G, "notify_alert", function(orig_notify) return function(_achievement, _type)
+        hook(_G, "notify_alert", function(orig_notify) return function(_achievement, _type, ...)
             pcall(function()
                 local t = _type or "achievement"
                 local parts = {}
@@ -1243,7 +1251,7 @@ function BA.install()
                 end
                 if parts[1] then speech.say(table.concat(parts, ", ")) end
             end)
-            return orig_notify(_achievement, _type)
+            return orig_notify(_achievement, _type, ...)
         end end)
     end
 
@@ -1251,9 +1259,9 @@ function BA.install()
     --    wrapping the global that builds each cash-out row.
     if BA.cashout and add_round_eval_row then
         local Cashout = BA.cashout
-        hook(_G, "add_round_eval_row", function(orig_row) return function(config)
+        hook(_G, "add_round_eval_row", function(orig_row) return function(config, ...)
             pcall(Cashout.on_row, config)
-            return orig_row(config)
+            return orig_row(config, ...)
         end end)
     end
 
@@ -1268,13 +1276,13 @@ function BA.install()
     -- itself (update_pad_axes: triggers -> chords, left stick -> nav flicks,
     -- right stick -> buffers). Blanking only .current lets an in-flight hold
     -- release cleanly through .previous.
-    hook(Controller, "handle_axis_buttons", function(orig_axis_buttons) return function(self)
+    hook(Controller, "handle_axis_buttons", function(orig_axis_buttons) return function(self, ...)
         if Input and self.axis_buttons then
             for _, k in ipairs({ "l_stick", "l_trig", "r_trig" }) do
                 if self.axis_buttons[k] then self.axis_buttons[k].current = "" end
             end
         end
-        return orig_axis_buttons(self)
+        return orig_axis_buttons(self, ...)
     end end)
 
     -- TOTAL BUTTON OWNERSHIP (Brad): every physical press dispatches through
@@ -1285,11 +1293,11 @@ function BA.install()
     -- (controller detection, button glyphs). Sole exception: an active text
     -- input (seed/profile fields) keeps fully native input.
     if love and love.gamepadpressed and love.gamepadreleased then
-        hook(love, "gamepadpressed", function(orig_pad_down) return function(joystick, button)
+        hook(love, "gamepadpressed", function(orig_pad_down) return function(joystick, button, ...)
             local mapped = (G.button_mapping and G.button_mapping[button]) or button
-            if not Input then return orig_pad_down(joystick, button) end
+            if not Input then return orig_pad_down(joystick, button, ...) end
             if G.CONTROLLER and G.CONTROLLER.text_input_hook then
-                return orig_pad_down(joystick, button)
+                return orig_pad_down(joystick, button, ...)
             end
             pcall(function()
                 G.CONTROLLER:set_gamepad(joystick)
@@ -1297,11 +1305,11 @@ function BA.install()
             end)
             pcall(Input.on_pad_down, G.CONTROLLER, mapped)
         end end)
-        hook(love, "gamepadreleased", function(orig_pad_up) return function(joystick, button)
+        hook(love, "gamepadreleased", function(orig_pad_up) return function(joystick, button, ...)
             local mapped = (G.button_mapping and G.button_mapping[button]) or button
-            if not Input then return orig_pad_up(joystick, button) end
+            if not Input then return orig_pad_up(joystick, button, ...) end
             if G.CONTROLLER and G.CONTROLLER.text_input_hook then
-                return orig_pad_up(joystick, button)
+                return orig_pad_up(joystick, button, ...)
             end
             pcall(Input.on_pad_up, mapped, G.CONTROLLER)
         end end)
@@ -1318,8 +1326,8 @@ function BA.install()
     --     G.STATE = nil (every screen, game and mod, goes dead). Keeping the
     --     counter above every loaded id keeps new ids unique.
     if Card and Card.load then
-        hook(Card, "load", function(orig_card_load) return function(self, cardTable, other_card)
-            local r = orig_card_load(self, cardTable, other_card)
+        hook(Card, "load", function(orig_card_load) return function(self, cardTable, other_card, ...)
+            local r = orig_card_load(self, cardTable, other_card, ...)
             if type(self.sort_id) == "number" and (G.sort_id or 0) < self.sort_id then
                 G.sort_id = self.sort_id
             end
