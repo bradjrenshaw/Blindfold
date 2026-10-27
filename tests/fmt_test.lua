@@ -132,5 +132,25 @@ Scoring.queue_level_up("Pair")
 check(spoken[1] == L("SCORING.HAND_LEVEL", { name = "Pair", level = 3, chips = "30", mult = "4" }),
     "level-up reads the live hand", spoken[1])
 
+-- Big numbers (Talisman tables / Amulet cdata): a fake big type that the
+-- game's number_format (as those mods patch it) renders in e-notation.
+local BigMT = {}
+local function big(v) return setmetatable({ v = v }, BigMT) end
+_G.is_big = function(x) return getmetatable(x) == BigMT end
+_G.to_number = function(x) return getmetatable(x) == BigMT and x.v or x end
+local plain_nf = _G.number_format
+_G.number_format = function(n) if is_big(n) then return "e" .. math.floor(math.log(n.v, 10)) end return plain_nf(n) end
+local Num = ba_require("ui.num")
+check(Num.is(big(5)) and Num.to_n(big(5)) == 5 and not Num.is("5"), "big detection", Num.to_n(big(5)))
+check(Num.fmt(big(1e20)) == "e20" and Num.fmt(1500) == "1,500", "big formatting via number_format", Num.fmt(big(1e20)))
+check(Scoring.format_effect("chips", big(1e20)) == L("SCORING.CHIPS", { amt = "+e20" }),
+    "big chips popup: signed and formatted", Scoring.format_effect("chips", big(1e20)))
+spoken = {}
+Scoring.on_hand_text(nil, { chips = big(1e20), mult = big(1e30) })
+Scoring.on_hand_text(nil, { chip_total = big(1e50) })
+check(spoken[1] == L("SCORING.TOTAL", { chips = "e20", mult = "e30", score = "e50" }),
+    "big final total reads like the HUD", spoken[1])
+_G.is_big, _G.to_number, _G.number_format = nil, nil, plain_nf
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

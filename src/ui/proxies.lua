@@ -11,6 +11,7 @@ local Message = require("ui.message")
 local A = require("ui.announce").A
 local Settings = require("settings.registry")
 local Cashout = require("events.cashout")
+local Num = require("ui.num")
 
 -- ===================== Proxy base + text extraction =====================
 local Proxy = class(Element)
@@ -1240,9 +1241,8 @@ local function blind_requirement(cfg)
         local scaling = (G.GAME and G.GAME.starting_params and G.GAME.starting_params.ante_scaling) or 1
         return get_blind_amount(ante) * (cfg.mult or 1) * scaling
     end)
-    if not ok or type(amt) ~= "number" then return nil end
-    local okf, s = pcall(number_format, amt)
-    return Message.localized("BLIND.REQUIREMENT", { amount = (okf and s) or tostring(amt) }):resolve()
+    if not ok or not Num.is(amt) then return nil end
+    return Message.localized("BLIND.REQUIREMENT", { amount = Num.fmt(amt) }):resolve()
 end
 
 local function blind_effect(cfg)
@@ -1376,8 +1376,8 @@ function ProxyCashOut:get_focus_announcements()
     -- buffer (browsable, with joker/tag drill-down) via fill_buffer.
     local anns = { A.label(Message.localized("CASHOUT.LABEL")) }
     local total = (G and G.GAME and G.GAME.current_round and G.GAME.current_round.dollars) or Cashout.total
-    if type(total) == "number" then
-        anns[#anns + 1] = A.status(Message.localized("CASHOUT.TOTAL", { dollars = total }))
+    if Num.is(total) then
+        anns[#anns + 1] = A.status(Message.localized("CASHOUT.TOTAL", { dollars = Num.fmt(total) }))
     end
     return anns
 end

@@ -11,6 +11,7 @@
 -- cascade begins (same pattern as events/scoring.lua).
 local require = ...
 local Message = require("ui.message")
+local Num = require("ui.num")
 
 local M = { rows = {}, total = nil, say = nil }
 
@@ -45,9 +46,10 @@ function M.on_row(config)
     local d = config.dollars
     -- Keep blind1 even at $0 (the Mr. Bones save); every other source needs a
     -- nonzero amount to be worth a line.
+    local amount = Num.to_n(d)
     if n == "blind1" then
-        if (type(d) ~= "number" or d == 0) and not config.saved then return end
-    elseif type(d) ~= "number" or d == 0 then
+        if (not amount or amount == 0) and not config.saved then return end
+    elseif not amount or amount == 0 then
         return
     end
     local row = {

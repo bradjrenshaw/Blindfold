@@ -13,12 +13,8 @@ local function num(v) return v or 0 end
 
 -- Scores rendered like the HUD (game number_format: commas, scientific past
 -- 1e11, infinity's "naneinf"); falls back to tostring outside the game.
-local function fmt_num(n)
-    if type(n) ~= "number" then return n end
-    local ok, s = pcall(number_format, n)
-    if ok and s ~= nil then return tostring(s) end
-    return tostring(n)
-end
+-- (Talisman / Amulet big numbers included: see ui/num.lua.)
+local fmt_num = require("ui.num").fmt
 local function say(key, vars) if M.say then M.say(line(key, vars)) end end
 
 local function in_run()
