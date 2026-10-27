@@ -63,5 +63,22 @@ check(v == "active", "SHOP bounce is still claimed", v)
 check(G.STATE == G.STATES.TAROT_PACK, "and the state is repaired from contents", G.STATE)
 check(G.GAME.PACK_INTERRUPT == G.STATES.SHOP, "PACK_INTERRUPT restored for the close path", G.GAME.PACK_INTERRUPT)
 
+-- Steamodded: every pack opens in SMODS_BOOSTER_OPENED. Claimed like the
+-- vanilla pack states, and the reload repair restores THAT state (a vanilla
+-- one would skip Steamodded's pack handling).
+G.STATES.SMODS_BOOSTER_OPENED = 999
+G.STATES.SMODS_REDEEM_VOUCHER = 998
+G.STATE = 999
+G.GAME.PACK_INTERRUPT = nil
+for _ = 1, 20 do v = Packs:handler() end
+check(v == "active", "Steamodded pack state is claimed", v)
+check(Packs.pick_allowed() == true, "and picks are allowed", Packs.pick_allowed())
+G.STATE = G.STATES.SHOP
+for _ = 1, 20 do v = Packs:handler() end
+check(G.STATE == 999, "reload repair restores Steamodded's pack state", G.STATE)
+
+local States = ba_require("ui.states")
+check(States.is_voucher_redeem(998) and not States.is_pack(998), "voucher redeem is its own state", States.is_pack(998))
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

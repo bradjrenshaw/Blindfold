@@ -22,6 +22,7 @@ local Message = require("ui.message")
 local Factory = require("ui.factory")
 local Proxy = require("ui.proxies").Proxy
 local Settings = require("settings.registry")
+local States = require("ui.states")
 
 local M = { id = "play" }
 
@@ -481,8 +482,7 @@ function M:handler()
     end
     -- Opening a pack mid-round: the pack UI is game-driven (legacy layer);
     -- sleep so the hand position survives until the pack closes.
-    if st == S.TAROT_PACK or st == S.SPECTRAL_PACK or st == S.STANDARD_PACK
-        or st == S.BUFFOON_PACK or st == S.PLANET_PACK then
+    if States.is_pack(st) then
         return "sleeping"
     end
     return "inactive"

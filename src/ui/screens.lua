@@ -7,6 +7,7 @@
 local require = ...
 local Message = require("ui.message")
 local Settings = require("settings.registry")
+local States = require("ui.states")
 
 local M = { say = nil, containers = nil, _last = nil }
 
@@ -29,8 +30,7 @@ local function run_state_key()
     elseif st == S.BLIND_SELECT then return "BLIND_SELECT"
     elseif st == S.ROUND_EVAL then return "CASH_OUT"
     elseif st == S.GAME_OVER then return "GAME_OVER"
-    elseif st == S.TAROT_PACK or st == S.SPECTRAL_PACK or st == S.STANDARD_PACK
-        or st == S.BUFFOON_PACK or st == S.PLANET_PACK then return "PACK"
+    elseif States.is_pack(st) then return "PACK"
     elseif st == S.SELECTING_HAND or st == S.HAND_PLAYED or st == S.DRAW_TO_HAND
         or st == S.NEW_ROUND or st == S.PLAY_TAROT then return "PLAYING"
     end

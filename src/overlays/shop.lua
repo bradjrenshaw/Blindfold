@@ -19,6 +19,7 @@ local Message = require("ui.message")
 local Factory = require("ui.factory")
 local Proxies = require("ui.proxies").Proxy
 local Play = require("overlays.play")
+local States = require("ui.states")
 
 local M = { id = "shop" }
 
@@ -319,9 +320,13 @@ function M:handler()
     end
     -- Opening a pack leaves the shop state and comes back: keep the position
     -- (and the settled flag — the shop content didn't reload).
-    if st == G.STATES.TAROT_PACK or st == G.STATES.SPECTRAL_PACK or st == G.STATES.STANDARD_PACK
-        or st == G.STATES.BUFFOON_PACK or st == G.STATES.PLANET_PACK then
+    if States.is_pack(st) then
         return "sleeping"
+    end
+    -- Steamodded redeems a bought voucher in a state of its own, then comes
+    -- back: keep the position through it, like a consumable use below.
+    if States.is_voucher_redeem(st) then
+        return "pending"
     end
     -- Using a consumable FROM the shop flips the state to PLAY_TAROT and back
     -- (use_card records the origin in G.TAROT_INTERRUPT). Reporting inactive

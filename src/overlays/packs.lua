@@ -17,6 +17,7 @@ local Message = require("ui.message")
 local Factory = require("ui.factory")
 local Proxies = require("ui.proxies").Proxy
 local Play = require("overlays.play")
+local States = require("ui.states")
 
 local M = { id = "packs" }
 
@@ -25,10 +26,7 @@ local function say(ctx, loc_key)
 end
 
 local function in_pack_state()
-    local S = G.STATES
-    return S and (G.STATE == S.TAROT_PACK or G.STATE == S.SPECTRAL_PACK
-        or G.STATE == S.STANDARD_PACK or G.STATE == S.BUFFOON_PACK
-        or G.STATE == S.PLANET_PACK)
+    return States.is_pack(G.STATE)
 end
 
 -- The game's own "a pack is on screen" test (its score-intensity check uses
@@ -46,6 +44,8 @@ end
 -- can roll Black Hole).
 local function pack_state_for_contents()
     local S = G.STATES
+    -- Steamodded opens every pack in one state of its own.
+    if S.SMODS_BOOSTER_OPENED then return S.SMODS_BOOSTER_OPENED end
     local sets = {}
     for _, c in ipairs((G.pack_cards and G.pack_cards.cards) or {}) do
         sets[(c.ability and c.ability.set) or ""] = true
@@ -105,9 +105,12 @@ local function pick_click(card)
                 return
             end
         elseif card.ability and card.ability.set == "Joker" then
-            -- can_select_card: jokers need room unless negative-edition.
-            local negative = card.edition and card.edition.negative
-            if not negative and G.jokers and #G.jokers.cards >= (G.jokers.config.card_limit or 5) then
+            -- The game's own room rule (can_select_card enables the pick
+            -- button or strips it; Steamodded rewrites the rule for cards
+            -- that change slot counts): probe it on a stand-in node.
+            local probe = { config = { ref_table = card } }
+            local ok = pcall(G.FUNCS.can_select_card, probe)
+            if ok and probe.config.button == nil then
                 say(ctx, "SHOP.NO_ROOM")
                 return
             end
@@ -161,6 +164,10 @@ function M:handler()
         end
     end
     if G.OVERLAY_MENU then return "sleeping" end
+    -- Closing (Skip, or the last pick): the pack's cards and Skip button are
+    -- torn down a few frames before the state flips back. Stay engaged but
+    -- quiet, or the reconcile lands on the joker row and reads it out.
+    if settled and not pack_open() then return "pending" end
     if not settled then
         local cards = G.pack_cards and G.pack_cards.cards
         local count = cards and #cards or 0
