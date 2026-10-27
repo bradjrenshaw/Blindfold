@@ -58,6 +58,85 @@ local function sprites()
     return out
 end
 
+-- A panel's rendered text, one entry per visual row: a row is a UIT.R
+-- holding text with no deeper text row inside. Used for the blinds page's
+-- ante table, a single focus panel: a header row (ANTE / BASE) over one row
+-- per ante. When every row has the header's cell count, each cell reads
+-- under its header ("ANTE 3, BASE 2,600") — a bare "3, 2,600" runs the
+-- separator into the number's own commas.
+local function ordered_kids(n)
+    local kids, maxn = {}, 0
+    for k in pairs(n.children or {}) do
+        if type(k) == "number" and k > maxn then maxn = k end
+    end
+    for k = 1, maxn do
+        if n.children[k] ~= nil then kids[#kids + 1] = n.children[k] end
+    end
+    return kids
+end
+
+local function cell_texts(n, out, depth)
+    if type(n) ~= "table" or depth > 12 then return end
+    local c = n.config
+    if c and G.UIT and n.UIT == G.UIT.T then
+        local t = c.text
+        if type(t) == "number" then t = tostring(t) end
+        if type(t) == "string" and t:match("%S") then out[#out + 1] = t end
+    elseif c and type(c.object) == "table" and type(c.object.string) == "string"
+        and c.object.string:match("%S") then
+        out[#out + 1] = c.object.string
+    end
+    for _, ch in ipairs(ordered_kids(n)) do cell_texts(ch, out, depth + 1) end
+end
+
+local function has_text_row(n, depth)
+    if type(n) ~= "table" or depth > 12 then return false end
+    for _, ch in ipairs(ordered_kids(n)) do
+        if G.UIT and ch.UIT == G.UIT.R then
+            local t = {}
+            cell_texts(ch, t, 0)
+            if t[1] then return true end
+        end
+        if has_text_row(ch, depth + 1) then return true end
+    end
+    return false
+end
+
+local function text_rows(n, out, depth)
+    if type(n) ~= "table" or depth > 12 then return out end
+    if G.UIT and n.UIT == G.UIT.R and not has_text_row(n, 0) then
+        local t = {}
+        cell_texts(n, t, 0)
+        if t[1] then out[#out + 1] = t end
+        return out
+    end
+    for _, ch in ipairs(ordered_kids(n)) do text_rows(ch, out, depth + 1) end
+    return out
+end
+
+-- A read-only panel (no button / widget type) that renders several rows.
+local function multi_row_panel(n)
+    local c = n.config or {}
+    if c.button or (c.focus_args and c.focus_args.type) then return nil end
+    local rows = text_rows(n, {}, 0)
+    if #rows < 2 then return nil end
+    local head, tabular = rows[1], #rows[1] > 1
+    for i = 2, #rows do
+        if #rows[i] ~= #head then tabular = false end
+    end
+    local lines = {}
+    if tabular then
+        for i = 2, #rows do
+            local cells = {}
+            for j, v in ipairs(rows[i]) do cells[j] = head[j] .. " " .. v end
+            lines[#lines + 1] = table.concat(cells, ", ")
+        end
+    else
+        for i, r in ipairs(rows) do lines[i] = table.concat(r, ", ") end
+    end
+    return lines
+end
+
 function M:handler()
     if not (G and type(G.OVERLAY_MENU) == "table") then return "inactive" end
     if not sprites()[1] then return "inactive" end
@@ -127,7 +206,16 @@ function M:build(b)
     for _, n in ipairs(Mirror.gather({ G.OVERLAY_MENU })) do
         if not is_item(n) then
             r = r + 1
-            b:add_item(Id.referenced(n, "r:" .. r), Mirror.vtable_for(n))
+            local lines = multi_row_panel(n)
+            if lines then
+                for j, line in ipairs(lines) do
+                    b:add_label(Id.structural("r:" .. r .. ":" .. j), function(ctx)
+                        ctx.message:fragment(Message.raw(line))
+                    end)
+                end
+            else
+                b:add_item(Id.referenced(n, "r:" .. r), Mirror.vtable_for(n))
+            end
         end
     end
 end
