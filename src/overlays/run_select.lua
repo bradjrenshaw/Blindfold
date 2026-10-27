@@ -101,11 +101,22 @@ end
 
 -- --- Choices -------------------------------------------------------------------
 
--- The card a selection area shows on top (decks stack ten deep; the top one
--- carries the win sticker).
-local function top_card(area)
+-- The card that IS the choice in a selection area. Decks stack ten copies
+-- (the top one carries the win sticker); a mod's page may stack its choice
+-- among filler cards (Card Sleeves: one sleeve card under ten deck backs),
+-- so prefer the card from the page's own set, else the top card.
+local function top_card(area, pkey)
     local cards = area and area.cards
-    return type(cards) == "table" and cards[#cards] or nil
+    if type(cards) ~= "table" then return nil end
+    local pd = page_def(pkey)
+    local set = pd and pd.type
+    if set then
+        for i = #cards, 1, -1 do
+            local c = cards[i]
+            if c.config and c.config.center and c.config.center.set == set then return c end
+        end
+    end
+    return cards[#cards]
 end
 
 local function area_sticker(area)
@@ -141,7 +152,14 @@ end
 local function is_locked(card)
     if card.params and card.params.stake then return card.params.stake_chip_locked and true or false end
     local center = card.config and card.config.center
-    return center ~= nil and center.unlocked == false
+    if center == nil then return false end
+    if center.unlocked == false then return true end
+    -- Some mod objects compute it (Card Sleeves' is_unlocked).
+    if type(center.is_unlocked) == "function" then
+        local ok, unlocked = pcall(center.is_unlocked, center)
+        if ok and unlocked == false then return true end
+    end
+    return false
 end
 
 local function choice_key(card)
@@ -162,7 +180,9 @@ local function card_name(card, pkey)
         if center.unlocked == false then return game_loc("k_locked") end
         return name_text("Back", center.key)
     end
-    -- A mod's page: face-up cards read like any card; otherwise by name.
+    -- A mod's page: face-up cards read like any card; otherwise by name
+    -- (or "Locked", as for decks).
+    if is_locked(card) then return game_loc("k_locked") end
     if card.facing ~= "back" then
         local proxy = Factory.create(card)
         local m = proxy and proxy.get_label and proxy:get_label()
@@ -181,7 +201,8 @@ local function card_description(card)
     local center = card.config and card.config.center
     if center and center.set == "Back" then return Proxy.back_text(center) end
     if card.facing ~= "back" then return Proxy.card_description(card) end
-    return nil
+    -- A face-down stand-in for a mod's object (a sleeve): its own text.
+    return Proxy.center_text(center)
 end
 
 -- --- Page cycle ----------------------------------------------------------------
@@ -268,7 +289,7 @@ end
 local function choice_vtable(area, pkey, index, total)
     return {
         label = function(ctx)
-            local card = top_card(area)
+            local card = top_card(area, pkey)
             if not card then return end
             local name = card_name(card, pkey)
             if name then ctx.message:fragment(Message.raw(name)) end
@@ -287,7 +308,7 @@ local function choice_vtable(area, pkey, index, total)
             end
         end,
         deferred = function()
-            local card = top_card(area)
+            local card = top_card(area, pkey)
             if not card then return nil end
             local parts = {}
             if Proxy.announce_enabled("description") then
@@ -301,7 +322,7 @@ local function choice_vtable(area, pkey, index, total)
             return #parts > 0 and table.concat(parts, ", ") or nil
         end,
         on_click = function(ctx)
-            local card = top_card(area)
+            local card = top_card(area, pkey)
             if not card then return end
             if is_locked(card) then
                 ctx.message:fragment(Message.localized("LABELS.LOCKED"))
@@ -329,7 +350,7 @@ local function build_grid(b, pd, pkey, page_no)
     local total = type(pd.pool) == "table" and #pd.pool or #areas
     local rows, start, first = {}, nil, nil
     for i = 1, #areas do
-        local card = top_card(areas[i])
+        local card = top_card(areas[i], pkey)
         if card then
             local r = math.floor((i - 1) / cols) + 1
             rows[r] = rows[r] or {}

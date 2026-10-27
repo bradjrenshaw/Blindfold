@@ -206,6 +206,44 @@ function Proxy.stake_text(key)
     end)
 end
 
+-- Any center's description by its own loc entry, with the variables its
+-- loc_vars supplies (a mod object shown face-down, e.g. Card Sleeves'
+-- sleeves on the New Run page, whose text varies with the chosen deck).
+function Proxy.center_text(center)
+    if type(center) ~= "table" or not center.key or not center.set then return nil end
+    -- Steamodded objects describe themselves through generate_ui (what their
+    -- hovers render, unlock requirement included while locked).
+    if type(center.generate_ui) == "function" then
+        local text = Proxy.with_built(function()
+            local nodes, full = {}, { no_styled_name = true }
+            center:generate_ui({}, nil, nodes, nil, full)
+            return nodes
+        end, function(nodes)
+            if type(nodes) ~= "table" then return nil end
+            local parts = {}
+            Proxy.collect_def_text(nodes, parts)
+            return #parts > 0 and table.concat(parts, " ") or nil
+        end)
+        if text then return text end
+    end
+    return Proxy.with_built(function()
+        local res = {}
+        if type(center.loc_vars) == "function" then
+            local ok, r = pcall(center.loc_vars, center, {}, nil)
+            if ok and type(r) == "table" then res = r end
+        end
+        local nodes = {}
+        localize({ type = "descriptions", key = res.key or center.key, set = res.set or center.set,
+            nodes = nodes, vars = res.vars or {} })
+        return nodes
+    end, function(nodes)
+        if type(nodes) ~= "table" then return nil end
+        local parts = {}
+        Proxy.collect_def_text(nodes, parts)
+        return #parts > 0 and table.concat(parts, " ") or nil
+    end)
+end
+
 -- A deck's preview text by center (its effect, or its unlock requirement
 -- while locked) — the same Back:generate_UI the selectors render.
 function Proxy.back_text(center)
