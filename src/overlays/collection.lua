@@ -26,10 +26,23 @@ local function areas()
     return list
 end
 
+-- The unlock notice ("Joker Unlocked!", create_UIBox_card_unlock) also puts
+-- its card in G.your_collection, but it isn't a collection page: leave it to
+-- the menu mirror, whose unlock summary reads the headline and condition.
+local function is_unlock_notice(node, depth)
+    if type(node) ~= "table" or (depth or 0) > 20 then return false end
+    if node.config and node.config.button == "continue_unlock" then return true end
+    for _, ch in pairs(node.children or {}) do
+        if is_unlock_notice(ch, (depth or 0) + 1) then return true end
+    end
+    return false
+end
+
 function M:handler()
     -- G.your_collection LINGERS after the menu closes; the areas' REMOVED
     -- flags (their UIBox teardown) are what say the screen is really up.
     if not (G and type(G.OVERLAY_MENU) == "table") then return "inactive" end
+    if is_unlock_notice(G.OVERLAY_MENU.UIRoot) then return "inactive" end
     local rows = areas()
     if #rows == 0 then return "inactive" end
     local total = 0

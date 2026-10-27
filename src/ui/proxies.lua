@@ -345,7 +345,16 @@ function Proxy.edition_word(node)
         or (e.foil and "foil") or (e.holo and "holo")
         or (e.polychrome and "polychrome") or (e.negative and "negative")
     local k = t and EDITION_KEY[t]
-    return k and Message.localized("EDITION." .. k) or nil
+    if k then return Message.localized("EDITION." .. k) end
+    -- An edition a mod registers (Cryptid's Astral, Paperback's Dichrome, ...):
+    -- the game's own name for it.
+    if type(e.key) == "string" then
+        local ok, name = pcall(localize, { type = "name_text", set = "Edition", key = e.key })
+        if ok and type(name) == "string" and name ~= "" and name ~= "ERROR" then
+            return Message.raw(name)
+        end
+    end
+    return nil
 end
 
 -- A card's price for the price announcement. Buyable shop items (shop cards,
@@ -371,13 +380,23 @@ function Proxy.card_cost(card)
 end
 
 -- A joker's rarity, as a "subtype" announcement (common / uncommon / rare /
--- legendary). center.rarity is 1..4; non-jokers (no rarity) yield nil.
+-- legendary). center.rarity is 1..4 in vanilla; a rarity a mod registers
+-- (Steamodded SMODS.Rarity: Cryptid's Epic / Exotic, ...) is its key, read
+-- by the game's own name for it, the text of the joker's rarity badge
+-- (localize('k_' .. key)). Non-jokers (no rarity) yield nil.
 local JOKER_RARITY = { "COMMON", "UNCOMMON", "RARE", "LEGENDARY" }
 function Proxy.joker_rarity(card)
     local c = card and card.config and card.config.center
     local r = c and c.rarity
     local key = type(r) == "number" and JOKER_RARITY[r]
-    return key and Message.localized("RARITY." .. key) or nil
+    if key then return Message.localized("RARITY." .. key) end
+    if type(r) == "string" then
+        local ok, word = pcall(localize, "k_" .. string.lower(r))
+        if ok and type(word) == "string" and word ~= "" and word ~= "ERROR" then
+            return Message.raw(word)
+        end
+    end
+    return nil
 end
 
 -- Collection secrecy, mirroring Card:generate_UIBox_ability_table's own type
