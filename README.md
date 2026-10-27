@@ -206,11 +206,15 @@ Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). These are machin
 ## Credits
 I would like to thank Rashad Naqeeb for inspiring this project (you knew what you were doing when you put the idea in my head.) I would like to thank Rashad Naqeeb, Aaron Ramirez, and Austin Hicks for early testing.
 
-I would also like to thank my Patreon supporters:
+Huge thanks as always to all of my Patreon supporters
+
 * Ahmad Abukhdair
-* Alex19EP
+* alex19EP
 * Chris Shaw
 * Garrett Burgess
+* Haru
+* JohnDoe
+* Minionslayer
 * Nancy Feldman
 * rashad naqeeb
 * Todd Shaughnessy
