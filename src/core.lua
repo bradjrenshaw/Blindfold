@@ -1218,7 +1218,7 @@ function BA.install()
                 pcall(function()
                     local bubble = self.children and self.children.speech_bubble
                     local root = bubble and bubble.UIRoot
-                    local text = root and P.all_text(root)
+                    local text = root and P.ordered_text(root)
                     if type(text) == "string" and text ~= "" then
                         speech.say(text)
                     end

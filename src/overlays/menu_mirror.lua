@@ -481,7 +481,7 @@ local function collect_lines(node, out, depth)
     if type(node) ~= "table" or (depth or 0) > 8 then return end
     if not has_deeper_text_row(node) then
         if has_text(node) then
-            local ok, t = pcall(Proxy.all_text, node)
+            local ok, t = pcall(Proxy.ordered_text, node)
             if ok and type(t) == "string" then
                 t = t:gsub("%s*\n%s*", " "):gsub("^%s+", ""):gsub("%s+$", "")
                 if t ~= "" then out[#out + 1] = t end

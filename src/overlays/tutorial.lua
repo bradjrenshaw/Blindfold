@@ -15,6 +15,7 @@ local Id = require("overlay.id")
 local Message = require("ui.message")
 local Factory = require("ui.factory")
 local Proxy = require("ui.proxies").Proxy
+local Mirror = require("overlays.menu_mirror")
 
 local M = { id = "tutorial" }
 
@@ -62,8 +63,29 @@ local function bubble_text()
     local bubble = j and j.children and j.children.speech_bubble
     local root = bubble and bubble.UIRoot
     if not root then return nil end
-    local ok, text = pcall(Proxy.all_text, root)
+    local ok, text = pcall(Proxy.ordered_text, root)
     return (ok and type(text) == "string" and text ~= "") and text or nil
+end
+
+-- Controls inside the step's highlighted UIBoxes, for steps that have
+-- neither a Next button nor an action to listen for: the choice IS the
+-- step (Cryptid's intro asks you to pick a gameset from a highlighted panel
+-- of buttons plus Confirm). Vanilla never has such a step, so this is empty
+-- there; steps with a Next button keep just Next / Skip.
+local function highlighted_controls()
+    local t = G and G.OVERLAY_TUTORIAL
+    local hl = t and t.highlights
+    if type(hl) ~= "table" then return {} end
+    local sources = {}
+    for _, h in ipairs(hl) do
+        if type(h) == "table" and h ~= t.Jimbo and h.UIRoot and h.is and UIBox and h:is(UIBox)
+            and not (h.states and h.states.visible == false) then
+            sources[#sources + 1] = h
+        end
+    end
+    if not sources[1] then return {} end
+    local ok, items = pcall(Mirror.gather, sources)
+    return ok and items or {}
 end
 
 -- LIVENESS CAP on the between-steps "pending" beat: deviating from the
@@ -82,6 +104,7 @@ function M:handler()
     if not t then _pending_ticks, _stalled = 0, false; return "inactive" end
     if next_button() then _pending_ticks, _stalled = 0, false; return "active" end
     if t.button_listen then _pending_ticks, _stalled = 0, false; return "inactive" end
+    if t.step_complete and highlighted_controls()[1] then _pending_ticks, _stalled = 0, false; return "active" end
     if _stalled then return "active" end
     _pending_ticks = _pending_ticks + 1
     if _pending_ticks >= STALL_CAP then
@@ -108,6 +131,13 @@ function M:build(b)
         b:add_label(Id.structural("dialogue"), function(ctx)
             ctx.message:fragment(Message.raw(text))
         end)
+    end
+
+    -- A choice step: the highlighted panel's controls (no Next button).
+    local choices = {}
+    if not next_button() then choices = highlighted_controls() end
+    for i, n in ipairs(choices) do
+        b:add_item(Id.referenced(n, "choice:" .. i), Mirror.vtable_for(n))
     end
 
     local btn = next_button()
@@ -137,6 +167,8 @@ function M:build(b)
 
     if btn then
         b:set_start(Id.structural("btn:next"))
+    elseif choices[1] then
+        b:set_start(Id.referenced(choices[1], "choice:1"))
     elseif skip then
         b:set_start(Id.structural("btn:skip"))
     end

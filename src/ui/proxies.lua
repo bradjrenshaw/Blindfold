@@ -106,6 +106,32 @@ function Proxy.value_text(node, exclude)
     return #parts > 0 and table.concat(parts, " ") or nil
 end
 
+-- All rendered text in READING order: literal and ref-bound T nodes and
+-- DynaText objects as they appear. For running text (dialogue, text panels),
+-- where a coloured or animated word mid-sentence is a DynaText:
+-- static_text-then-value_text would move it to the end ("Welcome to !
+-- Cryptid"). Control labels keep all_text's caption-then-value order.
+function Proxy.ordered_text(node, exclude)
+    local parts = {}
+    walk(node, exclude, function(n)
+        local c = n.config
+        if not c then return end
+        local t
+        if n.UIT == G.UIT.T then
+            if is_ref_bound(c) then
+                local v = c.ref_table[c.ref_value]
+                t = v ~= nil and tostring(v) or nil
+            else
+                t = literal_text(c)
+            end
+        elseif n.UIT == G.UIT.O and c.object and type(c.object.string) == "string" then
+            t = c.object.string
+        end
+        if t and not is_skip(t) then parts[#parts + 1] = t end
+    end)
+    return #parts > 0 and table.concat(parts, " ") or nil
+end
+
 -- Some cycles carry a raw option value that isn't meaningful spoken aloud,
 -- keyed by the cycle's opt_callback. The stake selector's options are stake
 -- levels (1..8); speak the localized stake name ("White Stake") instead.
