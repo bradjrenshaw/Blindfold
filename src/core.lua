@@ -170,6 +170,9 @@ do
         -- tab + the standalone current-hands popup).
         Overlays.register(ba_require("overlays.run_hands"))
         Overlays.register(ba_require("overlays.run_blinds"))
+        -- Steamodded's Run Info stake tab (sprites + a scroll box). Inert
+        -- without Steamodded.
+        Overlays.register(ba_require("overlays.run_stakes"))
         -- The deck view is an overlay menu the mirror would otherwise claim;
         -- registered above it, the bespoke layout wins while G.VIEWING_DECK.
         Overlays.register(ba_require("overlays.deck_view"))
@@ -534,29 +537,34 @@ function BA.speak_overlay_result(res)
     -- keeps every label announcement identical regardless of which key
     -- produced it.
     local ref = res.focus_ref
-    if ref and type(ref) == "table" then
+    local has_ref = ref and type(ref) == "table"
+    if has_ref then
         cursor_follow(ref)
         if FocusBuffers then
             local tb = BA.tick_now and BA.tick_now()
             pcall(FocusBuffers.bind_focus, ref)
             if BA.log_slow then BA.log_slow(tb, "focus bind") end
         end
-        if res.spoke_label and res.message and res.message ~= "" then
-            local td = BA.tick_now and BA.tick_now()
-            pcall(function()
-                local m
-                if res.deferred then
-                    -- The node's own deferred (e.g. row-relative position).
-                    m = res.deferred()
-                elseif Factory then
-                    local proxy = Factory.create(ref)
-                    m = proxy and proxy.get_deferred and proxy:get_deferred()
-                end
-                local s = type(m) == "string" and m or (m and m.resolve and m:resolve()) or ""
-                if s ~= "" then speech.say(s) end
-            end)
-            if BA.log_slow then BA.log_slow(td, "deferred build") end
-        end
+    end
+    -- A node's own deferred speaks even without a backing object (items
+    -- built from game data, e.g. sprite-only stake rows); the proxy
+    -- fallback needs one.
+    if res.spoke_label and res.message and res.message ~= ""
+        and (res.deferred or has_ref) then
+        local td = BA.tick_now and BA.tick_now()
+        pcall(function()
+            local m
+            if res.deferred then
+                -- The node's own deferred (e.g. row-relative position).
+                m = res.deferred()
+            elseif Factory then
+                local proxy = Factory.create(ref)
+                m = proxy and proxy.get_deferred and proxy:get_deferred()
+            end
+            local s = type(m) == "string" and m or (m and m.resolve and m:resolve()) or ""
+            if s ~= "" then speech.say(s) end
+        end)
+        if BA.log_slow then BA.log_slow(td, "deferred build") end
     end
 end
 
