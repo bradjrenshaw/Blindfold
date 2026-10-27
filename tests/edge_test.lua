@@ -94,5 +94,43 @@ check(res and res.message == "item 2", "racing real move speaks its destination"
 res = D.tick(nil)
 check(res == nil, "no duplicate announce after a racing move", res and res.message)
 
+-- Handoff to another overlay that lands on the SAME game element (Steamodded's
+-- New Run tab taking the menu over while the cursor stays on the tab strip):
+-- not re-read. Landing anywhere else still announces.
+local strip, other = {}, {}
+local top_on, top_ref = false, strip
+D.register({
+    id = "top",
+    handler = function() return top_on and "active" or "inactive" end,
+    build = function(self, b)
+        b:capture_input()
+        b:add_item(Id.referenced(top_ref, "first"), { label = function(ctx)
+            ctx.message:fragment(Message.raw("top first"))
+        end })
+    end,
+})
+active = false
+D.tick(nil)
+active = true
+ov.build = function(self, b)
+    b:capture_input()
+    b:add_item(Id.referenced(strip, "s"), { label = function(ctx)
+        ctx.message:fragment(Message.raw("strip"))
+    end })
+end
+res = D.tick(nil)
+check(res and res.message == "strip", "base overlay speaks the strip", res and res.message)
+top_on = true
+res = D.tick(nil)
+check(res == nil, "handoff onto the same element is quiet", res and res.message)
+res = D.tick(nil)
+check(res == nil, "and stays quiet", res and res.message)
+top_on = false
+D.tick(nil)
+top_ref = other
+top_on = true
+res = D.tick(nil)
+check(res and res.message == "top first", "handoff onto a different element announces", res and res.message)
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

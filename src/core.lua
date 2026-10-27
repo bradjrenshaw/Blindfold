@@ -142,6 +142,9 @@ do
         -- Challenge list + description: two side-by-side columns that read
         -- bottom-heavy in the mirror's flat order; bespoke, description first.
         Overlays.register(ba_require("overlays.challenges"))
+        -- Steamodded's paged New Run screen (deck / stake grids of face-down
+        -- cards the mirror can't collect). Inert without Steamodded.
+        Overlays.register(ba_require("overlays.run_select"))
         -- Collection card screens: the game's grid rows (G.your_collection)
         -- become navigable rows instead of one long flat list.
         Overlays.register(ba_require("overlays.collection"))

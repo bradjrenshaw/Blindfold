@@ -27,3 +27,4 @@ or one suite by hand (the optional argument is the repo root, default `.`):
 | `status_test.lua` | Ctrl+letter status readouts incl. shop reroll cost and naneinf parity |
 | `fmt_test.lua` | scoring verbosity styles, popup normalization, HUD number parity |
 | `events_test.lua` | run-event dispatcher: group toggles, always-on history, history cap |
+| `run_select_test.lua` | Steamodded New Run screen: inert on vanilla, deck grid rows/columns, selection, page cycle, summary; win-sticker stake names under both sticker maps |

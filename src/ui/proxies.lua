@@ -153,14 +153,12 @@ local function deck_description()
     end)
 end
 
-local function stake_description()
-    local n = G and G.viewed_stake
-    local pool = G and G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
-    local center = n and pool and pool[n]
-    if not center or not center.key then return nil end
+-- A stake's effect text by key ("stake_red"), from its loc description.
+function Proxy.stake_text(key)
+    if type(key) ~= "string" then return nil end
     return Proxy.with_built(function()
         local nodes = {}
-        localize({ type = "descriptions", key = center.key, set = "Stake", nodes = nodes })
+        localize({ type = "descriptions", key = key, set = "Stake", nodes = nodes })
         return nodes
     end, function(nodes)
         if not nodes then return nil end
@@ -168,6 +166,25 @@ local function stake_description()
         Proxy.collect_def_text(nodes, parts)
         return #parts > 0 and table.concat(parts, " ") or nil
     end)
+end
+
+-- A deck's preview text by center (its effect, or its unlock requirement
+-- while locked) — the same Back:generate_UI the selectors render.
+function Proxy.back_text(center)
+    if type(center) ~= "table" or type(Back) ~= "table" then return nil end
+    return Proxy.with_built(function() return Back(center):generate_UI() end, function(def)
+        if type(def) ~= "table" then return nil end
+        local parts = {}
+        Proxy.collect_def_text(def, parts)
+        return #parts > 0 and table.concat(parts, " ") or nil
+    end)
+end
+
+local function stake_description()
+    local n = G and G.viewed_stake
+    local pool = G and G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
+    local center = n and pool and pool[n]
+    return center and Proxy.stake_text(center.key) or nil
 end
 
 local CYCLE_DESCRIPTION = {
@@ -1048,21 +1065,30 @@ ProxyJoker.new = ctor(ProxyJoker)
 -- won with that joker). card.sticker is a stake colour from G.sticker_map;
 -- speak the localized stake name ("Gold Stake sticker"). Drawn on card
 -- BACKS too, so face-down cards keep it.
-local function win_sticker(node)
-    if type(node.sticker) ~= "string" then return nil end
-    local name = node.sticker
+-- The stake a win sticker stands for, by name ("Red Stake"). Vanilla's
+-- G.sticker_map is an array by stake level ('Red'); Steamodded's is keyed by
+-- stake ('stake_red' -> 'red'). Falls back to the raw sticker word.
+function Proxy.sticker_stake_name(sticker)
+    if type(sticker) ~= "string" then return nil end
+    local name = sticker
     pcall(function()
-        for i, colour in ipairs(G.sticker_map or {}) do
-            if colour == node.sticker then
-                local center = G.P_CENTER_POOLS.Stake[i]
-                local ok, s = pcall(localize,
-                    { type = "name_text", set = "Stake", key = center.key })
-                if ok and type(s) == "string" and s ~= "" then name = s end
+        for k, colour in pairs(G.sticker_map or {}) do
+            if colour == sticker then
+                local key = type(k) == "string" and k
+                    or (G.P_CENTER_POOLS.Stake[k] and G.P_CENTER_POOLS.Stake[k].key)
+                local ok, s = pcall(localize, { type = "name_text", set = "Stake", key = key })
+                if ok and type(s) == "string" and s ~= "" and s ~= "ERROR" then name = s end
                 break
             end
         end
     end)
-    return A.status(Message.localized("CARD.WIN_STICKER", { stake = name }))
+    return name
+end
+
+local function win_sticker(node)
+    if type(node.sticker) ~= "string" then return nil end
+    return A.status(Message.localized("CARD.WIN_STICKER",
+        { stake = Proxy.sticker_stake_name(node.sticker) }))
 end
 
 -- What a face-down card legitimately shows, so a flipped joker (Amber Acorn)
