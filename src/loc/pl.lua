@@ -82,6 +82,7 @@ return {
         SHOP        = "Sklep",
         SHOP_GOODS  = "Kupony i paczki",
         PACK        = "Paczka",
+        OTHER = "Inne kontrolki",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Przedmiot jednorazowy",
         CASHOUT = "Wypłata",
         UI = "Interfejs",
+        SCREEN = "Ekran",
         NONE = "Brak buforów",
         EMPTY = "Bufor {buffer} jest pusty",
         CURRENT = "{buffer}, {item}",

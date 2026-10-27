@@ -82,6 +82,7 @@ return {
         SHOP        = "商店",
         SHOP_GOODS  = "禮券與擴充包",
         PACK        = "擴充包",
+        OTHER = "其他控制項",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "消耗牌",
         CASHOUT = "結算",
         UI = "介面",
+        SCREEN = "螢幕",
         NONE = "沒有緩衝區",
         EMPTY = "{buffer}緩衝區為空",
         CURRENT = "{buffer}，{item}",

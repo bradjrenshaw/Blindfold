@@ -92,10 +92,17 @@ local function find_active()
     return nil, "inactive"
 end
 
+-- Overlays marked `extras = true` (the gameplay screens) get a final row of
+-- whatever controls on screen they didn't list themselves (overlay/extras).
+local Extras = require("overlay.extras")
+
 local function render_cb_for(overlay)
     return function(ctx)
         local b = Builder.new()
         overlay:build(b)
+        if overlay.extras and b.current_row == nil and next(b.raw_nodes) == nil then
+            Extras.append(b)
+        end
         return b:build()
     end
 end

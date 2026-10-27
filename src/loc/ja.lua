@@ -82,6 +82,7 @@ return {
         SHOP        = "ショップ",
         SHOP_GOODS  = "バウチャーとパック",
         PACK        = "パック",
+        OTHER = "その他の操作",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "消費アイテム",
         CASHOUT = "キャッシュアウト",
         UI = "UI",
+        SCREEN = "画面",
         NONE = "バッファなし",
         EMPTY = "{buffer}バッファは空です",
         CURRENT = "{buffer}、{item}",

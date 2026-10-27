@@ -82,6 +82,7 @@ return {
         SHOP        = "상점",
         SHOP_GOODS  = "바우처와 팩",
         PACK        = "팩",
+        OTHER = "기타 컨트롤",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "소모품",
         CASHOUT = "정산",
         UI = "UI",
+        SCREEN = "화면",
         NONE = "버퍼 없음",
         EMPTY = "{buffer} 버퍼가 비어 있음",
         CURRENT = "{buffer}, {item}",

@@ -19,7 +19,7 @@ local Proxies = require("ui.proxies").Proxy
 local Play = require("overlays.play")
 local States = require("ui.states")
 
-local M = { id = "packs" }
+local M = { id = "packs", extras = true }   -- + an "Other controls" row (overlay/extras)
 
 local function say(ctx, loc_key)
     ctx.message:fragment(Message.localized(loc_key))

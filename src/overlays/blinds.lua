@@ -21,7 +21,7 @@ local Factory = require("ui.factory")
 local Proxies = require("ui.proxies")
 local Play = require("overlays.play")
 
-local M = { id = "blinds" }
+local M = { id = "blinds", extras = true }   -- + an "Other controls" row (overlay/extras)
 
 local TYPES = { "Small", "Big", "Boss" }
 local BOX_KEYS = { Small = "small", Big = "big", Boss = "boss" }

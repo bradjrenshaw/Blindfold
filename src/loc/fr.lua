@@ -82,6 +82,7 @@ return {
         SHOP        = "Boutique",
         SHOP_GOODS  = "Coupons et boosters",
         PACK        = "Booster",
+        OTHER = "Autres commandes",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Consommable",
         CASHOUT = "Encaissement",
         UI = "Interface",
+        SCREEN = "Écran",
         NONE = "Aucun tampon",
         EMPTY = "Le tampon {buffer} est vide",
         CURRENT = "{buffer}, {item}",

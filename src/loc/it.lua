@@ -82,6 +82,7 @@ return {
         SHOP        = "Negozio",
         SHOP_GOODS  = "Buoni e buste",
         PACK        = "Busta",
+        OTHER = "Altri controlli",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Consumabile",
         CASHOUT = "Incasso",
         UI = "Interfaccia",
+        SCREEN = "Schermo",
         NONE = "Nessun buffer",
         EMPTY = "Il buffer {buffer} è vuoto",
         CURRENT = "{buffer}, {item}",

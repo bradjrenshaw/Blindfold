@@ -82,6 +82,7 @@ return {
         SHOP        = "Laden",
         SHOP_GOODS  = "Gutscheine und Pakete",
         PACK        = "Paket",
+        OTHER = "Weitere Bedienelemente",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Verbrauchsgegenstand",
         CASHOUT = "Auszahlung",
         UI = "UI",
+        SCREEN = "Bildschirm",
         NONE = "Keine Puffer",
         EMPTY = "Puffer {buffer} ist leer",
         CURRENT = "{buffer}, {item}",

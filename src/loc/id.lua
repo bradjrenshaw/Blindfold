@@ -82,6 +82,7 @@ return {
         SHOP        = "Toko",
         SHOP_GOODS  = "Voucher dan pack",
         PACK        = "Pack",
+        OTHER = "Kontrol lainnya",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Kartu habis pakai",
         CASHOUT = "Pencairan",
         UI = "Antarmuka",
+        SCREEN = "Layar",
         NONE = "Tidak ada buffer",
         EMPTY = "Buffer {buffer} kosong",
         CURRENT = "{buffer}, {item}",

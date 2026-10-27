@@ -24,7 +24,7 @@ local Proxy = require("ui.proxies").Proxy
 local Settings = require("settings.registry")
 local States = require("ui.states")
 
-local M = { id = "play" }
+local M = { id = "play", extras = true }   -- + an "Other controls" row (overlay/extras)
 
 -- Row (container) announcement, spoken when vertical navigation enters the
 -- row; respects the existing container toggle.

@@ -82,6 +82,7 @@ return {
         SHOP        = "Магазин",
         SHOP_GOODS  = "Ваучеры и наборы",
         PACK        = "Набор",
+        OTHER = "Другие элементы",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Расходник",
         CASHOUT = "Выплата",
         UI = "Интерфейс",
+        SCREEN = "Экран",
         NONE = "Нет буферов",
         EMPTY = "Буфер {buffer} пуст",
         CURRENT = "{buffer}, {item}",

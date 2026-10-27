@@ -82,6 +82,7 @@ return {
         SHOP        = "Winkel",
         SHOP_GOODS  = "Vouchers en pakketten",
         PACK        = "Pakket",
+        OTHER = "Overige bedieningselementen",
     },
 
     PACK = {
@@ -142,6 +143,7 @@ return {
         CONSUMABLE = "Verbruiksitem",
         CASHOUT = "Uitbetaling",
         UI = "Interface",
+        SCREEN = "Scherm",
         NONE = "Geen buffers",
         EMPTY = "Buffer {buffer} is leeg",
         CURRENT = "{buffer}, {item}",

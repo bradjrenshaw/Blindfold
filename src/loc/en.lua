@@ -94,6 +94,7 @@ return {
         SHOP        = "Shop",
         SHOP_GOODS  = "Vouchers and packs",
         PACK        = "Pack",
+        OTHER = "Other controls",   -- a screen's controls it doesn't list itself (mods)
     },
 
     -- Booster-pack opening screen.
@@ -160,6 +161,7 @@ return {
         CONSUMABLE = "Consumable",
         CASHOUT = "Cash out",
         UI = "UI",
+        SCREEN = "Screen",   -- everything visible on screen
         NONE = "No buffers",
         EMPTY = "{buffer} buffer is empty",
         CURRENT = "{buffer}, {item}",
