@@ -1168,13 +1168,18 @@ function BA.install()
                 end end)
             end
         end
-        -- The Arm's hand level-down: level_up_hand's piecemeal hand-text
-        -- updates carry no hand name, so the upgrade announcements never see
-        -- a downgrade — announce from the function itself.
+        -- Hand level changes, announced from the function itself: upgrades
+        -- (queued before the original, so they land as its panel opens) and
+        -- The Arm's downgrade. Instant ones (Black Hole's all-hands loop)
+        -- stay quiet; their panel speaks. Extra arguments pass through
+        -- (Steamodded adds statustext), and a non-number amount (a big-number
+        -- table from Talisman-style mods) counts as an upgrade.
         if BA.scoring and level_up_hand then
-            hook(_G, "level_up_hand", function(orig_lvl) return function(card, hand, instant, amount)
-                orig_lvl(card, hand, instant, amount)
-                if (amount or 1) < 0 then pcall(BA.scoring.on_level_down, hand) end
+            hook(_G, "level_up_hand", function(orig_lvl) return function(card, hand, instant, amount, ...)
+                local down = type(amount) == "number" and amount < 0
+                if not instant and not down then pcall(BA.scoring.queue_level_up, hand) end
+                orig_lvl(card, hand, instant, amount, ...)
+                if down then pcall(BA.scoring.on_level_down, hand) end
             end end)
         end
     end

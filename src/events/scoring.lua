@@ -295,6 +295,35 @@ function M.on_level_down(hand)
     end
 end
 
+-- Hand level UP (planets, Space Joker, Burnt Joker, Orbital Tag; any mod's
+-- level_up_hand). Core calls this from its level_up_hand wrap BEFORE the
+-- original runs, so the line queues ahead of the upgrade's panel animation —
+-- landing as the panel opens — while reading the hand table when it RUNS,
+-- by which point level_up_hand has already updated it (it does so
+-- synchronously; only the visuals are queued). Announcing from the function
+-- rather than the hand panel is what works under Steamodded, whose rewrite
+-- feeds the panel the name, level, chips and mult in separate calls.
+function M.queue_level_up(hand)
+    if not setting("scoring.enabled", true) then return end
+    local function announce()
+        local h = G and G.GAME and G.GAME.hands and G.GAME.hands[hand]
+        if not h then return end
+        local name = hand
+        local ok, n = pcall(localize, hand, "poker_hands")
+        if ok and type(n) == "string" and n ~= "" and n ~= "ERROR" then name = n end
+        speak(loc("SCORING.HAND_LEVEL",
+            { name = name, level = h.level, chips = fmt_num(h.chips), mult = fmt_num(h.mult) }))
+    end
+    if G and G.E_MANAGER and Event then
+        G.E_MANAGER:add_event(Event({
+            trigger = "immediate",
+            func = function() announce(); return true end,
+        }))
+    else
+        announce()
+    end
+end
+
 -- Play-area banner: vanilla uses it only for "Not Allowed!" — The Eye / The
 -- Mouth rejecting a repeated / wrong hand type (chips and mult forced to 0,
 -- cards wasted). Not gated behind the scoring toggle: it's the only signal
@@ -346,41 +375,13 @@ function M.on_hand_text(config, vals)
         M._last_score = nil
         speak(loc("SCORING.HAND", { name = vals.handname, chips = fmt_num(vals.chips), mult = fmt_num(vals.mult) }))
     elseif type(vals.handname) == "string" and vals.handname ~= ""
-        and type(vals.level) == "number"
-        and type(vals.chips) == "number" and type(vals.mult) == "number" then
-        -- A hand being UPGRADED (planet card, level-up jokers). The values in
-        -- THIS call may be pre- or post-upgrade depending on the caller (the
-        -- planet path shows the panel BEFORE level_up_hand increments;
-        -- joker-triggered upgrades call it after) — so the announcement is
-        -- queued one event later and reads the LIVE hand table, which is
-        -- post-upgrade in every path by then.
+        and type(vals.level) == "number" then
+        -- The level-up panel (planet, level-up jokers, Orbital Tag; under
+        -- Steamodded also its name+level-only opener and the panel restore
+        -- after a mid-scoring upgrade). The announcement comes from the
+        -- level_up_hand wrap (queue_level_up); here, just note the hand so the
+        -- selection preview doesn't re-read its name.
         M._last_hand = vals.handname
-        local name = vals.handname
-        local fallback = { name = name, level = vals.level, chips = fmt_num(vals.chips), mult = fmt_num(vals.mult) }
-        local function announce()
-            local live
-            pcall(function()
-                for key, h in pairs(G.GAME.hands) do
-                    local ok, loc_name = pcall(localize, key, "poker_hands")
-                    if ok and loc_name == name then
-                        live = { name = name, level = h.level, chips = fmt_num(h.chips), mult = fmt_num(h.mult) }
-                        break
-                    end
-                end
-            end)
-            speak(loc("SCORING.HAND_LEVEL", live or fallback))
-        end
-        if G and G.E_MANAGER and Event then
-            G.E_MANAGER:add_event(Event({
-                trigger = "immediate",
-                func = function()
-                    announce()
-                    return true
-                end,
-            }))
-        else
-            announce()
-        end
     elseif type(vals.handname) == "string" and vals.handname ~= "" and vals.handname ~= M._last_hand then
         M._last_hand = vals.handname
         if setting("scoring.hand_preview", true) then speak(vals.handname) end

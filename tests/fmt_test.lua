@@ -118,5 +118,19 @@ Scoring.on_hand_text(nil, { chip_total = 4500 })
 check(spoken[1] == L("SCORING.TOTAL", { chips = "1,500", mult = "3", score = "4,500" }),
     "ordinary totals get HUD comma grouping", spoken[1])
 
+-- Hand level-ups announce from level_up_hand (queue_level_up), reading the
+-- live hand table; the level panel itself stays quiet — including
+-- Steamodded's name+level-only opener, which used to read as a bare preview.
+_G.localize = function(k, set) if set == "poker_hands" and k == "Pair" then return "Pair" end return "ERROR" end
+G.GAME = { hands = { Pair = { level = 3, chips = 30, mult = 4 } } }
+spoken = {}
+Scoring.on_hand_text({ sound = "button", delay = 0.3 }, { handname = "Pair", level = 2 })
+Scoring.on_hand_text({ sound = "button", delay = 0.3 },
+    { handname = "Pair", level = 2, chips = 25, mult = 3 })
+check(#spoken == 0, "level panels stay quiet (Steamodded opener + vanilla panel)", spoken[1])
+Scoring.queue_level_up("Pair")
+check(spoken[1] == L("SCORING.HAND_LEVEL", { name = "Pair", level = 3, chips = "30", mult = "4" }),
+    "level-up reads the live hand", spoken[1])
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)
