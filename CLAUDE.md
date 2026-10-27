@@ -25,10 +25,10 @@ marker; `-Disable` removes it. The server listens on `http://127.0.0.1:8772`:
 | `GET /speech?since=N` | spoken lines since cursor N; the reply starts with `cursor: M` |
 | `GET /module` | generation number and hooked-function count |
 | `POST /eval` | Lua in the body; returns an expression's value or what a chunk `print`s. `BA` = live Blindfold, `H` = host, `dump(v, depth)`; REPL globals persist |
-| `GET /state` | stage, state, menu, active owned overlay, Steamodded present |
+| `GET /state` | stage, state, menu, active owned overlay, Steamodded present, and render health (BLACK = the game is drawing nothing) |
 | `GET /overlay` | the active overlay's nodes, labels, cursor and links (the F8 dump) |
 | `POST /key` | a LÖVE key name (`down`, `return`, `ctrl+s`), pressed through the game's Controller like the keyboard |
-| `GET /screenshot` | captures the next frame; returns the PNG path |
+| `GET /screenshot` | saves the game's render canvas as a PNG and returns its path; works with the window minimized or unfocused (no CRT effect) |
 
 Loop: edit `src\...`, `curl -X POST 127.0.0.1:8772/reload`, drive with
 `/key`, read `/speech` and `/overlay`.

@@ -167,14 +167,20 @@ end
 
 -- A fresh name per capture (blindfold_shot_<n>.png), so a reader that
 -- caches by path never shows a stale frame; the previous one is removed.
+-- Saved from the game's own render canvas (G.CANVAS: everything the game
+-- draws, before its final CRT pass), which works with the window minimized,
+-- unfocused or covered; a window capture comes back blank when minimized.
+-- Falls back to the window capture if the canvas can't be read.
 local shot_n = 0
 local function screenshot()
     if shot_n > 0 then pcall(love.filesystem.remove, "blindfold_shot_" .. shot_n .. ".png") end
     shot_n = shot_n + 1
     local name = "blindfold_shot_" .. shot_n .. ".png"
+    local path = love.filesystem.getSaveDirectory() .. "/" .. name
+    local ok = pcall(function() G.CANVAS:newImageData():encode("png", name) end)
+    if ok then return path .. "\n" end
     love.graphics.captureScreenshot(name)
-    return love.filesystem.getSaveDirectory() .. "/" .. name
-        .. "\n(written at the end of this frame)\n"
+    return path .. "\n(window capture, written at the end of this frame)\n"
 end
 
 R.routes = {
