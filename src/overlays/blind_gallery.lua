@@ -9,7 +9,10 @@
 -- Steamodded rebuilds both pages: each blind is a stand-in Card (a blank
 -- base card wearing the blind's sprite, with config.blind) inside paged
 -- G.your_collection CardAreas, and the tags page sits in a nested UIBox
--- that swaps per page. The walk finds items in all three places.
+-- (id your_collection_tags_contents) that swaps per page. The walk finds
+-- items in all three places — and descends into THAT box only: Run Info's
+-- Blinds tab also nests skip-tag sprites in a UIBox, and must stay with its
+-- own overlay (run_blinds).
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
@@ -39,7 +42,8 @@ local function sprites()
             for _, c in ipairs(o.cards or {}) do
                 if is_item(c) then out[#out + 1] = c end
             end
-        elseif type(o) == "table" and o.UIRoot then
+        elseif type(o) == "table" and o.UIRoot
+            and n.config.id == "your_collection_tags_contents" then
             walk(o.UIRoot, depth + 1)
         end
         local kids, maxn = n.children, 0
