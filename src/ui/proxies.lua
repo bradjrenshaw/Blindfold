@@ -509,9 +509,6 @@ end
 
 function Proxy.card_deferred(card, index, total)
     local parts = {}
-    -- What's drawn under the joker right now (JokerDisplay), first.
-    local jd = Proxy.joker_display_text(card)
-    if jd then parts[#parts + 1] = jd end
     if Proxy.announce_enabled("description") then
         local d = Proxy.card_description(card)
         if d then parts[#parts + 1] = d end
@@ -1241,7 +1238,7 @@ local function type_announcement(set)
 end
 local ProxyJoker = class(Proxy)
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "eternal", "perishable", "rental", "pinned", "new", "price" }
+ProxyJoker.announcement_order = { "label", "readout", "subtype", "type", "selected", "edition", "debuff", "eternal", "perishable", "rental", "pinned", "new", "price" }
 ProxyJoker.new = ctor(ProxyJoker)
 
 -- The win-stake sticker (collection jokers: the badge for the best stake
@@ -1350,6 +1347,9 @@ function ProxyJoker:get_focus_announcements()
     local label = self:get_label()
     if not label then return {} end
     local anns = { A.label(label) }
+    -- What JokerDisplay draws under the joker, right after its name.
+    local jd = Proxy.joker_display_text(node)
+    if jd then anns[#anns + 1] = A.readout(jd) end
     local rar = Proxy.joker_rarity(node)
     if rar then anns[#anns + 1] = A.subtype(rar) end
     local set = node.ability and node.ability.set
