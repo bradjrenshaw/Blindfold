@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Alles vrijspelen bevestigen",
         CONFIRM_ACTION = "{action} bevestigen",
         COMPLETED      = "voltooid",
+        DISABLE_BLINDFOLD = "Als je Blindfold uitschakelt, valt de spraak weg nadat het spel opnieuw is gestart. Druk nogmaals om te bevestigen.",
     },
 
     CONTAINER = {

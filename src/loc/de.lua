@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Alles freischalten bestätigen",
         CONFIRM_ACTION = "{action} bestätigen",
         COMPLETED      = "abgeschlossen",
+        DISABLE_BLINDFOLD = "Wenn du Blindfold ausschaltest, gibt es nach dem Neustart des Spiels keine Sprachausgabe mehr. Zum Bestätigen erneut drücken.",
     },
 
     CONTAINER = {

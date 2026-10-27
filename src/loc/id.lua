@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Konfirmasi buka semua",
         CONFIRM_ACTION = "Konfirmasi {action}",
         COMPLETED      = "selesai",
+        DISABLE_BLINDFOLD = "Menonaktifkan Blindfold mematikan suaranya setelah game dimulai ulang. Tekan lagi untuk mengonfirmasi.",
     },
 
     CONTAINER = {

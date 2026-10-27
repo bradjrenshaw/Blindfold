@@ -47,6 +47,18 @@ local function mod_info(id)
     return type(SMODS) == "table" and SMODS.Mods and SMODS.Mods[id] or nil
 end
 
+-- Blindfold's own entry: a Lovely-only mod Steamodded lists by folder name
+-- ("lovely-compat-Blindfold"), or a Steamodded manifest id of "Blindfold".
+local function is_blindfold(id)
+    local m = mod_info(id)
+    return id == "Blindfold" or id == "lovely-compat-Blindfold"
+        or (m ~= nil and m.blacklist_name == "Blindfold")
+end
+
+-- Seconds a "press again to confirm" stays armed after the warning.
+local CONFIRM_WINDOW = 10
+local armed_until = nil
+
 -- The name as the card shows it (a mod's localized name, else its name).
 local function mod_name(id)
     local m = mod_info(id)
@@ -180,6 +192,24 @@ function M:build(b)
         end
         if parts.toggle then
             local vt = Mirror.vtable_for(parts.toggle)
+            -- Blindfold's own checkbox: unchecking it switches the mod off
+            -- after Steamodded's restart, and with it all speech, so the
+            -- first press only warns; a second press within the window
+            -- goes through. Turning it back on needs no confirmation.
+            if is_blindfold(id) and vt.on_click then
+                local click = vt.on_click
+                vt.on_click = function(ctx)
+                    local m = mod_info(id)
+                    local now = love.timer.getTime()
+                    if m and m.should_enable and not (armed_until and now < armed_until) then
+                        armed_until = now + CONFIRM_WINDOW
+                        ctx.message:fragment(Message.localized("MENU.DISABLE_BLINDFOLD"))
+                        return
+                    end
+                    armed_until = nil
+                    click(ctx)
+                end
+            end
             vt.label = function(ctx)
                 ctx.message:fragment(Message.raw(mod_name(id)))
                 local proxy = Factory.create(parts.toggle)

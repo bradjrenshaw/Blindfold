@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "確認全部解鎖",
         CONFIRM_ACTION = "確認{action}",
         COMPLETED      = "已完成",
+        DISABLE_BLINDFOLD = "關閉 Blindfold 後，遊戲重新啟動時語音將被停用。再按一次以確認。",
     },
 
     CONTAINER = {

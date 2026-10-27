@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Potwierdź odblokowanie wszystkiego",
         CONFIRM_ACTION = "Potwierdź {action}",
         COMPLETED      = "ukończone",
+        DISABLE_BLINDFOLD = "Wyłączenie Blindfold wyłączy jego mowę po ponownym uruchomieniu gry. Naciśnij ponownie, aby potwierdzić.",
     },
 
     CONTAINER = {

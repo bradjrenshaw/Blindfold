@@ -27,6 +27,7 @@ or one suite by hand (the optional argument is the repo root, default `.`):
 | `status_test.lua` | Ctrl+letter status readouts incl. shop reroll cost and naneinf parity |
 | `fmt_test.lua` | scoring verbosity styles, popup normalization, HUD number parity |
 | `events_test.lua` | run-event dispatcher: group toggles, always-on history, history cap |
+| `mods_menu_test.lua` | Steamodded Mods menu rows (card, checkbox, config named per mod); Blindfold's own checkbox needs a confirming second press to turn off |
 | `gallery_test.lua` | blind/tag gallery claims the collection pages (vanilla and Steamodded layouts) but not Run Info's Blinds tab |
 | `cashout_test.lua` | cash-out rows: all spoken in vanilla; under Steamodded's compact cash-out only the drawn 7, then its "...and N more" line |
 | `run_select_test.lua` | Steamodded New Run screen: inert on vanilla, deck grid rows/columns, selection, page cycle, summary; win-sticker stake names under both sticker maps |

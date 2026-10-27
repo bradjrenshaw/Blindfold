@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Confirmer tout débloquer",
         CONFIRM_ACTION = "Confirmer {action}",
         COMPLETED      = "terminé",
+        DISABLE_BLINDFOLD = "Désactiver Blindfold coupe sa voix après le redémarrage du jeu. Appuyez à nouveau pour confirmer.",
     },
 
     CONTAINER = {

@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Confirmar desbloquear todo",
         CONFIRM_ACTION = "Confirmar {action}",
         COMPLETED      = "completado",
+        DISABLE_BLINDFOLD = "Desactivar Blindfold desactiva su voz cuando el juego se reinicie. Presiona de nuevo para confirmar.",
     },
 
     CONTAINER = {

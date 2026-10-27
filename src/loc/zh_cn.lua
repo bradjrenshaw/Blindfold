@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "确认全部解锁",
         CONFIRM_ACTION = "确认{action}",
         COMPLETED      = "已完成",
+        DISABLE_BLINDFOLD = "关闭 Blindfold 后，游戏重启时语音将被停用。再按一次以确认。",
     },
 
     CONTAINER = {

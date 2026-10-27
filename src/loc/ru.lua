@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "Подтвердить разблокировку всего",
         CONFIRM_ACTION = "Подтвердить: {action}",
         COMPLETED      = "пройдено",
+        DISABLE_BLINDFOLD = "Если отключить Blindfold, после перезапуска игры речь пропадёт. Нажмите ещё раз для подтверждения.",
     },
 
     CONTAINER = {

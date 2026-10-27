@@ -79,6 +79,7 @@ return {
         CONFIRM_UNLOCK = "Confirm unlock all",
         CONFIRM_ACTION = "Confirm {action}",
         COMPLETED      = "completed",   -- the challenge list's green check
+        DISABLE_BLINDFOLD = "Turning off Blindfold disables its speech after the game restarts. Press again to confirm.",   -- Steamodded Mods menu: first press on Blindfold's own checkbox
     },
 
     -- Container / region names (announced when focus enters a new card row).

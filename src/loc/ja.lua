@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "全アンロックを確認",
         CONFIRM_ACTION = "{action}を確認",
         COMPLETED      = "クリア済み",
+        DISABLE_BLINDFOLD = "Blindfoldをオフにすると、ゲームの再起動後に読み上げが止まります。もう一度押すと確定します。",
     },
 
     CONTAINER = {

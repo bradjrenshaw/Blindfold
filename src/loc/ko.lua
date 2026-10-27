@@ -68,6 +68,7 @@ return {
         CONFIRM_UNLOCK = "모두 잠금 해제 확인",
         CONFIRM_ACTION = "{action} 확인",
         COMPLETED      = "완료",
+        DISABLE_BLINDFOLD = "Blindfold를 끄면 게임을 다시 시작한 뒤 음성 출력이 꺼집니다. 확인하려면 다시 누르세요.",
     },
 
     CONTAINER = {
