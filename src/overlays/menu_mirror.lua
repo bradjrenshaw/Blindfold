@@ -106,7 +106,12 @@ local function collect(node, out, depth, seen)
     if node.states and node.states.visible == false then return end
 
     if Proxy.node_is_control(node) then
-        if focusable_state(node) then out[#out + 1] = node end
+        -- Steamodded's scrollbars (SMODS.GUI.scrollbar) only scroll the
+        -- view; the walk already reads a scroll box's whole content.
+        local fa = node.config and node.config.focus_args
+        if focusable_state(node) and not (fa and fa.type == "scrollbar") then
+            out[#out + 1] = node
+        end
         return
     end
 
