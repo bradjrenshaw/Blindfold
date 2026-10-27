@@ -77,6 +77,8 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Path $stage | Out-Null
 try {
     Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
+    # The dev server (src\dev) is a development tool; releases never ship it.
+    Remove-Item (Join-Path $stage 'Blindfold\dev') -Recurse -Force -ErrorAction SilentlyContinue
     Copy-Item $lovely (Join-Path $stage 'version.dll')
     # macOS injector + launch scripts ride along in the same zip; each
     # platform's installer keeps only its own files (and Loadstone routes the

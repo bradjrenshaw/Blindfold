@@ -89,7 +89,7 @@ if [ "$installer_only" = 0 ]; then
     step "Building Blindfold.zip"
     stage="$(mktemp -d "${TMPDIR:-/tmp}/blindfold_release_XXXXXX")"
     trap 'rm -rf "$stage"' EXIT
-    rsync -a --exclude '.DS_Store' "$src/" "$stage/Blindfold/"
+    rsync -a --exclude '.DS_Store' --exclude 'dev/' "$src/" "$stage/Blindfold/"
     cp "$lovely/version.dll" "$lovely/liblovely.dylib" "$lovely/run_lovely_macos.sh" \
        "$lovely/steam_lovely_macos.sh" "$stage/"
     # Bundle the docs the in-game buttons open (<mod>/docs/*).

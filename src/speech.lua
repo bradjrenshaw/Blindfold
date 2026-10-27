@@ -338,6 +338,9 @@ local utterance = ffi.new("uint64_t[1]")
 function M.say(text, interrupt)
     if type(text) ~= "string" or text == "" then return end
     log(text)
+    -- Dev server tap (GET /speech): what was spoken, for a driver that can't
+    -- hear it. Set only while the dev server runs.
+    if M.observer then pcall(M.observer, text) end
     if not M.loaded then return end
     local t0 = timer_now()
     local ok, st = pcall(M.lv.lv_output, M.ctx, QUEUE, profile, text,

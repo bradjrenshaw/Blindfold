@@ -28,3 +28,4 @@ or one suite by hand (the optional argument is the repo root, default `.`):
 | `fmt_test.lua` | scoring verbosity styles, popup normalization, HUD number parity |
 | `events_test.lua` | run-event dispatcher: group toggles, always-on history, history cap |
 | `run_select_test.lua` | Steamodded New Run screen: inert on vanilla, deck grid rows/columns, selection, page cycle, summary; win-sticker stake names under both sticker maps |
+| `host_test.lua` | hot-reload hooks: one trampoline per function, re-pointed per generation, other mods' wraps survive |
