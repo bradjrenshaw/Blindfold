@@ -503,6 +503,41 @@ local function text_lines(root)
     return {}
 end
 
+-- A panel that MIXES text and controls (Steamodded's credits tab: lines of
+-- text around one button), in reading order: { text = line } entries for
+-- the rendered text lines and { node = control } entries for the controls.
+-- Opt-in for screens whose surrounding text matters; the generic walk reads
+-- controls only (their captions come through their own labels).
+local function panel_items(root)
+    local out = {}
+    local function walk(n, depth)
+        if type(n) ~= "table" or depth > 12 then return end
+        if n.states and n.states.visible == false then return end
+        if Proxy.node_is_control(n) then
+            if focusable_state(n) then out[#out + 1] = { node = n } end
+            return
+        end
+        local has_control = false
+        local function scan(m, d)
+            if has_control or type(m) ~= "table" or d > 12 then return end
+            if Proxy.node_is_control(m) then has_control = true; return end
+            for _, ch in ipairs(ordered_kids(m)) do scan(ch, d + 1) end
+        end
+        scan(n, 0)
+        if not has_control and not has_deeper_text_row(n) then
+            if has_text(n) then
+                local lines = {}
+                collect_lines(n, lines, 0)
+                for _, l in ipairs(lines) do out[#out + 1] = { text = l } end
+            end
+            return
+        end
+        for _, ch in ipairs(ordered_kids(n)) do walk(ch, depth + 1) end
+    end
+    walk(root, 0)
+    return out
+end
+
 -- A controls-free nested box the collector pushed as one readable item.
 local function is_text_root(node)
     local c = node.config
@@ -648,6 +683,7 @@ local M = {}
 M.gather = gather
 M.vtable_for = vtable_for
 M.text_lines = text_lines
+M.panel_items = panel_items
 M.is_text_root = is_text_root
 
 -- Whatever modal overlay menu is up (options tree, run setup, run info, deck

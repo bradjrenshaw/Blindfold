@@ -10,6 +10,10 @@
 -- left/right moves within the mod, up/down between mods. Everything else on
 -- the screen (tabs, the heading — which opens the Mods folder — the page
 -- cycle, Back) comes through the mirror in order. Inert without Steamodded.
+--
+-- The menu's Credits tab is claimed too: its text ("Mod Loader developed
+-- by Steamo...", the bug-report line) sits around one button, and the
+-- mirror reads controls only — here it reads in order, lines and button.
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
@@ -76,6 +80,20 @@ local function card_text(id)
     return table.concat(parts, ", ")
 end
 
+-- The Credits tab's panel: the tab content root holding the GitHub button.
+local function credits_root(items)
+    for _, n in ipairs(items) do
+        if n.config and n.config.button == "steamodded_github" then
+            local p, up = n.parent, 0
+            while p and up < 8 do
+                if G.UIT and p.UIT == G.UIT.ROOT then return p end
+                p, up = p.parent, up + 1
+            end
+        end
+    end
+    return nil
+end
+
 function M:handler()
     local ov = G and G.OVERLAY_MENU
     if type(SMODS) ~= "table" or type(ov) ~= "table" then return "inactive" end
@@ -85,7 +103,37 @@ function M:handler()
         local id, part = classify(n)
         if id and part == "toggle" then return "active" end
     end
+    if credits_root(items) then return "active" end
     return "inactive"
+end
+
+local function build_credits(b, items, root)
+    local panel = {}
+    for _, e in ipairs(Mirror.panel_items(root)) do
+        if e.node then panel[e.node] = true end
+    end
+    local placed = false
+    local i = 0
+    for _, n in ipairs(items) do
+        if panel[n] then
+            if not placed then
+                placed = true
+                for j, e in ipairs(Mirror.panel_items(root)) do
+                    if e.node then
+                        b:add_item(Id.referenced(e.node, "p:" .. j), Mirror.vtable_for(e.node))
+                    else
+                        local line = e.text
+                        b:add_label(Id.structural("p:" .. j), function(ctx)
+                            ctx.message:fragment(Message.raw(line))
+                        end)
+                    end
+                end
+            end
+        else
+            i = i + 1
+            b:add_item(Id.referenced(n, "o:" .. i), Mirror.vtable_for(n))
+        end
+    end
 end
 
 function M:sub_identity()
@@ -95,6 +143,8 @@ end
 function M:build(b)
     b:capture_input()
     local items = Mirror.gather({ G.OVERLAY_MENU })
+    local croot = credits_root(items)
+    if croot then return build_credits(b, items, croot) end
 
     -- Group the mod controls by mod, keeping first-appearance order; the
     -- rows go where the first mod control sat in the walk.
