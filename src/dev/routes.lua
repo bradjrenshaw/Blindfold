@@ -121,10 +121,29 @@ local function key(body)
     local held, k = {}, spec
     for m in spec:gmatch("(%a+)%+") do held[#held + 1] = MOD_KEYS[m:lower()] or m end
     k = spec:match("([^+]+)$")
-    for _, m in ipairs(held) do ctrl:key_press(m) end
-    ctrl:key_press(k)
-    ctrl:key_release(k)
-    for i = #held, 1, -1 do ctrl:key_release(held[i]) end
+    -- Modifiers are read from love.keyboard.isDown (the real keyboard), so
+    -- report the held ones as down for the duration of the press.
+    local down = {}
+    for _, m in ipairs(held) do
+        down[m] = true
+        down[(m:gsub("^l", "r"))] = false   -- only the left variant is "held"
+    end
+    local kb = love.keyboard
+    local real_isDown = kb.isDown
+    kb.isDown = function(...)
+        for i = 1, select("#", ...) do
+            if down[select(i, ...)] then return true end
+        end
+        return real_isDown(...)
+    end
+    local ok, err = pcall(function()
+        for _, m in ipairs(held) do ctrl:key_press(m) end
+        ctrl:key_press(k)
+        ctrl:key_release(k)
+        for i = #held, 1, -1 do ctrl:key_release(held[i]) end
+    end)
+    kb.isDown = real_isDown
+    if not ok then return "[error] " .. tostring(err) .. "\n" end
     return "pressed " .. spec .. "\n"
 end
 
