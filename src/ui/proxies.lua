@@ -293,6 +293,22 @@ function Proxy.center_name(center)
     return entry and entry.name
 end
 
+-- The name a card's own ability box renders (its name line), for centers
+-- whose name isn't a plain descriptions entry: booster packs (vanilla's and
+-- modded ones, named through their group), and anything a mod names with a
+-- custom name_key. Built through with_ability_table, so nothing leaks.
+function Proxy.rendered_name(card)
+    if not (card and type(card.generate_UIBox_ability_table) == "function") then return nil end
+    if card.facing == "back" then return nil end
+    return Proxy.with_ability_table(card, function(t)
+        if type(t) ~= "table" or type(t.name) ~= "table" then return nil end
+        local parts = {}
+        Proxy.collect_def_text(t.name, parts)
+        local s = table.concat(parts, " "):gsub("^%s+", ""):gsub("%s+$", "")
+        return s ~= "" and s or nil
+    end)
+end
+
 -- The card's edition as a localized Message (foil/holographic/polychrome/
 -- negative), or nil when it has no edition.
 local EDITION_KEY = { foil = "foil", holo = "holographic", polychrome = "polychrome", negative = "negative" }
@@ -501,7 +517,9 @@ function Proxy.collect_def_text(node, parts, depth)
                     s = o.strings[fs] and o.strings[fs].string
                 end
                 if type(s) ~= "string" then s = type(o.string) == "string" and o.string or nil end
-                if type(s) == "string" and not is_skip(s) then parts[#parts + 1] = s end
+                -- (A node can carry the same text twice — config.text AND a
+                -- DynaText showing it, e.g. a booster's name line.)
+                if type(s) == "string" and not is_skip(s) and s ~= lit then parts[#parts + 1] = s end
             end
         end
         if node.nodes then for _, ch in ipairs(node.nodes) do Proxy.collect_def_text(ch, parts, depth + 1) end end
@@ -946,6 +964,25 @@ function Proxy.sticker_name(node)
     return nil
 end
 
+-- Stickers beyond the four Blindfold announces itself (eternal, perishable,
+-- rental, pinned): ones a mod adds (Paperback's clips, ...), drawn on the
+-- card's face, read by their game name. Announcement list, possibly empty.
+local OWN_STICKERS = { eternal = true, perishable = true, rental = true, pinned = true }
+function Proxy.extra_sticker_anns(node)
+    local out = {}
+    local keys = type(SMODS) == "table" and SMODS.Sticker and SMODS.Sticker.obj_buffer
+    if type(keys) ~= "table" or not node.ability then return out end
+    for _, k in ipairs(keys) do
+        if not OWN_STICKERS[k] and node.ability[k] then
+            local ok, name = pcall(localize, { type = "name_text", set = "Other", key = k })
+            if ok and type(name) == "string" and name ~= "" and name ~= "ERROR" then
+                out[#out + 1] = A.status(Message.raw(name))
+            end
+        end
+    end
+    return out
+end
+
 -- Collection modifier cards (the seals / enhancements screens) are built on
 -- the EMPTY card front — no rank or suit renders. Their identity is the
 -- modifier itself: the enhancement center's name, the seal, or the edition.
@@ -1061,6 +1098,7 @@ function ProxyPlayingCard:get_focus_announcements()
     if node.seal and consumed ~= "seal" then
         anns[#anns + 1] = A.seal(Message.localized("SEAL." .. string.upper(tostring(node.seal))))
     end
+    for _, a in ipairs(Proxy.extra_sticker_anns(node)) do anns[#anns + 1] = a end
     if node.debuff then anns[#anns + 1] = A.debuff() end
     local na = new_alert(node)
     if na then anns[#anns + 1] = na end
@@ -1090,6 +1128,19 @@ local SET_TO_TYPE = {
     Joker = "joker", Tarot = "tarot", Planet = "planet",
     Spectral = "spectral", Voucher = "voucher", Booster = "booster",
 }
+
+-- The type announcement for a card's set: vanilla sets read Blindfold's type
+-- words; a set a mod adds (Paperback's Minor Arcana, ...) reads the game's
+-- own name for it, the text of the set badge the card shows.
+local function type_announcement(set)
+    if not set then return nil end
+    if SET_TO_TYPE[set] then return A.type(SET_TO_TYPE[set]) end
+    local ok, word = pcall(localize, "k_" .. string.lower(set))
+    if ok and type(word) == "string" and word ~= "" and word ~= "ERROR" then
+        return A.type_text(word)
+    end
+    return nil
+end
 local ProxyJoker = class(Proxy)
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
 ProxyJoker.announcement_order = { "label", "subtype", "type", "selected", "edition", "debuff", "eternal", "perishable", "rental", "pinned", "new", "price" }
@@ -1164,6 +1215,7 @@ function ProxyJoker:get_label()
     if self.node.facing == "back" then return face_down_label(self.node) end
     local c = self.node.config and self.node.config.center
     local name = Proxy.center_name(c)
+        or Proxy.rendered_name(self.node)
         or (self.node.ability and self.node.ability.name)
         or (c and c.name)
     return Message.maybe_raw(name and tostring(name))
@@ -1177,8 +1229,8 @@ function ProxyJoker:get_focus_announcements()
     if hidden then
         local anns = { A.label(Message.localized("LABELS." .. hidden)) }
         local set = node.ability and node.ability.set
-        local tword = set and SET_TO_TYPE[set]
-        if tword then anns[#anns + 1] = A.type(tword) end
+        local tann = type_announcement(set)
+        if tann then anns[#anns + 1] = tann end
         return anns
     end
     -- Face down: identity hidden — no name, rarity, edition or price. The
@@ -1187,8 +1239,8 @@ function ProxyJoker:get_focus_announcements()
     if node.facing == "back" then
         local anns = { A.label(face_down_label(node)) }
         local set = node.ability and node.ability.set
-        local tword = set and SET_TO_TYPE[set]
-        if tword then anns[#anns + 1] = A.type(tword) end
+        local tann = type_announcement(set)
+        if tann then anns[#anns + 1] = tann end
         if node.highlighted then anns[#anns + 1] = A.selected() end
         -- Pinned stays spoken face down: the card visibly never leaves the
         -- left edge, so its position is public knowledge either way.
@@ -1203,8 +1255,8 @@ function ProxyJoker:get_focus_announcements()
     local rar = Proxy.joker_rarity(node)
     if rar then anns[#anns + 1] = A.subtype(rar) end
     local set = node.ability and node.ability.set
-    local tword = set and SET_TO_TYPE[set]
-    if tword then anns[#anns + 1] = A.type(tword) end
+    local tann = type_announcement(set)
+    if tann then anns[#anns + 1] = tann end
     if node.highlighted then anns[#anns + 1] = A.selected() end
     local ed = Proxy.edition_word(node)
     if ed then anns[#anns + 1] = A.edition(ed) end
@@ -1217,6 +1269,7 @@ function ProxyJoker:get_focus_announcements()
     if node.ability and node.ability.perishable then anns[#anns + 1] = A.perishable() end
     if node.ability and node.ability.rental then anns[#anns + 1] = A.rental() end
     if node.pinned then anns[#anns + 1] = A.pinned() end
+    for _, a in ipairs(Proxy.extra_sticker_anns(node)) do anns[#anns + 1] = a end
     local sticker = win_sticker(node)
     if sticker then anns[#anns + 1] = sticker end
     local na = new_alert(node)

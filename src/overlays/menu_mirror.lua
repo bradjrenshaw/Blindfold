@@ -494,10 +494,26 @@ local function collect_lines(node, out, depth)
     end
 end
 
+-- Rejoin a sentence the layout wrapped across rows: a line starting with a
+-- lowercase letter continues the previous one ("Required score scales" +
+-- "faster for each Ante"). List entries ("- name"), capitalized lines and
+-- caseless scripts stay as drawn.
+local function merge_wrapped(lines)
+    local out = {}
+    for _, l in ipairs(lines) do
+        if out[1] and l:match("^%l") then
+            out[#out] = out[#out] .. " " .. l
+        else
+            out[#out + 1] = l
+        end
+    end
+    return out
+end
+
 local function text_lines(root)
     local lines = {}
     collect_lines(root, lines, 0)
-    if lines[1] then return lines end
+    if lines[1] then return merge_wrapped(lines) end
     local ok, t = pcall(Proxy.all_text, root)
     if ok and type(t) == "string" and t ~= "" then return { (t:gsub("%s*\n%s*", " ")) } end
     return {}
@@ -528,7 +544,15 @@ local function panel_items(root)
             if has_text(n) then
                 local lines = {}
                 collect_lines(n, lines, 0)
-                for _, l in ipairs(lines) do out[#out + 1] = { text = l } end
+                -- A wrapped continuation joins the text entry before it.
+                for _, l in ipairs(merge_wrapped(lines)) do
+                    local prev = out[#out]
+                    if prev and prev.text and l:match("^%l") then
+                        prev.text = prev.text .. " " .. l
+                    else
+                        out[#out + 1] = { text = l }
+                    end
+                end
             end
             return
         end
