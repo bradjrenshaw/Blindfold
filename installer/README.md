@@ -1,38 +1,47 @@
 # Blindfold Installer
 
-A small Rust installer for end users (ported from the SayTheSpire2 installer).
-GUI by default (wxWidgets via wxdragon — native, screen-reader-accessible
-widgets); pass `--cli` for a console flow.
+The Blindfold Installer is [Loadstone](https://github.com/bradjrenshaw/loadstone)
+built with `profile.json` baked in: a single-mod profile that opens straight
+to Blindfold's page (Install/Update, Uninstall, Settings, Launch game) and
+resolves packages only from the Loadstone registry. Everything it does comes
+from `../loadstone-packages/blindfold.json`, so changing what gets installed
+where is a manifest change, not installer code.
 
-What it does:
+Self-update: a single-mod build checks Blindfold's latest release and
+offers its own platform's installer when that was built from a newer
+Loadstone. The release scripts pass every installer build on hand to
+`loadstone package --installer`, so a release should be packaged with both
+`BlindfoldInstaller.exe` and `BlindfoldInstaller.dmg` in the repo root:
+build the other platform's first (`build_release_macos.sh vX.Y.Z
+--installer-only` on a Mac, or the Windows script) and copy it over. On
+macOS the app updates itself in place (installing from the new disk image)
+once it has been copied out of the disk image, typically into Applications;
+run from inside the image or from a read-only copy, it says to move it
+first.
 
-1. Finds the Balatro install (Steam registry → `libraryfolders.vdf` → default
-   path; Browse... as fallback) and validates it by `Balatro.exe`.
-2. Downloads a chosen release of `Blindfold.zip` from GitHub (or installs from
-   a local zip, or — "Install dev build" — the latest commit on main via the
-   branch zipball, remapping `src/**` and `third_party/lovely/version.dll` to
-   the same destinations) and extracts it, routed:
-   - `version.dll` → the game folder (Lovely Injector; written when missing,
-     silently skipped when identical — so updates stay elevation-free. When
-     it DIFFERS, the user is asked: an outdated Lovely crashes at launch on
-     Blindfold's `lovely.toml`, but a newer one may be serving other mods,
-     so neither direction is replaced silently)
-   - `Blindfold/**` → `%APPDATA%\Balatro\Mods` (replaced wholesale, so updates
-     never leave stale files; settings live outside and survive)
-3. Tracks the installed version in `Mods\Blindfold\version` and offers
-   Update when GitHub has a newer tag (semver compare). Dev builds are
-   recorded as `main@<sha>` and update-check against the tip of main
-   instead — "Update dev build" appears whenever main has moved, so dev
-   users can stay on that channel; the Install button ("Install release")
-   remains the way back to stable.
-4. Uninstall removes the mod folder and optionally `version.dll` (left alone
-   if other Lovely mods are present) and the user files
-   (`blindfold_settings.lua`, `blindfold_keybinds.lua`, `blindfold.log`).
+## Building
 
-If `Mods\Blindfold` is a junction — a developer install made by
-`scripts\deploy.ps1` — Install is disabled (updates come from `git pull`),
-but Uninstall still works: it removes just the link, never the checkout
-behind it, after which a release can be installed normally.
+Releases are cut by CI: in the Actions tab, run **Release** with the
+version (after stamping `src/lovely.toml` and writing `changes-latest.md`).
+`.github/workflows/release.yml` builds the zips, has Loadstone's reusable
+`build-installer.yml` build `BlindfoldInstaller.exe` and
+`BlindfoldInstaller.dmg` from the chosen Loadstone ref, packages
+`loadstone-release.json` with both, and publishes the release.
 
-Build: `cargo build --release` (or `scripts\build_release.ps1` at the repo
-root, which also assembles `Blindfold.zip`). Tests: `cargo test`.
+For local builds, both release scripts build it from a Loadstone checkout next to this repo
+(`../loadstone`, or `$LOADSTONE_REPO`):
+
+- **macOS** (`scripts/build_release_macos.sh`): Loadstone's
+  `scripts/build_macos_app.sh --profile installer/profile.json --name
+  "Blindfold Installer"` produces a universal, statically linked,
+  ad-hoc-signed `Blindfold Installer.app`, zipped as
+  `BlindfoldInstaller.dmg`. The first run builds a static wxWidgets
+  (cached under `~/Library/Caches/loadstone`).
+- **Windows** (`scripts/build_release.ps1`): Loadstone's CMake build from a
+  Visual Studio developer prompt, with static wxWidgets at
+  `$env:LOADSTONE_WX_STATIC`, `-DLOADSTONE_EMBED_PROFILE=installer\profile.json`
+  and `-DLOADSTONE_APP_NAME=BlindfoldInstaller`, giving
+  `BlindfoldInstaller.exe`.
+
+To try a profile without rebuilding, put it next to a Loadstone executable
+as `loadstone.json` (on macOS, in `Loadstone.app/Contents/MacOS/`).

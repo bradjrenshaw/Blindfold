@@ -6,10 +6,16 @@
 #   Blindfold.zip            what the installer downloads/extracts:
 #                              version.dll     (bundled Lovely Injector -> game folder)
 #                              Blindfold/**    (src\ payload -> %APPDATA%\Balatro\Mods)
-#   BlindfoldInstaller.exe   the installer itself (skip with -NoInstaller)
+#   Blindfold-loadstone.zip  the Loadstone payload, plus loadstone-release.json
+#   BlindfoldInstaller.exe   the Blindfold Installer: Loadstone with
+#                              installer\profile.json baked in (skip with
+#                              -NoInstaller). Needs a Loadstone checkout at
+#                              ..\loadstone (or $env:LOADSTONE_REPO), a Visual
+#                              Studio developer prompt, Ninja, and static
+#                              wxWidgets at $env:LOADSTONE_WX_STATIC.
 #
-# Then publish both as assets on a GitHub release, e.g.:
-#   gh release create v0.1.0 Blindfold.zip BlindfoldInstaller.exe --title v0.1.0 --notes "..."
+# Then publish them as assets on a GitHub release (the command is printed at
+# the end).
 # The installer reads releases via the GitHub API, so the tag (vX.Y.Z) is the
 # version users see and update-checks compare against.
 
@@ -40,10 +46,12 @@ $lovely = Join-Path $repo 'third_party\lovely\version.dll'
 if (-not (Test-Path $lovely)) {
     throw "Bundled Lovely missing at '$lovely'."
 }
-if (-not (Test-Path (Join-Path $src 'lib\prism.dll'))) {
-    throw "Missing src\lib\prism.dll - a release without the speech library would be log-only. Aborting."
+foreach ($lib in 'loadstar.dll', 'prism.dll') {
+    if (-not (Test-Path (Join-Path $src "lib\$lib"))) {
+        throw "Missing src\lib\$lib - a release without the speech libraries would be log-only. Aborting."
+    }
 }
-Write-Host "   Lovely + Prism present"
+Write-Host "   Lovely + Loadstar + Prism present"
 
 # --- Stamp the Lovely manifest ----------------------------------------------------
 # lovely.toml's [manifest] version is what Lovely reports for the mod. It is
@@ -62,13 +70,6 @@ if ($stamped -ne $toml) {
     Write-Host "   already $numeric"
 }
 
-# The installer exe's own version is set by hand in installer\Cargo.toml;
-# just warn when it drifts from the release being cut.
-$cargoToml = [IO.File]::ReadAllText((Join-Path $repo 'installer\Cargo.toml'))
-if ($cargoToml -notmatch ('\[package\][^\[]*version = "' + [regex]::Escape($numeric) + '"')) {
-    Write-Warning "installer\Cargo.toml package version is not $numeric - bump it (and rebuild) if the exe should match."
-}
-
 # --- Stage and zip ---------------------------------------------------------------
 Write-Step "Building Blindfold.zip"
 $stage = Join-Path $env:TEMP "blindfold_release_$PID"
@@ -77,6 +78,18 @@ New-Item -ItemType Directory -Path $stage | Out-Null
 try {
     Copy-Item $src (Join-Path $stage 'Blindfold') -Recurse
     Copy-Item $lovely (Join-Path $stage 'version.dll')
+    # macOS injector + launch scripts ride along in the same zip; each
+    # platform's installer keeps only its own files (and Loadstone routes the
+    # scripts by platform). Compress-Archive drops unix exec bits, which the
+    # installers restore on extraction.
+    foreach ($macFile in 'liblovely.dylib', 'run_lovely_macos.sh', 'steam_lovely_macos.sh') {
+        $from = Join-Path $repo "third_party\lovely\$macFile"
+        if (-not (Test-Path $from)) { throw "Bundled macOS Lovely file missing at '$from'." }
+        Copy-Item $from (Join-Path $stage $macFile)
+    }
+    if (-not (Test-Path (Join-Path $src 'lib\libloadstar.dylib'))) {
+        throw "Missing src\lib\libloadstar.dylib - macOS users would get a release without speech. Aborting."
+    }
     # Bundle the docs the in-game buttons open (<mod>/docs/*).
     $stagedDocs = Join-Path $stage 'Blindfold\docs'
     New-Item -ItemType Directory -Force -Path $stagedDocs | Out-Null
@@ -94,51 +107,78 @@ try {
     Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
     Write-Host "   $zip"
 
-    # Payload-only zip for Loadstone Mod Manager: just Blindfold/** — no bundled
-    # Lovely (the manager installs tools as dependencies and keeps them current)
-    # and no root README. Manual installs keep using Blindfold.zip above.
+    # Payload zip for Loadstone Mod Manager: Blindfold/** plus the macOS launch
+    # scripts (routed into the game folder on macOS by loadstone-packages\
+    # blindfold.json) — no bundled Lovely (the manager installs tools as
+    # dependencies and keeps them current) and no root README. Manual installs
+    # keep using Blindfold.zip above.
     $managerZip = Join-Path $repo 'Blindfold-loadstone.zip'
     if (Test-Path $managerZip) { Remove-Item $managerZip -Force }
-    Compress-Archive -Path (Join-Path $stage 'Blindfold') -DestinationPath $managerZip
+    Compress-Archive -Path @(
+        (Join-Path $stage 'Blindfold'),
+        (Join-Path $stage 'run_lovely_macos.sh'),
+        (Join-Path $stage 'steam_lovely_macos.sh')
+    ) -DestinationPath $managerZip
     Write-Host "   $managerZip"
 } finally {
     Remove-Item $stage -Recurse -Force
 }
 
+# --- Installer ---------------------------------------------------------------------
+# Built before the release manifest so `loadstone package --installer` can stamp
+# the exe's hash into it: running installers read that to offer self-update.
+$installerExe = Join-Path $repo 'BlindfoldInstaller.exe'
+if (-not $NoInstaller) {
+    Write-Step "Building the installer (Loadstone, single-mod profile)"
+    $loadstoneRepo = if ($env:LOADSTONE_REPO) { $env:LOADSTONE_REPO } else { Join-Path $repo '..\loadstone' }
+    if (-not (Test-Path (Join-Path $loadstoneRepo 'app\CMakeLists.txt'))) {
+        throw "Loadstone checkout not found at $loadstoneRepo (set LOADSTONE_REPO)."
+    }
+    if (-not $env:LOADSTONE_WX_STATIC) {
+        throw "Set LOADSTONE_WX_STATIC to your static wxWidgets build (e.g. C:\dev\wx-static); see Loadstone's README."
+    }
+    $build = Join-Path $loadstoneRepo 'build-blindfold-installer'
+    $profile = Join-Path $repo 'installer\profile.json'
+    # cmake/cargo write progress to stderr; route through cmd so PowerShell 5.1
+    # doesn't promote those lines to errors under ErrorActionPreference Stop.
+    & cmd /c "cmake -S `"$loadstoneRepo\app`" -B `"$build`" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=`"$env:LOADSTONE_WX_STATIC`" -DLOADSTONE_EMBED_PROFILE=`"$profile`" -DLOADSTONE_APP_NAME=BlindfoldInstaller 2>&1"
+    if ($LASTEXITCODE -ne 0) { throw "cmake configure failed (run from a Visual Studio developer prompt)" }
+    & cmd /c "cmake --build `"$build`" 2>&1"
+    if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
+    Copy-Item (Join-Path $build 'BlindfoldInstaller.exe') $installerExe -Force
+    Write-Host "   $installerExe"
+}
+
 # --- Loadstone release manifest ----------------------------------------------------
 # loadstone-release.json describes this release to Loadstone Mod Manager: version, the
-# manager zip's sha256, and the frozen install steps. Must be built from the
-# same zip that gets uploaded — never regenerate it against a rebuilt zip.
+# manager zip's sha256, the frozen install steps, and the installer exe. Must be
+# built from the same files that get uploaded — never regenerate it against a
+# rebuilt zip or exe.
 Write-Step "Building loadstone-release.json (Loadstone)"
 if (Get-Command loadstone -ErrorAction SilentlyContinue) {
-    & loadstone package --version $Version `
-        --manifest (Join-Path $repo 'loadstone-packages\blindfold.json') `
-        --artifact $managerZip `
-        --out (Join-Path $repo 'loadstone-release.json')
+    $packageArgs = @('package', '--version', $Version,
+        '--manifest', (Join-Path $repo 'loadstone-packages\blindfold.json'),
+        '--artifact', $managerZip,
+        '--out', (Join-Path $repo 'loadstone-release.json'))
+    if (-not $NoInstaller) { $packageArgs += @('--installer', $installerExe) }
+    # The macOS installer, built on a Mac (build_release_macos.sh --installer-only)
+    # and copied here first, so Mac installers can self-update from this release too.
+    $macInstaller = Join-Path $repo 'BlindfoldInstaller.dmg'
+    if (Test-Path $macInstaller) {
+        $packageArgs += @('--installer', $macInstaller)
+    } else {
+        Write-Warning "No BlindfoldInstaller.dmg in the repo root - this release won't offer macOS installers an update."
+    }
+    & loadstone @packageArgs
     if ($LASTEXITCODE -ne 0) { throw "loadstone package failed" }
 } else {
     Write-Warning "loadstone CLI not found on PATH - skipping loadstone-release.json (install: cargo install --path <loadstone repo>\crates\loadstone-cli)"
 }
 
-# --- Installer ---------------------------------------------------------------------
-if (-not $NoInstaller) {
-    Write-Step "Building the installer (cargo release)"
-    Push-Location (Join-Path $repo 'installer')
-    try {
-        # cargo writes progress to stderr; route through cmd so PowerShell 5.1
-        # doesn't promote those lines to errors under ErrorActionPreference Stop.
-        & cmd /c "cargo build --release 2>&1"
-        if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
-    } finally {
-        Pop-Location
-    }
-    Copy-Item (Join-Path $repo 'installer\target\release\blindfold-installer.exe') `
-              (Join-Path $repo 'BlindfoldInstaller.exe') -Force
-    Write-Host "   $(Join-Path $repo 'BlindfoldInstaller.exe')"
-}
-
 Write-Host ""
 Write-Host "Done. Publish with:"
-Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe --title $Version --notes `"...`""
+Write-Host "  gh release create $Version Blindfold.zip Blindfold-loadstone.zip loadstone-release.json BlindfoldInstaller.exe BlindfoldInstaller.dmg --title $Version --notes `"...`""
+Write-Host "  BlindfoldInstaller.dmg is built on a Mac (scripts/build_release_macos.sh $Version --installer-only)"
+Write-Host "  and copied here BEFORE this script runs, so loadstone-release.json lists it for self-update."
 Write-Host "NOTE: keep Blindfold.zip FIRST in that list. Old standalone installers"
 Write-Host "download the first .zip asset on the release; upload order preserves that."

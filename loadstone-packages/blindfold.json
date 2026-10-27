@@ -3,24 +3,50 @@
   "id": "blindfold",
   "name": "Blindfold",
   "description": "Screen-reader accessibility for Balatro: speaks hands, jokers, the shop, and blinds, with full keyboard play for blind players.",
-  "authors": ["Bradley Renshaw"],
+  "authors": [
+    "Bradley Renshaw"
+  ],
   "license": "MIT",
   "game": "balatro",
   "distributions": {
     "steam": "supported"
   },
   "dependencies": [
-    { "id": "lovely-injector" }
+    {
+      "id": "lovely-injector"
+    }
   ],
   "channels": {
-    "stable": { "source": "release" },
-    "dev": { "source": "branch", "branch": "main" }
+    "stable": {
+      "source": "release"
+    },
+    "dev": {
+      "source": "branch",
+      "branch": "main"
+    }
   },
   "install": [
     {
       "step": "extract-archive",
       "routes": [
-        { "from": "Blindfold/**", "to": "${game.mods}/Blindfold" }
+        {
+          "from": "Blindfold/**",
+          "to": "${game.mods}/Blindfold"
+        },
+        {
+          "from": "steam_lovely_macos.sh",
+          "to": "${gameDir}/steam_lovely_macos.sh",
+          "when": {
+            "platform": "macos"
+          }
+        },
+        {
+          "from": "run_lovely_macos.sh",
+          "to": "${gameDir}/run_lovely_macos.sh",
+          "when": {
+            "platform": "macos"
+          }
+        }
       ]
     },
     {
@@ -31,13 +57,37 @@
           "message": "The archive didn't contain the mod payload (no Blindfold/lovely.toml)."
         }
       ]
+    },
+    {
+      "step": "notice",
+      "when": {
+        "platform": "macos"
+      },
+      "message": "macOS: Steam does not load the Lovely Injector by itself. In Steam, right-click Balatro, choose Properties, and set Launch Options to: \"${gameDir}/steam_lovely_macos.sh\" %command%  (keep the quotes). Without it the game starts unmodded."
     }
   ],
   "sourceInstall": [
     {
       "step": "extract-archive",
       "routes": [
-        { "from": "src/**", "to": "${game.mods}/Blindfold" }
+        {
+          "from": "src/**",
+          "to": "${game.mods}/Blindfold"
+        },
+        {
+          "from": "third_party/lovely/steam_lovely_macos.sh",
+          "to": "${gameDir}/steam_lovely_macos.sh",
+          "when": {
+            "platform": "macos"
+          }
+        },
+        {
+          "from": "third_party/lovely/run_lovely_macos.sh",
+          "to": "${gameDir}/run_lovely_macos.sh",
+          "when": {
+            "platform": "macos"
+          }
+        }
       ]
     },
     {
@@ -48,6 +98,13 @@
           "message": "The download didn't contain the mod payload (no src/lovely.toml)."
         }
       ]
+    },
+    {
+      "step": "notice",
+      "when": {
+        "platform": "macos"
+      },
+      "message": "macOS: Steam does not load the Lovely Injector by itself. In Steam, right-click Balatro, choose Properties, and set Launch Options to: \"${gameDir}/steam_lovely_macos.sh\" %command%  (keep the quotes). Without it the game starts unmodded."
     }
   ],
   "userData": [
@@ -55,9 +112,70 @@
     "${userData}/blindfold_keybinds.lua",
     "${userData}/blindfold.log"
   ],
+  "launch": [
+    {
+      "step": "open-url",
+      "when": {
+        "platform": "windows",
+        "distribution": "steam"
+      },
+      "url": "steam://rungameid/${steam.appId}"
+    },
+    {
+      "step": "expect",
+      "when": {
+        "platform": "macos",
+        "distribution": "steam"
+      },
+      "checks": [
+        {
+          "processRunning": [
+            "steam",
+            "steam_osx"
+          ],
+          "message": "Steam isn't running. Balatro needs Steam to start: open Steam, sign in, then press Launch again."
+        }
+      ]
+    },
+    {
+      "step": "open-url",
+      "when": {
+        "platform": "macos",
+        "distribution": "steam",
+        "steamLaunchOptions": "steam_lovely_macos.sh"
+      },
+      "url": "steam://rungameid/${steam.appId}"
+    },
+    {
+      "step": "run",
+      "when": {
+        "platform": "macos",
+        "not": {
+          "steamLaunchOptions": "steam_lovely_macos.sh"
+        }
+      },
+      "program": "${gameDir}/Balatro.app/Contents/MacOS/love",
+      "cwd": "${gameDir}",
+      "env": {
+        "DYLD_INSERT_LIBRARIES": "${gameDir}/liblovely.dylib"
+      }
+    },
+    {
+      "step": "notice",
+      "when": {
+        "platform": "macos",
+        "not": {
+          "steamLaunchOptions": "steam_lovely_macos.sh"
+        }
+      },
+      "message": "Balatro is starting with Blindfold loaded, outside Steam: achievements work, the Steam overlay does not. To start it through Steam instead, set Balatro's Launch Options in Steam to: \"${gameDir}/steam_lovely_macos.sh\" %command%  (keep the quotes). Launch then goes through Steam."
+    }
+  ],
   "packaging": {
     "artifacts": [
-      { "file": "../Blindfold-loadstone.zip" }
+      {
+        "file": "../Blindfold-loadstone.zip"
+      }
     ]
   }
 }

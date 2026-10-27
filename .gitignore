@@ -13,9 +13,8 @@ game_src/
 # Bundled docs, copied from the repo root by deploy.ps1 / build_release.ps1
 /src/docs/
 BlindfoldInstaller.exe
-
-# Rust build output
-installer/target/
+# macOS installer bundle (scripts/build_release_macos.sh)
+BlindfoldInstaller.app/
 
 # Runtime log
 *.log
@@ -26,3 +25,4 @@ Thumbs.db
 .vs/
 .idea/
 .vscode/
+*.dmg

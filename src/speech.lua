@@ -1,52 +1,77 @@
 -- speech.lua — screen-reader output for Blindfold.
 --
--- Primary backend is Prism (https://github.com/ethindp/prism, MPL-2.0): one
--- native library abstracting over screen readers and TTS engines (NVDA, JAWS,
--- SAPI, OneCore, ...), loaded via LuaJIT FFI. Prism talks to the screen
--- readers directly — no client DLLs — and takes plain UTF-8. A log fallback
--- always runs too, so the mod is testable BEFORE prism.dll is dropped in
--- (focus changes show up in %APPDATA%/Balatro/blindfold.log).
+-- Speech goes through Loadstar (https://github.com/bradjrenshaw/loadstar),
+-- the shared native library behind all of these mods, loaded via LuaJIT FFI.
+-- Its speech layer (the lv_* surface, docs/speech-spec.md there) owns
+-- everything that used to live here: one tree of voices (screen readers
+-- through Prism on Windows, SAPI 5, AVSpeech on macOS, clipboard), a worker
+-- thread that talks to them so the game thread never blocks on a backend,
+-- and a queue with explicit interrupt semantics. A log fallback always runs
+-- too, so the mod is testable without speech (every announcement lands in
+-- blindfold.log).
 --
--- Binding ported from wotr-access's PrismHandler/PrismNative (C#): acquire
--- the best available backend once at init; prefer prism_backend_output (which
--- drives braille too where supported) and fall back to prism_backend_speak.
+-- Voice ids are uint64. Lua numbers cannot hold them exactly, so outside
+-- this file a voice is a 16-digit hex string ("auto" = the root auto, 0).
 
 local ffi = require("ffi")
 local bit = require("bit")
 
-local M = { loaded = false, prism = nil, ctx = nil, backend = nil }
+local M = { loaded = false }
 
+local is_win = ffi.os == "Windows"
+local is_osx = ffi.os == "OSX"
+
+if is_win then
+    ffi.cdef([[
+        int   MultiByteToWideChar(unsigned int cp, unsigned long flags,
+                                  const char* mb, int cbmb, wchar_t* wc, int cchwc);
+        void* LoadLibraryW(const wchar_t* path);
+    ]])
+end
+
+-- From loadstar's include/loadstar.h (speech section). Enums are uint32_t.
 ffi.cdef([[
-    int   MultiByteToWideChar(unsigned int cp, unsigned long flags,
-                              const char* mb, int cbmb, wchar_t* wc, int cchwc);
-    void* LoadLibraryW(const wchar_t* path);
+    typedef struct LsSpeech_ LsSpeech_;
+    typedef struct LsSpeechConfig {
+        const char* prism_path;
+        uint32_t    load_prism;
+        uint32_t    utterance_history;
+    } LsSpeechConfig;
+    typedef struct LsSpeechProfile {
+        uint64_t voice;
+        float    rate;
+        float    pitch;
+        float    volume;
+        uint32_t flags;
+    } LsSpeechProfile;
 
-    typedef struct prism_ctx prism_ctx;
-    typedef struct prism_backend prism_backend;
-
-    prism_ctx*     prism_init(void* config);
-    void           prism_shutdown(prism_ctx* ctx);
-    size_t         prism_registry_count(prism_ctx* ctx);
-    uint64_t       prism_registry_id_at(prism_ctx* ctx, size_t index);
-    const char*    prism_registry_name(prism_ctx* ctx, uint64_t id);
-    prism_backend* prism_registry_create(prism_ctx* ctx, uint64_t id);
-    prism_backend* prism_registry_create_best(prism_ctx* ctx);
-    int            prism_backend_initialize(prism_backend* backend);
-    void           prism_backend_free(prism_backend* backend);
-    uint64_t       prism_backend_get_features(prism_backend* backend);
-    const char*    prism_backend_name(prism_backend* backend);
-    int            prism_backend_speak(prism_backend* backend, const char* text_utf8, bool interrupt);
-    int            prism_backend_output(prism_backend* backend, const char* text_utf8, bool interrupt);
-    int            prism_backend_stop(prism_backend* backend);
+    uint32_t ls_abi_version(void);
+    uint32_t lv_create(const LsSpeechConfig* cfg, LsSpeech_** out_ctx);
+    void     lv_destroy(LsSpeech_* ctx);
+    uint32_t lv_prism_version(LsSpeech_* ctx, char* buf, size_t cap, size_t* written);
+    uint32_t lv_tree_refresh(LsSpeech_* ctx, bool* changed);
+    uint32_t lv_tree_generation(LsSpeech_* ctx, uint64_t* generation);
+    uint32_t lv_category_count(LsSpeech_* ctx, size_t* count);
+    uint32_t lv_category_at(LsSpeech_* ctx, size_t index, uint64_t* id);
+    uint32_t lv_category_key(LsSpeech_* ctx, uint64_t id, char* buf, size_t cap, size_t* written);
+    uint32_t lv_category_name(LsSpeech_* ctx, uint64_t id, char* buf, size_t cap, size_t* written);
+    uint32_t lv_voice_count(LsSpeech_* ctx, uint64_t category, size_t* count);
+    uint32_t lv_voice_at(LsSpeech_* ctx, uint64_t category, size_t index, uint64_t* id);
+    uint32_t lv_voice_name(LsSpeech_* ctx, uint64_t id, char* buf, size_t cap, size_t* written);
+    uint32_t lv_voice_language(LsSpeech_* ctx, uint64_t id, char* buf, size_t cap, size_t* written);
+    uint32_t lv_voice_features(LsSpeech_* ctx, uint64_t id, uint64_t* bits);
+    uint32_t lv_resolve(LsSpeech_* ctx, const LsSpeechProfile* profile, uint64_t required,
+                        uint64_t* voice, bool* fell_back, uint64_t* missing);
+    uint32_t lv_output(LsSpeech_* ctx, uint32_t queue, const LsSpeechProfile* profile,
+                       const char* text, uint32_t flags, uint64_t* utterance);
+    uint32_t lv_stop_all(LsSpeech_* ctx);
 ]])
 
--- prism_error values the binding reacts to (the rest just mean "didn't work").
 local OK = 0
-local ALREADY_INITIALIZED = 1
-local NOT_IMPLEMENTED = 9
--- prism_backend_get_features bits.
-local SUPPORTED_AT_RUNTIME = 0x1   -- engine actually present on this machine
-local SUPPORTS_OUTPUT = 0x20       -- backend supports prism_backend_output
+local QUEUE = 0           -- the default queue: sequential, no gap
+local INTERRUPT = 1       -- SpeakFlags::Interrupt
+-- SpeechFeature bits (all in the low 32, so LuaJIT's 32-bit bit ops suffice).
+local F_SPEAK, F_RATE, F_PITCH, F_VOLUME = 0x1, 0x40, 0x80, 0x100
 
 -- Rotate at boot: the log grows with every utterance and had reached
 -- multiple megabytes across sessions, making each synchronous append (and
@@ -88,14 +113,13 @@ end)
 local function log_line(text) return os.date("%H:%M:%S ") .. text .. "\n" end
 
 -- Synchronous append, for the rare lines that MUST be on disk before the
--- next native call (backend-switch forensics: if the switch hard-crashes,
--- this line being last in the log is the whole point).
+-- next native call.
 local function log_sync(text)
     pcall(function() love.filesystem.append("blindfold.log", log_line(text)) end)
 end
 
 local function log(text)
-    -- Lands at %APPDATA%/Balatro/blindfold.log
+    -- Lands at %APPDATA%/Balatro/blindfold.log (macOS: ~/Library/Application Support/Balatro)
     if _log_channel then
         local ok = pcall(function() _log_channel:push(log_line(text)) end)
         if ok then return end
@@ -106,175 +130,194 @@ M.log = log
 M.log_sync = log_sync
 
 -- UTF-8 Lua string -> null-terminated UTF-16LE buffer (for the wide Win32 API).
-local CP_UTF8 = 65001
-local function to_wide(s)
-    local n = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
-    if n <= 0 then return nil end
-    local buf = ffi.new("wchar_t[?]", n)
-    ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
-    return buf
+local to_wide
+if is_win then
+    local CP_UTF8 = 65001
+    to_wide = function(s)
+        local n = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, nil, 0)
+        if n <= 0 then return nil end
+        local buf = ffi.new("wchar_t[?]", n)
+        ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, -1, buf, n)
+        return buf
+    end
 end
 
--- Load Prism from the mod's lib/ folder and acquire the best available
--- backend (prism's own preference order). mod_dir is the deployed mod path.
+-- uint64 voice id <-> 16-digit hex string. 0 (the root auto) is "auto".
+local TWO32 = 4294967296
+local function id_to_hex(v)
+    if v == 0 then return "auto" end
+    local hi = tonumber(v / TWO32)
+    local lo = tonumber(v % TWO32)
+    return bit.tohex(hi, 8) .. bit.tohex(lo, 8)
+end
+local function hex_to_id(s)
+    if type(s) ~= "string" or s == "auto" or not s:match("^%x+$") or #s > 16 then
+        return ffi.new("uint64_t", 0)
+    end
+    s = ("0"):rep(16 - #s) .. s
+    local hi, lo = tonumber(s:sub(1, 8), 16), tonumber(s:sub(9), 16)
+    return ffi.new("uint64_t", hi) * TWO32 + lo
+end
+M.id_to_hex, M.hex_to_id = id_to_hex, hex_to_id
+
+-- The two-call string-out pattern: a null buffer answers BufferTooSmall with
+-- the capacity needed (terminator included), then a real buffer is filled.
+local BUFFER_TOO_SMALL = 3
+local size_out = ffi.new("size_t[1]")
+local function string_out(fn, id)
+    if M.lv[fn](M.ctx, id, nil, 0, size_out) ~= BUFFER_TOO_SMALL then return "" end
+    local cap = tonumber(size_out[0])
+    if cap <= 1 then return "" end
+    local buf = ffi.new("char[?]", cap)
+    if M.lv[fn](M.ctx, id, buf, cap, size_out) ~= OK then return "" end
+    return ffi.string(buf, tonumber(size_out[0]))
+end
+
+-- The profile every utterance speaks through: the user's voice choice plus
+-- rate/pitch/volume (0..1, 0.5 = the voice's default for rate and pitch).
+-- Leaves without a feature ignore that field.
+local profile = ffi.new("LsSpeechProfile")
+profile.voice, profile.rate, profile.pitch, profile.volume = 0, 0.5, 0.5, 1.0
+
+-- Load Loadstar from the mod's lib/ folder and open a speech context. Cheap
+-- and silent: the library probes its backends on its own worker, and text
+-- spoken before that finishes is queued until it has.
 function M.init(mod_dir)
-    local lib_dir = (mod_dir .. "/lib"):gsub("/", "\\")
+    local lib_dir = mod_dir .. "/lib"
     local ok, err = pcall(function()
-        -- ffi.load routes through the ANSI LoadLibraryA, which garbles
-        -- non-ASCII install paths (C:\Users\Usuário\... -> "module not
-        -- found"). Load the DLL ourselves through the wide API; ffi.load by
-        -- bare name then binds to the ALREADY-LOADED module (LoadLibrary
-        -- resolves loaded modules by name before searching disk).
-        local wide = to_wide(lib_dir .. "\\prism.dll")
-        assert(wide and ffi.C.LoadLibraryW(wide) ~= nil,
-            "LoadLibraryW failed for " .. lib_dir .. "\\prism.dll")
-        M.prism = ffi.load("prism")
-        M.ctx = M.prism.prism_init(nil)
-        assert(M.ctx ~= nil, "prism_init returned null")
-        M.backend = M.prism.prism_registry_create_best(M.ctx)
-        assert(M.backend ~= nil, "no usable speech backend on this machine")
-        M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(M.backend)) or 0,
-            SUPPORTS_OUTPUT) ~= 0
-        M.current_backend = "auto"
+        if is_win then
+            local dir = lib_dir:gsub("/", "\\")
+            -- ffi.load routes through the ANSI LoadLibraryA, which garbles
+            -- non-ASCII install paths (C:\Users\Usuário\... -> "module not
+            -- found"). Load the DLL ourselves through the wide API; ffi.load by
+            -- bare name then binds to the ALREADY-LOADED module (LoadLibrary
+            -- resolves loaded modules by name before searching disk).
+            local wide = to_wide(dir .. "\\loadstar.dll")
+            assert(wide and ffi.C.LoadLibraryW(wide) ~= nil,
+                "LoadLibraryW failed for " .. dir .. "\\loadstar.dll")
+            M.lv = ffi.load("loadstar")
+        elseif is_osx then
+            M.lv = ffi.load(lib_dir .. "/libloadstar.dylib")
+        else
+            error("Unsupported operating system: " .. tostring(ffi.os))
+        end
+
+        -- Prism (Windows screen readers) ships beside it. Loadstar takes the
+        -- path as UTF-8 and loads it through the wide API itself.
+        local cfg = ffi.new("LsSpeechConfig")
+        local prism = is_win and (lib_dir .. "/prism.dll"):gsub("/", "\\") or nil
+        cfg.prism_path = prism
+        cfg.load_prism = prism and 1 or 0
+        M._cfg_keepalive = { cfg, prism }   -- the C string points into `prism`
+        local out = ffi.new("LsSpeech_*[1]")
+        local st = M.lv.lv_create(cfg, out)
+        assert(st == OK and out[0] ~= nil, "lv_create failed (status " .. tostring(st) .. ")")
+        M.ctx = out[0]
         M.loaded = true
     end)
     if M.loaded then
-        local name = M.prism.prism_backend_name(M.backend)
-        log("Prism loaded (backend: " .. (name ~= nil and ffi.string(name) or "unknown") .. ").")
+        local prism = ""
+        pcall(function()
+            local buf = ffi.new("char[512]")
+            if M.lv.lv_prism_version(M.ctx, buf, 512, size_out) == OK then
+                prism = ffi.string(buf, math.min(tonumber(size_out[0]), 511))
+            end
+        end)
+        log("Loadstar loaded (ABI " .. tostring(M.lv.ls_abi_version()) .. ")" ..
+            (prism ~= "" and (", Prism " .. prism) or ", no Prism") .. ".")
     else
-        log("Prism NOT loaded (" .. tostring(err) ..
-            "). Drop the x64 prism.dll into " .. lib_dir ..
+        log("Loadstar NOT loaded (" .. tostring(err) .. "). Expected " ..
+            (is_win and "loadstar.dll" or "libloadstar.dylib") .. " in " .. lib_dir ..
             " . Running with log output only.")
     end
     return M.loaded
 end
 
--- Adopt a freshly-acquired backend as the active one and cache its features
--- (the query does real work per call on some backends).
-local function adopt(backend, requested)
-    M.backend = backend
-    M.current_backend = requested
-    M.supports_output = bit.band(tonumber(M.prism.prism_backend_get_features(backend)) or 0,
-        SUPPORTS_OUTPUT) ~= 0
-    local n = M.prism.prism_backend_name(backend)
-    log("Prism backend: " .. (n ~= nil and ffi.string(n) or "unknown")
-        .. " (requested " .. tostring(requested) .. ")")
+-- Adopt the user's settings: { voice = hex|"auto", rate, pitch, volume (0..1) }.
+-- Missing fields keep their current value.
+function M.set_profile(cfg)
+    if type(cfg) ~= "table" then return end
+    if cfg.voice ~= nil then profile.voice = hex_to_id(cfg.voice) end
+    local function unit(v) return math.max(0, math.min(1, v)) end
+    if type(cfg.rate) == "number" then profile.rate = unit(cfg.rate) end
+    if type(cfg.pitch) == "number" then profile.pitch = unit(cfg.pitch) end
+    if type(cfg.volume) == "number" then profile.volume = unit(cfg.volume) end
 end
 
--- Backends we refuse to touch. UIA sat here briefly after a switch-away
--- crash, but the identical sequence survives in a windowed harness outside
--- the game (2026-07) — guilt unproven, so it's back for diagnosis now that
--- switches never free the outgoing backend. The pre-switch log line below
--- names the culprit if a switch ever kills the process again.
-local BLOCKED = {}
+-- Ask the library to re-probe (a screen reader started after boot). The
+-- result lands asynchronously; the Voice screen calls this as it opens.
+function M.refresh()
+    if not M.loaded then return end
+    local changed = ffi.new("bool[1]")
+    M.lv.lv_tree_refresh(M.ctx, changed)
+end
 
--- Names of the backends actually usable on this machine (engine present),
--- enumerated once — the registry probe costs a native round-trip per entry.
-function M.backends()
-    -- Before init there is nothing to enumerate — and the miss must NOT be
-    -- cached, or a call that lands too early (module load time) would pin the
-    -- list empty forever.
+-- Every voice in the tree, in the library's category order:
+-- { {id=hex, name=, language=, category=key, category_name=}, ... }.
+-- Empty until the first probe has published.
+function M.voices()
     if not M.loaded then return {} end
-    if M._backends then return M._backends end
-    local names = {}
-    do
-        pcall(function()
-            local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
-            for i = 0, count - 1 do
-                local id = M.prism.prism_registry_id_at(M.ctx, i)
-                local name = M.prism.prism_registry_name(M.ctx, id)
-                if name ~= nil and not BLOCKED[ffi.string(name)] then
-                    local b = M.prism.prism_registry_create(M.ctx, id)
-                    if b ~= nil then
-                        local feat = tonumber(M.prism.prism_backend_get_features(b)) or 0
-                        if bit.band(feat, SUPPORTED_AT_RUNTIME) ~= 0 then
-                            names[#names + 1] = ffi.string(name)
+    local list = {}
+    pcall(function()
+        local n, cid, vid = ffi.new("size_t[1]"), ffi.new("uint64_t[1]"), ffi.new("uint64_t[1]")
+        if M.lv.lv_category_count(M.ctx, n) ~= OK then return end
+        for ci = 0, tonumber(n[0]) - 1 do
+            if M.lv.lv_category_at(M.ctx, ci, cid) == OK then
+                local cat = cid[0]
+                local key = string_out("lv_category_key", cat)
+                local cat_name = string_out("lv_category_name", cat)
+                local vn = ffi.new("size_t[1]")
+                if M.lv.lv_voice_count(M.ctx, cat, vn) == OK then
+                    for vi = 0, tonumber(vn[0]) - 1 do
+                        if M.lv.lv_voice_at(M.ctx, cat, vi, vid) == OK then
+                            local v = vid[0]
+                            list[#list + 1] = {
+                                id = id_to_hex(v),
+                                name = string_out("lv_voice_name", v),
+                                language = string_out("lv_voice_language", v),
+                                category = key,
+                                category_name = cat_name,
+                            }
                         end
-                        M.prism.prism_backend_free(b)
                     end
                 end
             end
-        end)
-    end
-    M._backends = names
-    -- Forensics: the full lineup in registry order, once per session, so a
-    -- later crash mid-switch can be placed against it.
-    log("Prism backends detected: " .. (#names > 0 and table.concat(names, ", ") or "(none)"))
-    return names
-end
-
--- Build a ready-to-use backend for the preference: the named backend if it can
--- be acquired (create + initialize), otherwise the best available. nil only
--- when nothing at all works. Does not touch M.backend.
-local function acquire(name)
-    if name and BLOCKED[name] then
-        -- A stale saved choice from before the blocklist: never acquire it.
-        log("Prism backend '" .. name .. "' is blocked (crashes in-game); using best available.")
-        name = "auto"
-    end
-    if name and name ~= "auto" then
-        local count = tonumber(M.prism.prism_registry_count(M.ctx)) or 0
-        for i = 0, count - 1 do
-            local id = M.prism.prism_registry_id_at(M.ctx, i)
-            local n = M.prism.prism_registry_name(M.ctx, id)
-            if n ~= nil and ffi.string(n) == name then
-                local b = M.prism.prism_registry_create(M.ctx, id)
-                if b ~= nil then
-                    local e = M.prism.prism_backend_initialize(b)
-                    if e == OK or e == ALREADY_INITIALIZED then return b end
-                    M.prism.prism_backend_free(b)
-                end
-                break
-            end
         end
-        log("Prism backend '" .. name .. "' unavailable; falling back to best available.")
-    end
-    local b = M.prism.prism_registry_create_best(M.ctx)
-    if b ~= nil then return b end
-    return nil
-end
-
--- Switch backends (the settings menu's Speech backend cycle; "auto" = best
--- available). Acquire the replacement BEFORE tearing down the current backend,
--- so a choice that can't be acquired never leaves us silent — never strand a
--- blind user with no voice (wotr-access rule).
-function M.set_backend(name)
-    if not M.loaded then return end
-    name = name or "auto"
-    if name == M.current_backend then return end
-    -- Logged SYNCHRONOUSLY before any native call: if a switch hard-crashes
-    -- the game, this is the last line in the log and names the backend being
-    -- switched TO (and the live one being switched away from).
-    log_sync("Prism: switching to '" .. name .. "' (from '" .. tostring(M.current_backend) .. "')")
-    pcall(function()
-        local replacement = acquire(name)
-        if replacement == nil then
-            log("Prism: nothing acquirable for '" .. name .. "'; keeping current backend.")
-            return
-        end
-        log_sync("Prism: acquired '" .. name .. "', stopping the old backend")
-        if M.backend ~= nil and replacement ~= M.backend then
-            M.prism.prism_backend_stop(M.backend)
-            -- Deliberately NEVER freed at runtime. A backend switch crashed
-            -- the game between acquire/stop/free, and the identical sequence
-            -- survives in a windowed harness outside it — so rather than
-            -- guess which native teardown misbehaves inside LOVE, retire the
-            -- handle unfreed (a stopped backend is a few KB; process exit
-            -- reclaims all). Never trade a blind user's voice for tidy
-            -- memory. Probe frees in backends()/acquire() stay: those
-            -- backends were never initialized/started.
-            M._retired = M._retired or {}
-            M._retired[#M._retired + 1] = M.backend
-        end
-        adopt(replacement, name)
     end)
+    return list
 end
 
--- Speak text. interrupt defaults to false to honor the SayTheSpire2 preference
--- of never cutting off in-progress speech; pass true explicitly to override.
--- Lag forensics: a prism call runs synchronously on the game's main thread —
--- when the backend (NVDA controller, SAPI, ...) stalls, the window and the
--- screen reader hitch TOGETHER. Log any call beyond 30ms with its duration.
+-- Display name for a voice id (hex), absent ones included; "" if unknown.
+function M.voice_name(hex)
+    if not M.loaded then return "" end
+    local ok, name = pcall(string_out, "lv_voice_name", hex_to_id(hex))
+    return ok and name or ""
+end
+
+-- The voice that speaks right now for the current profile (after fallback),
+-- as { id=hex, name=, fell_back=bool, rate=, pitch=, volume= (adjustable?) },
+-- or nil when nothing can speak.
+function M.resolved()
+    if not M.loaded then return nil end
+    local voice, fell, missing = ffi.new("uint64_t[1]"), ffi.new("bool[1]"), ffi.new("uint64_t[1]")
+    if M.lv.lv_resolve(M.ctx, profile, F_SPEAK, voice, fell, missing) ~= OK or voice[0] == 0 then
+        return nil
+    end
+    local bits = ffi.new("uint64_t[1]")
+    M.lv.lv_voice_features(M.ctx, voice[0], bits)
+    local f = tonumber(bits[0] % TWO32)
+    return {
+        id = id_to_hex(voice[0]),
+        name = string_out("lv_voice_name", voice[0]),
+        fell_back = fell[0],
+        rate = bit.band(f, F_RATE) ~= 0,
+        pitch = bit.band(f, F_PITCH) ~= 0,
+        volume = bit.band(f, F_VOLUME) ~= 0,
+    }
+end
+
+-- Game-thread cost forensics: an lv_* call only resolves and enqueues
+-- (microseconds); anything past 30ms would mean the library regressed.
 local function timer_now()
     local ok, t = pcall(function() return love.timer.getTime() end)
     return ok and t or nil
@@ -283,37 +326,33 @@ local function log_slow_call(t0, what, detail)
     if not t0 then return end
     local t1 = timer_now()
     if t1 and (t1 - t0) > 0.03 then
-        log(string.format("SLOW prism %s: %dms%s", what,
+        log(string.format("SLOW loadstar %s: %dms%s", what,
             math.floor((t1 - t0) * 1000 + 0.5), detail or ""))
     end
 end
 
+-- Speak text (speech + braille where the voice has both). interrupt defaults
+-- to false to honor the SayTheSpire2 preference of never cutting off
+-- in-progress speech; pass true to cut the queue and speak this instead.
+local utterance = ffi.new("uint64_t[1]")
 function M.say(text, interrupt)
     if type(text) ~= "string" or text == "" then return end
     log(text)
     if not M.loaded then return end
-    local cut = interrupt == true
     local t0 = timer_now()
-    pcall(function()
-        -- output drives speech AND braille where the backend supports it;
-        -- anything but a clean OK falls through to plain speak so we still
-        -- produce audio (mirrors the wotr-access handler).
-        if M.supports_output then
-            local e = M.prism.prism_backend_output(M.backend, text, cut)
-            if e == OK then return end
-            if e ~= NOT_IMPLEMENTED then
-                log("prism output error " .. tostring(e) .. ", falling back to speak")
-            end
-        end
-        M.prism.prism_backend_speak(M.backend, text, cut)
-    end)
-    log_slow_call(t0, "speak", " (" .. #text .. " chars)")
+    local ok, st = pcall(M.lv.lv_output, M.ctx, QUEUE, profile, text,
+        interrupt == true and INTERRUPT or 0, utterance)
+    if not ok or st ~= OK then
+        log("loadstar output failed (" .. tostring(ok and st or st) .. ")")
+    end
+    log_slow_call(t0, "output", " (" .. #text .. " chars)")
 end
 
+-- Cut what is speaking and drop everything queued.
 function M.silence()
     if not M.loaded then return end
     local t0 = timer_now()
-    pcall(function() M.prism.prism_backend_stop(M.backend) end)
+    pcall(M.lv.lv_stop_all, M.ctx)
     log_slow_call(t0, "stop")
 end
 

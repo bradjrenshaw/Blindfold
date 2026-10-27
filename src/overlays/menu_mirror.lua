@@ -317,7 +317,14 @@ local function vtable_for(node)
     if ftype == "slider" then
         vt.on_horizontal_adjust = function(ctx, sign, large)
             pcall(function()
-                G.FUNCS.slider_descreet(node.children[1], sign * (large and 0.05 or 0.01))
+                local bar = node.children[1]
+                G.FUNCS.slider_descreet(bar, sign * (large and 0.05 or 0.01))
+                -- slider_descreet moves the value but, unlike a mouse drag,
+                -- never fires the slider's callback; sliders that persist or
+                -- apply their value (the mod's own) need it.
+                local rt = bar and bar.children and bar.children[1]
+                rt = rt and rt.config and rt.config.ref_table
+                if rt and rt.callback and G.FUNCS[rt.callback] then G.FUNCS[rt.callback](rt) end
             end)
             speak_value(ctx, node)
         end
