@@ -23,6 +23,7 @@ marker; `-Disable` removes it. The server listens on `http://127.0.0.1:8772`:
 | `GET /health` | liveness (answered off the main thread) |
 | `POST /reload` | hot reload: re-run `core.lua` and the whole module tree from disk |
 | `GET /speech?since=N` | spoken lines since cursor N; the reply starts with `cursor: M` |
+| `POST /mute` | body `on` / `off` / empty to toggle: stop voicing speech (still logged and in `/speech`); `GET` reports. Persists across restarts until turned off; `run_game.ps1 -Mute` starts muted, a launch without it clears the mute |
 | `GET /module` | generation number and hooked-function count |
 | `POST /eval` | Lua in the body; returns an expression's value or what a chunk `print`s. `BA` = live Blindfold, `H` = host, `dump(v, depth)`; REPL globals persist |
 | `GET /state` | stage, state, menu, active owned overlay, Steamodded present, and render health (BLACK = the game is drawing nothing) |
@@ -31,7 +32,8 @@ marker; `-Disable` removes it. The server listens on `http://127.0.0.1:8772`:
 | `GET /screenshot` | saves the game's render canvas as a PNG and returns its path; works with the window minimized or unfocused (no CRT effect) |
 
 Loop: edit `src\...`, `curl -X POST 127.0.0.1:8772/reload`, drive with
-`/key`, read `/speech` and `/overlay`.
+`/key`, read `/speech` and `/overlay`. Mute (`POST /mute on`) while driving
+the game so the user's screen reader isn't flooded; unmute when handing back.
 
 ### Host vs generation
 - **Host** (survives reloads; changes need a game restart): `host.lua`,

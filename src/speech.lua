@@ -341,6 +341,9 @@ function M.say(text, interrupt)
     -- Dev server tap (GET /speech): what was spoken, for a driver that can't
     -- hear it. Set only while the dev server runs.
     if M.observer then pcall(M.observer, text) end
+    -- Dev server mute (POST /mute): logged and tapped, but not voiced, so a
+    -- driver can test without speaking over the user.
+    if M.muted then return end
     if not M.loaded then return end
     local t0 = timer_now()
     local ok, st = pcall(M.lv.lv_output, M.ctx, QUEUE, profile, text,

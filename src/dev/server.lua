@@ -9,6 +9,8 @@
 --   GET  /health            liveness (answered on the socket thread itself)
 --   POST /reload            hot reload: re-run core.lua + the module tree
 --   GET  /speech?since=N    lines spoken since cursor N ("cursor: M" first)
+--   POST /mute              body on / off / empty (toggle): stop voicing
+--                           speech (still logged and in /speech); GET reports
 --   GET  /module            generation + hook count
 -- Everything else comes from the current generation's dev/routes.lua
 -- (BA.dev_routes), so the inspection routes reload with the rest of the mod.
@@ -19,6 +21,7 @@ local S = { enabled = false, port = nil }
 local DEFAULT_PORT = 8772     -- wotr-access 8771, Tangledeep 8770
 local REQ_CHAN = "blindfold_dev_req"
 local SPEECH_CAP = 500
+local MUTE_MARKER = "blindfold_dev.mute"
 
 local lines, base = {}, 0     -- speech ring buffer; base = index of lines[1]
 
@@ -55,7 +58,12 @@ function S.start(host, speech_mod, log)
     end)
     if not ok then log("dev server: thread failed: " .. tostring(err)); return false end
     S.host, S.log = host, log
+    S.speech = speech_mod
     speech_mod.observer = tap
+    -- A mute left on by POST /mute (or run_game.ps1 -Mute) survives restarts
+    -- through its marker; a launch without -Mute clears it.
+    local okm, muted = pcall(love.filesystem.getInfo, MUTE_MARKER)
+    speech_mod.muted = (okm and muted) and true or false
     S.enabled = true
     log("dev server starting on 127.0.0.1:" .. S.port .. " (gate: " .. how .. ")")
     return true
@@ -74,6 +82,23 @@ local function handle(method, path, body)
         return S.host.reload()
     end
     if route == "/speech" then return speech_since(query.since) end
+    if route == "/mute" then
+        local sp = S.speech
+        if not sp then return "[error] no speech module\n" end
+        if method == "POST" then
+            local want = (body or ""):match("^%s*(%a*)"):lower()
+            if want == "on" then sp.muted = true
+            elseif want == "off" then sp.muted = false
+            else sp.muted = not sp.muted end
+            if sp.muted then
+                pcall(love.filesystem.write, MUTE_MARKER, "1")
+                pcall(sp.silence)
+            else
+                pcall(love.filesystem.remove, MUTE_MARKER)
+            end
+        end
+        return "speech " .. (sp.muted and "muted" or "on") .. "\n"
+    end
     if route == "/module" then
         local n = 0
         for _, byk in pairs(S.host.hooks) do for _ in pairs(byk) do n = n + 1 end end
@@ -86,7 +111,7 @@ local function handle(method, path, body)
     local names = {}
     for k in pairs(routes or {}) do names[#names + 1] = k end
     table.sort(names)
-    return "[404] " .. method .. " " .. route .. "\nroutes: /health /reload /speech /module "
+    return "[404] " .. method .. " " .. route .. "\nroutes: /health /reload /speech /mute /module "
         .. table.concat(names, " ") .. "\n"
 end
 

@@ -11,17 +11,23 @@
 #   -NoLaunch : only drop the marker (the next launch, however started, has
 #               the dev server)
 #   -Disable  : remove the marker and exit
+#   -Mute     : start with speech muted (POST /mute off to hear it again);
+#               without it, any leftover mute is cleared, so a normal
+#               launch always speaks
 param(
     [switch]$NoLaunch,
-    [switch]$Disable
+    [switch]$Disable,
+    [switch]$Mute
 )
 
 $ErrorActionPreference = 'Stop'
 $Port = 8772
 $marker = Join-Path $env:APPDATA 'Balatro\blindfold_dev.enable'
+$muteMarker = Join-Path $env:APPDATA 'Balatro\blindfold_dev.mute'
 
 if ($Disable) {
     Remove-Item $marker -ErrorAction SilentlyContinue
+    Remove-Item $muteMarker -ErrorAction SilentlyContinue
     Write-Host "Dev server disabled (marker removed)."
     return
 }
@@ -29,6 +35,12 @@ if ($Disable) {
 New-Item -ItemType Directory -Force -Path (Split-Path $marker) | Out-Null
 Set-Content -Path $marker -Value '1' -Encoding Ascii
 Write-Host "Dev server enabled: $marker"
+if ($Mute) {
+    Set-Content -Path $muteMarker -Value '1' -Encoding Ascii
+    Write-Host "Speech muted (POST /mute off to hear it)."
+} else {
+    Remove-Item $muteMarker -ErrorAction SilentlyContinue
+}
 if ($NoLaunch) { return }
 
 if (Get-Process -Name Balatro -ErrorAction SilentlyContinue) {
