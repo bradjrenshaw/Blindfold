@@ -1395,6 +1395,7 @@ function ProxyCashOut:fill_buffer(buf)
             if d then buf:add(d) end
         end
     end
+    if Cashout.hidden_text then buf:add(Cashout.hidden_text) end
 end
 
 return {

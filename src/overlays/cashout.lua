@@ -76,6 +76,11 @@ function M:build(b)
             if ok and s then ctx.message:fragment(s) end
         end)
     end
+    if Cashout.hidden_text then
+        b:add_label(Id.structural("row:hidden"), function(ctx)
+            ctx.message:fragment(Cashout.hidden_text)
+        end)
+    end
 
     if btn then b:set_start(Id.structural("btn:cash_out")) end
 end
