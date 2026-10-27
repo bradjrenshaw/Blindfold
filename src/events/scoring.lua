@@ -392,6 +392,12 @@ function M.on_hand_text(config, vals)
         M._last_hand = vals.handname
         if setting("scoring.hand_preview", true) then speak(vals.handname) end
     end
+    -- A level CHANGE shown as text rather than a number: Black Hole's "All
+    -- Hands" panel ends on level "+1" (its per-hand level-ups are instant
+    -- and silent), and mods do the same for group upgrades.
+    if type(vals.level) == "string" and vals.level:match("^[%+%-]%d") then
+        speak(loc("RUNINFO.COL_LEVEL") .. " " .. vals.level)
+    end
     if vals.chip_total ~= nil and vals.chip_total ~= M._last_score then
         -- Final score. The same call resets chips/mult to 0, so report the
         -- running totals captured during the count-up: "X chips times Y mult

@@ -2,7 +2,8 @@
 -- MORE confusing here (Brad): the title screen's spatial layout is its mental
 -- model, so this rebuilds it as explicit rows:
 --   row 1: the big title card (clickable)
---   row 2: Play, Options, Quit, Collection
+--   row 2: Play, Options, Quit, Collection, Mods (Steamodded's, drawn last
+--          in the same bar)
 --   row 3: Profile, Discord, Twitter, Language (whichever exist)
 -- Control discovery and per-control behavior come from the menu mirror
 -- (gather / vtable_for); only the layout is bespoke. Unrecognized controls
@@ -28,6 +29,7 @@ local BUTTON_SLOTS = {
     options = "options", quit = "quit", your_collection = "collection",
     go_to_discord = "discord", go_to_twitter = "twitter",
     language_selection = "language",
+    mods_button = "mods",
 }
 
 local function slot_for(n)
@@ -83,6 +85,7 @@ function M:build(b)
         { node = slots.options, key = "options" },
         { node = slots.quit, key = "quit" },
         { node = slots.collection, key = "collection" },
+        { node = slots.mods, key = "mods" },
     })
     row({
         { node = slots.profile, key = "profile" },

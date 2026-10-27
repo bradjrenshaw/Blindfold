@@ -80,7 +80,10 @@ function M.on_row(config)
     -- nonzero amount to be worth a line.
     local amount = Num.to_n(d)
     if n == "blind1" then
-        if (not amount or amount == 0) and not config.saved then return end
+        -- Always drawn, reward or not (a stake whose small blind pays
+        -- nothing still shows the beaten blind's row): "Blind reward, 0
+        -- dollars" — or Mr. Bones' save.
+        if not amount and not config.saved then return end
     elseif not amount or amount == 0 then
         return
     end
