@@ -495,8 +495,23 @@ end
 -- position toggle). Description guards face-down cards via card_description
 -- (no identity leak; position still reads).
 -- index/total override the position's unit (see card_position).
+-- The JokerDisplay mod's live readout under a joker, spoken with the
+-- player's scoring formats ("+15 mult"); nil without JokerDisplay. Loaded
+-- lazily: events.scoring reaches this module through ui.factory.
+function Proxy.joker_display_text(card)
+    local okj, JD = pcall(require, "ui.joker_display")
+    if not okj or type(JD) ~= "table" then return nil end
+    local oks, Scoring = pcall(require, "events.scoring")
+    local fmt = oks and type(Scoring) == "table" and Scoring.format_effect or nil
+    local ok, s = pcall(JD.text, card, fmt)
+    return ok and s or nil
+end
+
 function Proxy.card_deferred(card, index, total)
     local parts = {}
+    -- What's drawn under the joker right now (JokerDisplay), first.
+    local jd = Proxy.joker_display_text(card)
+    if jd then parts[#parts + 1] = jd end
     if Proxy.announce_enabled("description") then
         local d = Proxy.card_description(card)
         if d then parts[#parts + 1] = d end
