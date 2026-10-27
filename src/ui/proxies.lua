@@ -120,6 +120,17 @@ local CYCLE_VALUE_FORMAT = {
         end
         return tostring(v)
     end,
+    -- The deck selectors' options are internal names (vanilla "Red Deck",
+    -- English) or keys (Steamodded "b_red"); speak what the panel renders:
+    -- the viewed deck's localized name, or "Locked" (Back:get_name).
+    change_viewed_back = function(v)
+        local back = G and G.GAME and G.GAME.viewed_back
+        if back and back.get_name then
+            local ok, name = pcall(back.get_name, back)
+            if ok and type(name) == "string" and name ~= "" then return name end
+        end
+        return tostring(v)
+    end,
 }
 
 -- A cycle's current option value, read from its args table (current_option_val).
@@ -205,19 +216,11 @@ function Proxy.cycle_description(node)
     return fn and fn() or nil
 end
 
--- Whether the focused selector's current option is locked. A locked deck still
--- cycles into view but shows its unlock requirement instead of its effect, so we
--- flag the locked state for context. (Stakes on the selector are all
--- selectable, so there's nothing to flag.)
-local function deck_locked()
-    local back = G and G.GAME and G.GAME.viewed_back
-    local center = back and back.effect and back.effect.center
-    return center ~= nil and not center.unlocked
-end
-
-local CYCLE_LOCKED = {
-    change_viewed_back = deck_locked,
-}
+-- Whether the focused selector's current option is locked, for selectors
+-- whose VALUE doesn't already say so. (A locked deck needs no flag: its
+-- value is the panel's own "Locked" — see CYCLE_VALUE_FORMAT. Stakes on the
+-- selector are all selectable.)
+local CYCLE_LOCKED = {}
 
 function Proxy.cycle_locked(node)
     local args
@@ -921,6 +924,28 @@ ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
 ProxyPlayingCard.announcement_order = { "label", "sel_pos", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
+
+-- The sticker a card wears, by name: Steamodded's stickers (eternal,
+-- perishable, rental, pinned and any a mod adds) in their registration
+-- order. Stickers set card.ability[key], except pinned (card.pinned), which
+-- also has no loc name of its own — it reads as the pinned status.
+function Proxy.sticker_name(node)
+    local keys = type(SMODS) == "table" and SMODS.Sticker and SMODS.Sticker.obj_buffer
+    if type(keys) ~= "table" then return nil end
+    for _, k in ipairs(keys) do
+        local has = (node.ability and node.ability[k]) or (k == "pinned" and node.pinned)
+        if has then
+            local ok, name = pcall(localize, { type = "name_text", set = "Other", key = k })
+            if ok and type(name) == "string" and name ~= "" and name ~= "ERROR" then
+                return Message.raw(name)
+            end
+            if k == "pinned" then return Message.localized("CARD.PINNED") end
+            return Message.raw(k)
+        end
+    end
+    return nil
+end
+
 -- Collection modifier cards (the seals / enhancements screens) are built on
 -- the EMPTY card front — no rank or suit renders. Their identity is the
 -- modifier itself: the enhancement center's name, the seal, or the edition.
@@ -961,6 +986,14 @@ function ProxyPlayingCard:get_label()
     if fl then return fl end
     local base = node.base
     if not base then return nil end
+    -- A blank card (no rank / suit) is a stand-in: Steamodded's Stickers
+    -- collection shows each sticker on one. Name the sticker it wears.
+    if not base.suit then
+        local sticker = Proxy.sticker_name(node)
+        if sticker then return sticker end
+        local name = Proxy.center_name(node.config and node.config.center)
+        return Message.maybe_raw(name and tostring(name))
+    end
     local rank = Proxy.loc_str(base.value, "ranks") or tostring(base.value or "")
     local suit = Proxy.loc_str(base.suit, "suits_plural") or tostring(base.suit or "")
     return Message.localized("CARD.PLAYING", { rank = rank, suit = suit })

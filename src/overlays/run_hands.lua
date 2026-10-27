@@ -97,16 +97,44 @@ local function inside_hands_row(node)
     return false
 end
 
+-- The play count a row draws after its "#": the run's count in Run Info,
+-- the profile's lifetime count in Steamodded's Poker Hands collection. A
+-- plain text node (vanilla) or a DynaText (Steamodded).
+local function row_played(row)
+    local found, after_hash = nil, false
+    local function walk(n, depth)
+        if found or type(n) ~= "table" or depth > 10 then return end
+        local c = n.config
+        if c then
+            if c.text == "  #" then
+                after_hash = true
+            elseif after_hash then
+                local t = c.text
+                if t == nil and type(c.object) == "table" then t = c.object.string end
+                if t ~= nil and tostring(t):match("%S") then found = tostring(t); return end
+            end
+        end
+        if n.children then each_child(n.children, function(ch) walk(ch, depth + 1) end) end
+    end
+    walk(row, 0)
+    return found
+end
+
 -- The hand keys of the rows on screen, in render order (each row's tooltip
--- filler carries its hand key).
+-- filler carries its hand key), with each row's drawn play count.
+local played_shown = {}
 local function rendered_hands(root)
     local out = {}
+    played_shown = {}
     local function walk(node, depth)
         if type(node) ~= "table" or depth > 30 then return end
         if is_hands_row(node) then
             local tip = node.config.on_demand_tooltip
             local key = tip and tip.filler and tip.filler.args
-            if type(key) == "string" then out[#out + 1] = key end
+            if type(key) == "string" then
+                out[#out + 1] = key
+                played_shown[key] = row_played(node)
+            end
             return
         end
         local obj = node.config and node.config.object
@@ -204,7 +232,7 @@ function M:build(b)
                 (game_loc("k_level_prefix") or "lvl.") .. tostring(h.level),
                 tostring(Num.fmt(h.chips)),
                 tostring(Num.fmt(h.mult)),
-                tostring(h.played),
+                played_shown[name] or tostring(h.played),
                 hand_description(name) or "",
             }
             local cells = {}
