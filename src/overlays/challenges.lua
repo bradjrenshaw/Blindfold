@@ -119,82 +119,10 @@ function M:sub_identity()
     return tostring(overlay()) .. "|" .. tostring(part_box("challenge_area"))
 end
 
--- A text panel pushed by the mirror's collect (a controls-free nested box:
--- the rules/restrictions tab content).
-local function is_text_root(node)
-    local c = node.config
-    return node.UIT and G.UIT and node.UIT == G.UIT.ROOT
-        and not (c and (c.button or c.focus_args))
-        and not (node.is and Card and node:is(Card))
-end
-
--- Flatten a text panel into its rendered rows: EVERY visually distinct line
--- is its own item — the "Custom Rules" / "Game Modifiers" headers, then each
--- rule, each modifier (Brad). A node is one LINE when no deeper row beneath
--- it carries text; colored fragments within a row stay joined.
-local function kids_of(n)
-    local kids, maxn = {}, 0
-    for k in pairs(n.children or {}) do
-        if type(k) == "number" and k > maxn then maxn = k end
-    end
-    for k = 1, maxn do
-        if n.children[k] ~= nil then kids[#kids + 1] = n.children[k] end
-    end
-    for k, v in pairs(n.children or {}) do
-        if type(k) ~= "number" then kids[#kids + 1] = v end
-    end
-    return kids
-end
-
-local function has_text(n, depth)
-    if type(n) ~= "table" or (depth or 0) > 8 then return false end
-    local c = n.config
-    if c and n.UIT == G.UIT.T
-        and (type(c.text) == "string" or type(c.text) == "number") then
-        return true
-    end
-    if c and type(c.object) == "table" and type(c.object.string) == "string" then
-        return true
-    end
-    for _, ch in ipairs(kids_of(n)) do
-        if has_text(ch, (depth or 0) + 1) then return true end
-    end
-    return false
-end
-
-local function has_deeper_text_row(n, depth)
-    if type(n) ~= "table" or (depth or 0) > 8 then return false end
-    for _, ch in ipairs(kids_of(n)) do
-        if type(ch) == "table" then
-            if ch.UIT == G.UIT.R and has_text(ch) then return true end
-            if has_deeper_text_row(ch, (depth or 0) + 1) then return true end
-        end
-    end
-    return false
-end
-
-local function collect_lines(node, out, depth)
-    if type(node) ~= "table" or (depth or 0) > 8 then return end
-    if not has_deeper_text_row(node) then
-        if has_text(node) then
-            local ok, t = pcall(Proxy.all_text, node)
-            if ok and type(t) == "string" and t ~= "" then out[#out + 1] = t end
-        end
-        return
-    end
-    for _, ch in ipairs(kids_of(node)) do
-        collect_lines(ch, out, (depth or 0) + 1)
-    end
-end
-
-local function text_lines(root)
-    local lines = {}
-    collect_lines(root, lines, 0)
-    if lines[1] then return lines end
-    local ok, t = pcall(Proxy.all_text, root)
-    if ok and type(t) == "string" and t ~= "" then return { t } end
-    return {}
-end
+-- Text panels (the rules / restrictions tab content) read one item per
+-- rendered line: the mirror's shared splitter.
+local is_text_root = Mirror.is_text_root
+local text_lines = Mirror.text_lines
 
 -- Emit gathered items: consecutive Cards from the SAME CardArea become one
 -- left/right row when it's a view_deck strip (the Deck tab's four suits);

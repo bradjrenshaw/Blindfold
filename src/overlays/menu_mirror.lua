@@ -435,6 +435,82 @@ local function is_unlock_overlay(items)
     return false
 end
 
+-- --- Text panels, line by line ---------------------------------------------
+--
+-- A controls-free text panel (a mod's description and credits, a locked
+-- tab's explanation, a challenge's rules) reads one item per RENDERED LINE:
+-- a node is one line when no deeper row beneath it carries text; colored
+-- fragments within a row stay joined. Embedded newlines read as spaces.
+
+local function ordered_kids(n)
+    local kids = {}
+    if type(n.children) == "table" then
+        each_child(n.children, function(ch) kids[#kids + 1] = ch end)
+    end
+    return kids
+end
+
+local function has_text(n, depth)
+    if type(n) ~= "table" or (depth or 0) > 8 then return false end
+    local c = n.config
+    if c and G.UIT and n.UIT == G.UIT.T
+        and (type(c.text) == "string" or type(c.text) == "number") then
+        return true
+    end
+    if c and type(c.object) == "table" and type(c.object.string) == "string" then
+        return true
+    end
+    for _, ch in ipairs(ordered_kids(n)) do
+        if has_text(ch, (depth or 0) + 1) then return true end
+    end
+    return false
+end
+
+local function has_deeper_text_row(n, depth)
+    if type(n) ~= "table" or (depth or 0) > 8 then return false end
+    for _, ch in ipairs(ordered_kids(n)) do
+        if type(ch) == "table" then
+            if G.UIT and ch.UIT == G.UIT.R and has_text(ch) then return true end
+            if has_deeper_text_row(ch, (depth or 0) + 1) then return true end
+        end
+    end
+    return false
+end
+
+local function collect_lines(node, out, depth)
+    if type(node) ~= "table" or (depth or 0) > 8 then return end
+    if not has_deeper_text_row(node) then
+        if has_text(node) then
+            local ok, t = pcall(Proxy.all_text, node)
+            if ok and type(t) == "string" then
+                t = t:gsub("%s*\n%s*", " "):gsub("^%s+", ""):gsub("%s+$", "")
+                if t ~= "" then out[#out + 1] = t end
+            end
+        end
+        return
+    end
+    for _, ch in ipairs(ordered_kids(node)) do
+        collect_lines(ch, out, (depth or 0) + 1)
+    end
+end
+
+local function text_lines(root)
+    local lines = {}
+    collect_lines(root, lines, 0)
+    if lines[1] then return lines end
+    local ok, t = pcall(Proxy.all_text, root)
+    if ok and type(t) == "string" and t ~= "" then return { (t:gsub("%s*\n%s*", " ")) } end
+    return {}
+end
+
+-- A controls-free nested box the collector pushed as one readable item.
+local function is_text_root(node)
+    local c = node.config
+    return node.UIT and G.UIT and node.UIT == G.UIT.ROOT
+        and not (c and (c.button or c.focus_args))
+        and not (node.is and Card and node:is(Card))
+end
+
 -- Gather the focusable controls from a list of sources, in order: UIBoxes
 -- (walked via UIRoot) and/or CardAreas (inlined).
 local function gather(sources)
@@ -549,7 +625,16 @@ local function make(id, get_sources, is_active)
             })
         end
         for i, n in ipairs(items) do
-            b:add_item(Id.referenced(n, "m:" .. i), vtable_for(n))
+            local lines = is_text_root(n) and text_lines(n) or nil
+            if lines and #lines > 1 then
+                for j, line in ipairs(lines) do
+                    b:add_label(Id.structural("m:" .. i .. ":" .. j), function(ctx)
+                        ctx.message:fragment(Message.raw(line))
+                    end)
+                end
+            else
+                b:add_item(Id.referenced(n, "m:" .. i), vtable_for(n))
+            end
         end
     end
 
@@ -562,6 +647,8 @@ local M = {}
 -- discovery and per-control behavior but their own layout.
 M.gather = gather
 M.vtable_for = vtable_for
+M.text_lines = text_lines
+M.is_text_root = is_text_root
 
 -- Whatever modal overlay menu is up (options tree, run setup, run info, deck
 -- view, our own keybinds/announcements screens, ...).

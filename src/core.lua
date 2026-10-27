@@ -173,6 +173,8 @@ do
         -- Steamodded's Run Info stake tab (sprites + a scroll box). Inert
         -- without Steamodded.
         Overlays.register(ba_require("overlays.run_stakes"))
+        -- Steamodded's Mods menu (mod cards + checkboxes + config gears).
+        Overlays.register(ba_require("overlays.mods_menu"))
         -- The deck view is an overlay menu the mirror would otherwise claim;
         -- registered above it, the bespoke layout wins while G.VIEWING_DECK.
         Overlays.register(ba_require("overlays.deck_view"))
