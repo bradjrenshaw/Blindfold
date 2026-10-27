@@ -5,6 +5,11 @@
 -- sprites, rows of six — matching each screen's visual matrix. Every item
 -- reads its name (or "Not discovered": the render is the "?" sprite) with
 -- the effect description as the deferred follow-up.
+--
+-- Steamodded rebuilds both pages: each blind is a stand-in Card (a blank
+-- base card wearing the blind's sprite, with config.blind) inside paged
+-- G.your_collection CardAreas, and the tags page sits in a nested UIBox
+-- that swaps per page. The walk finds items in all three places.
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
@@ -15,15 +20,27 @@ local M = { id = "blind_gallery" }
 
 -- The gallery sprites (blind chips or tag sprites), in tree order (= the
 -- game's sorted order).
+local function is_item(o)
+    return type(o) == "table" and type(o.config) == "table"
+        and (o.config.blind ~= nil or o.config.tag ~= nil)
+end
+
 local function sprites()
     local out = {}
     local ov = G and G.OVERLAY_MENU
     if type(ov) ~= "table" or not ov.UIRoot then return out end
-    local function walk(n, depth)
-        if type(n) ~= "table" or depth > 20 then return end
+    local walk
+    walk = function(n, depth)
+        if type(n) ~= "table" or depth > 24 then return end
         local o = n.config and n.config.object
-        if type(o) == "table" and o.config and (o.config.blind or o.config.tag) then
+        if is_item(o) then
             out[#out + 1] = o
+        elseif type(o) == "table" and o.is and CardArea and o:is(CardArea) then
+            for _, c in ipairs(o.cards or {}) do
+                if is_item(c) then out[#out + 1] = c end
+            end
+        elseif type(o) == "table" and o.UIRoot then
+            walk(o.UIRoot, depth + 1)
         end
         local kids, maxn = n.children, 0
         if type(kids) ~= "table" then return end
@@ -104,11 +121,14 @@ function M:build(b)
         b:end_row()
         i = i + per_row
     end
-    -- Whatever the mirror CAN reach on this screen (the Back button).
+    -- Whatever else the mirror reaches (Back; Steamodded's page cycle) —
+    -- minus the stand-in cards already listed above.
     local r = 0
     for _, n in ipairs(Mirror.gather({ G.OVERLAY_MENU })) do
-        r = r + 1
-        b:add_item(Id.referenced(n, "r:" .. r), Mirror.vtable_for(n))
+        if not is_item(n) then
+            r = r + 1
+            b:add_item(Id.referenced(n, "r:" .. r), Mirror.vtable_for(n))
+        end
     end
 end
 
