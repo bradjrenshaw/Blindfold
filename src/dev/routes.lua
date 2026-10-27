@@ -101,6 +101,24 @@ local function state()
         "steamodded: " .. tostring(type(SMODS) == "table"),
     }
     if ba and ba.boot_error then lines[#lines + 1] = "boot error: " .. tostring(ba.boot_error) end
+    -- Render health: lit samples of the game's own canvas (out of 240). A
+    -- session once rendered pure black (the window kept its last frame, so
+    -- screenshots came back stale) with the game otherwise running fine;
+    -- this catches that early.
+    local okc, lit = pcall(function()
+        local d = G.CANVAS:newImageData()
+        local n = 0
+        local w, h = d:getWidth(), d:getHeight()
+        for x = 0, w - 1, math.max(1, math.floor(w / 20)) do
+            for y = 0, h - 1, math.max(1, math.floor(h / 12)) do
+                local r, g, b = d:getPixel(x, y)
+                if r + g + b > 0.01 then n = n + 1 end
+            end
+        end
+        return n
+    end)
+    lines[#lines + 1] = "render: " .. (okc and (lit > 0 and ("ok (" .. lit .. " lit samples)")
+        or "BLACK - the game is drawing nothing") or ("unknown: " .. tostring(lit)))
     return table.concat(lines, "\n") .. "\n"
 end
 
@@ -147,9 +165,13 @@ local function key(body)
     return "pressed " .. spec .. "\n"
 end
 
+-- A fresh name per capture (blindfold_shot_<n>.png), so a reader that
+-- caches by path never shows a stale frame; the previous one is removed.
+local shot_n = 0
 local function screenshot()
-    local name = "blindfold_shot.png"
-    pcall(love.filesystem.remove, name)
+    if shot_n > 0 then pcall(love.filesystem.remove, "blindfold_shot_" .. shot_n .. ".png") end
+    shot_n = shot_n + 1
+    local name = "blindfold_shot_" .. shot_n .. ".png"
     love.graphics.captureScreenshot(name)
     return love.filesystem.getSaveDirectory() .. "/" .. name
         .. "\n(written at the end of this frame)\n"
