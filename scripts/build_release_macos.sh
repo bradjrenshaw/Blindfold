@@ -85,6 +85,15 @@ if [ "$installer_only" = 0 ]; then
         echo "   version = $numeric  (repo file updated - commit it with the release)"
     fi
 
+    # Steamodded's metadata (Blindfold.json) carries the same version.
+    step "Stamping Blindfold.json"
+    if grep -q "\"version\": \"$numeric\"" "$src/Blindfold.json"; then
+        echo "   already $numeric"
+    else
+        sed -i '' -E "s/\"version\": \"[^\"]*\"/\"version\": \"$numeric\"/" "$src/Blindfold.json"
+        echo "   version = $numeric  (repo file updated - commit it with the release)"
+    fi
+
     # --- Stage and zip ---------------------------------------------------------------
     step "Building Blindfold.zip"
     stage="$(mktemp -d "${TMPDIR:-/tmp}/blindfold_release_XXXXXX")"

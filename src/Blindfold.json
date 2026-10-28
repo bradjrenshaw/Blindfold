@@ -1,0 +1,13 @@
+{
+    "id": "Blindfold",
+    "name": "Blindfold",
+    "display_name": "Blindfold",
+    "author": ["Bradley Renshaw"],
+    "description": "Screen reader support for Balatro. Speaks menus, cards, scoring and events, with full keyboard and controller navigation. Works with or without Steamodded.",
+    "prefix": "blindfold",
+    "main_file": "smods.lua",
+    "version": "1.1.0",
+    "priority": 0,
+    "badge_colour": "2E3440",
+    "badge_text_colour": "FFFFFF"
+}

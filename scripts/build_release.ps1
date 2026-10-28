@@ -70,6 +70,20 @@ if ($stamped -ne $toml) {
     Write-Host "   already $numeric"
 }
 
+# Steamodded's metadata (Blindfold.json) carries the same version for its
+# Mods menu; stamped the same way.
+Write-Step "Stamping Blindfold.json"
+$jsonPath = Join-Path $src 'Blindfold.json'
+$json = [IO.File]::ReadAllText($jsonPath)
+$jre = New-Object Text.RegularExpressions.Regex('"version": "[^"]*"')
+$jstamped = $jre.Replace($json, '"version": "' + $numeric + '"', 1)
+if ($jstamped -ne $json) {
+    [IO.File]::WriteAllText($jsonPath, $jstamped, (New-Object Text.UTF8Encoding($false)))
+    Write-Host "   version = $numeric  (repo file updated - commit it with the release)"
+} else {
+    Write-Host "   already $numeric"
+}
+
 # --- Stage and zip ---------------------------------------------------------------
 Write-Step "Building Blindfold.zip"
 $stage = Join-Path $env:TEMP "blindfold_release_$PID"

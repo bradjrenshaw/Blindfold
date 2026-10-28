@@ -1,0 +1,5 @@
+-- smods.lua — the main file Steamodded's metadata (Blindfold.json) requires.
+-- Blindfold is a Lovely mod: Lovely loads and boots it (lovely.toml), with
+-- or without Steamodded. The JSON only gives Steamodded's Mods menu a proper
+-- name, author, version and description; Steamodded runs this file and there
+-- is nothing for it to do.
