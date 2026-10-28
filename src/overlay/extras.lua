@@ -14,6 +14,7 @@
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
+local Proxy = require("ui.proxies").Proxy
 
 local M = {}
 
@@ -51,7 +52,12 @@ function M.unlisted(b)
             local ok, items = pcall(Mirror.gather, { box })
             for _, n in ipairs(ok and items or {}) do
                 local c = n.config or {}
+                -- Controls only: the walk also yields readable text panels
+                -- (a nested box with no controls — the upcoming blinds'
+                -- info), which the screens already read or the Screen
+                -- buffer covers.
                 if not known[n] and not seen[n] and not (n.is and Card and n:is(Card))
+                    and Proxy.node_is_control(n)
                     and not (c.button and VANILLA[c.button]) then
                     seen[n] = true
                     out[#out + 1] = n

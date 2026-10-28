@@ -76,7 +76,7 @@ end
 -- Load the UI module tree defensively: this require runs inside Game:start_up,
 -- so a syntax error in any ui/*.lua must not crash the game. On failure we log
 -- and describe_focus stays silent.
-local Factory, Input, Scoring, Containers, Screens, FocusBuffers, Overlays, Events
+local Factory, Input, Scoring, Containers, Screens, FocusBuffers, Overlays, Events, Api
 do
     local ok, lerr = pcall(function()
         local Message = ba_require("ui.message")
@@ -123,6 +123,11 @@ do
         Events.say = speech.say
         Buffers.add(Events.buffer)
         BA.events = Events
+
+        -- The API other mods call (Blindfold.say / announce / card_info /
+        -- add_buffer; docs/mod-api.md). Mod buffers join the cycle last.
+        Api = ba_require("api.public")
+        Api.install(BA, { say = speech.say, emit = Events.emit, buffers = Buffers })
         local kb = Input.KeyboardBinding
         Input.register{ key = "buffer_next_item", label_key = "INPUT.BUFFER_NEXT_ITEM",
             handler = function() Buffers.next_item() end, bindings = { kb.new("up", true) } }
@@ -780,6 +785,7 @@ function BA.focus_tick(ctrl)
         BA._last_frame_t = t
     end
     pcall(boot_announce)
+    if Api then pcall(Api.drain, BA) end
     pcall(poll_update_check)
     pcall(tutorial_watch)
     pcall(log_state_transition)

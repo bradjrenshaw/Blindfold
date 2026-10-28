@@ -3,10 +3,41 @@
 -- focus_args.type for widgets, then toggle button, then plain button, else text.
 local require = ...
 local P = require("ui.proxies")
+local Hints = require("api.hints")
+local Message = require("ui.message")
 
 local Factory = {}
 
+-- A mod's label / hint written on the node (api/hints) override what we'd
+-- guess from its text; read live, so a function label follows its value.
+local function apply_hints(proxy, node)
+    if not proxy or not (Hints.label(node) or Hints.hint(node)) then return proxy end
+    if Hints.label(node) then
+        local base = proxy.get_label
+        proxy.get_label = function(self)
+            local l = Hints.label(node)
+            if l then return Message.raw(l) end
+            return base(self)
+        end
+    end
+    local base_tip = proxy.get_tooltip
+    proxy.get_tooltip = function(self)
+        local h = Hints.hint(node)
+        local tip = base_tip(self)
+        if not h then return tip end
+        local t = tip and tip.resolve and tip:resolve()
+        return Message.raw(t and t ~= "" and (h .. ". " .. t) or h)
+    end
+    return proxy
+end
+
+local create
+
 function Factory.create(node)
+    return apply_hints(create(node), node)
+end
+
+function create(node)
     if not node then return nil end
 
     -- Cards: playing cards (rank/suit identity) vs jokers/consumables (name).

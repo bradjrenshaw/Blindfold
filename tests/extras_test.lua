@@ -64,7 +64,12 @@ mod_btn.children[1].UIT = G.UIT.T
 function mod_btn:click() clicks = clicks + 1 end
 local listed = node({ button = "mod_listed" })
 local play = node({ button = "play_cards_from_highlighted" })
-local hud = box(node({}, { play, listed, mod_btn }))
+-- A nested box with text and no controls (blind select's upcoming-blind
+-- info): the mirror walk yields it as a readable panel; not a control.
+local info_text = node({ text = "Score at least 450" }); info_text.UIT = G.UIT.T
+local info_root = node({}, { info_text }); info_root.UIT = G.UIT.ROOT
+local info = node({ object = setmetatable({ UIRoot = info_root }, UIBox) })
+local hud = box(node({}, { play, listed, mod_btn, info }))
 
 local card = setmetatable({}, Card)
 local on_card = box(node({}, { node({ button = "mod_card_use" }) }), { major = card })

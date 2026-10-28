@@ -203,6 +203,14 @@ The mod follows the game's language setting and ships translations for all
 of Balatro's languages (German, French, Spanish, Italian, Portuguese,
 Dutch, Polish, Russian, Japanese, Korean, Chinese, Indonesian). These are machine translations, so please let me know if anything is incorrect.
 
+## For mod authors
+
+Most mods work with Blindfold as they are. To label icon-only controls, mark
+decoration, or have extra card information read, see
+[docs/mod-api.md](src/docs/mod-api.md): hints in your UI definitions need no
+dependency, and a small runtime API (`Blindfold.say`, `announce`,
+`card_info`, `add_buffer`) is there when Blindfold is installed.
+
 ## Credits
 I would like to thank Rashad Naqeeb for inspiring this project (you knew what you were doing when you put the idea in my head.) I would like to thank Rashad Naqeeb, Aaron Ramirez, and Austin Hicks for early testing.
 

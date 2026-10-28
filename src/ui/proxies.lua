@@ -12,6 +12,7 @@ local A = require("ui.announce").A
 local Settings = require("settings.registry")
 local Cashout = require("events.cashout")
 local Num = require("ui.num")
+local Hints = require("api.hints")
 
 -- ===================== Proxy base + text extraction =====================
 local Proxy = class(Element)
@@ -25,10 +26,14 @@ local SKIP = { ["<"] = true, [">"] = true, [""] = true, ["[UI ERROR]"] = true }
 local function is_skip(s) return s == nil or SKIP[s] end
 
 -- Depth-first walk of a UIElement subtree, never descending into `exclude`.
+-- A mod's hints (api/hints): a hidden node is skipped with its subtree; a
+-- node carrying its own text stands for its subtree (the visitors read it).
 local function walk(node, exclude, visit, depth)
     depth = depth or 0
     if not node or node == exclude or depth > 14 then return end
+    if Hints.hidden(node) then return end
     visit(node)
+    if Hints.text(node) then return end
     local kids = node.children
     if kids then for _, c in ipairs(kids) do walk(c, exclude, visit, depth + 1) end end
 end
@@ -79,7 +84,10 @@ function Proxy.static_text(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and not is_ref_bound(c) then
+        local ht = Hints.text(n)
+        if ht then
+            parts[#parts + 1] = ht
+        elseif c and n.UIT == G.UIT.T and not is_ref_bound(c) then
             local t = literal_text(c)
             if t and not is_skip(t) then parts[#parts + 1] = t end
         end
@@ -116,8 +124,10 @@ function Proxy.ordered_text(node, exclude)
     walk(node, exclude, function(n)
         local c = n.config
         if not c then return end
-        local t
-        if n.UIT == G.UIT.T then
+        local t = Hints.text(n)
+        if t then
+            -- a mod's text for an icon / sprite (api/hints)
+        elseif n.UIT == G.UIT.T then
             if is_ref_bound(c) then
                 local v = c.ref_table[c.ref_value]
                 t = v ~= nil and tostring(v) or nil
@@ -507,6 +517,29 @@ function Proxy.joker_display_text(card)
     return ok and s or nil
 end
 
+-- What other mods have to say about a card (Blindfold.card_info, or the
+-- center's own blindfold.info; api/public), read right after its name.
+function Proxy.mod_card_lines(card)
+    local ok, Api = pcall(require, "api.public")
+    if not ok or type(Api) ~= "table" then return {} end
+    local okl, lines = pcall(Api.card_lines, card)
+    return okl and lines or {}
+end
+
+-- One "readout" announcement for everything mods draw / say about a card
+-- (the composer keeps one slot per key): JokerDisplay's readout first, then
+-- the API's lines. nil when there's nothing.
+local function readout_ann(card, with_jd)
+    local parts = {}
+    if with_jd then
+        local jd = Proxy.joker_display_text(card)
+        if jd then parts[#parts + 1] = jd end
+    end
+    for _, l in ipairs(Proxy.mod_card_lines(card)) do parts[#parts + 1] = l end
+    return parts[1] and A.readout(table.concat(parts, ", ")) or nil
+end
+Proxy.readout_ann = readout_ann
+
 function Proxy.card_deferred(card, index, total)
     local parts = {}
     if Proxy.announce_enabled("description") then
@@ -564,7 +597,10 @@ function Proxy.static_text_list(node, exclude)
     local parts = {}
     walk(node, exclude, function(n)
         local c = n.config
-        if c and n.UIT == G.UIT.T and not is_ref_bound(c) then
+        local ht = Hints.text(n)
+        if ht then
+            parts[#parts + 1] = ht
+        elseif c and n.UIT == G.UIT.T and not is_ref_bound(c) then
             local t = literal_text(c)
             if t and not is_skip(t) then parts[#parts + 1] = t end
         end
@@ -1035,7 +1071,7 @@ local face_down_label
 local ProxyPlayingCard = class(Proxy)
 ProxyPlayingCard.type_key = "card"
 -- Position rides the deferred follow-up (card_deferred), AFTER the description.
-ProxyPlayingCard.announcement_order = { "label", "sel_pos", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
+ProxyPlayingCard.announcement_order = { "label", "readout", "sel_pos", "type", "selected", "enhancement", "edition", "seal", "debuff", "new", "price" }
 ProxyPlayingCard.new = ctor(ProxyPlayingCard)
 
 -- The sticker a card wears, by name: Steamodded's stickers (eternal,
@@ -1174,6 +1210,9 @@ function ProxyPlayingCard:get_focus_announcements()
     local label = self:get_label()
     if not label then return {} end
     local anns = { A.label(label), A.type(self.type_key) }
+    -- What other mods say about the card (Blindfold.card_info), after its name.
+    local ro = readout_ann(node, false)
+    if ro then anns[#anns + 1] = ro end
     if node.highlighted then anns[#anns + 1] = sel_position(node) or A.selected() end
     if node.ability and node.ability.forced_selection then
         anns[#anns + 1] = A.status(Message.localized("CARD.FORCED"))
@@ -1207,6 +1246,9 @@ end
 function ProxyPlayingCard:fill_buffer(buf)
     local desc = Proxy.card_description(self.node)         -- both guard face-down
     if desc then buf:add(desc) end
+    if self.node.facing ~= "back" then
+        for _, l in ipairs(Proxy.mod_card_lines(self.node)) do buf:add(l) end
+    end
     for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
     local pos = Proxy.card_position(self.node)
     if pos then buf:add(pos:resolve()) end
@@ -1348,8 +1390,9 @@ function ProxyJoker:get_focus_announcements()
     if not label then return {} end
     local anns = { A.label(label) }
     -- What JokerDisplay draws under the joker, right after its name.
-    local jd = Proxy.joker_display_text(node)
-    if jd then anns[#anns + 1] = A.readout(jd) end
+    -- (and what other mods say about it: Blindfold.card_info).
+    local ro = readout_ann(node, true)
+    if ro then anns[#anns + 1] = ro end
     local rar = Proxy.joker_rarity(node)
     if rar then anns[#anns + 1] = A.subtype(rar) end
     local set = node.ability and node.ability.set
@@ -1382,6 +1425,9 @@ end
 function ProxyJoker:fill_buffer(buf)
     local desc = Proxy.card_description(self.node)
     if desc then buf:add(desc) end
+    if self.node.facing ~= "back" then
+        for _, l in ipairs(Proxy.mod_card_lines(self.node)) do buf:add(l) end
+    end
     for _, tip in ipairs(Proxy.card_info_tips(self.node)) do buf:add(tip) end
     local sell = Proxy.card_sell_message(self.node)
     if sell then buf:add(sell) end

@@ -11,7 +11,11 @@ local function speak(text)
     if M.say and type(text) == "string" and text ~= "" then M.say(text) end
 end
 local function speak_loc(key, vars) speak(Message.localized(key, vars):resolve()) end
-local function buffer_label(b) return Message.localized("BUFFER." .. string.upper(b.key)):resolve() end
+-- A buffer can name itself (b.label, a function: mod buffers); else BUFFER.<KEY>.
+local function buffer_label(b)
+    if type(b.label) == "function" then return b.label() end
+    return Message.localized("BUFFER." .. string.upper(b.key)):resolve()
+end
 
 function M.add(b)
     M.buffers[#M.buffers + 1] = b

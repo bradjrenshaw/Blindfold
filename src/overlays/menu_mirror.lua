@@ -30,6 +30,7 @@ local Id = require("overlay.id")
 local Message = require("ui.message")
 local Factory = require("ui.factory")
 local Proxy = require("ui.proxies").Proxy
+local Hints = require("api.hints")
 
 -- The engine's dynamic focusability gates (Controller:is_node_focusable,
 -- controller.lua:1082): a control must be hoverable and visible. Without these
@@ -65,11 +66,12 @@ local function each_child(children, visit)
     for k in pairs(children) do
         if type(k) == "number" and k > maxn then maxn = k end
     end
+    -- A mod's decorative nodes (api/hints hidden) are skipped outright.
     for i = 1, maxn do
-        if children[i] ~= nil then visit(children[i]) end
+        if children[i] ~= nil and not Hints.hidden(children[i]) then visit(children[i]) end
     end
     for k, v in pairs(children) do
-        if type(k) ~= "number" then visit(v) end
+        if type(k) ~= "number" and not Hints.hidden(v) then visit(v) end
     end
 end
 
@@ -104,6 +106,7 @@ local function collect(node, out, depth, seen)
     if seen[node] then return end
     seen[node] = true
     if node.states and node.states.visible == false then return end
+    if Hints.hidden(node) then return end
 
     if Proxy.node_is_control(node) then
         -- Steamodded's scrollbars (SMODS.GUI.scrollbar) only scroll the
@@ -452,6 +455,7 @@ end
 
 local function has_text(n, depth)
     if type(n) ~= "table" or (depth or 0) > 8 then return false end
+    if Hints.text(n) then return true end
     local c = n.config
     if c and G.UIT and n.UIT == G.UIT.T
         and (type(c.text) == "string" or type(c.text) == "number") then
@@ -468,6 +472,7 @@ end
 
 local function has_deeper_text_row(n, depth)
     if type(n) ~= "table" or (depth or 0) > 8 then return false end
+    if Hints.text(n) then return false end   -- its own text stands for it
     for _, ch in ipairs(ordered_kids(n)) do
         if type(ch) == "table" then
             if G.UIT and ch.UIT == G.UIT.R and has_text(ch) then return true end
