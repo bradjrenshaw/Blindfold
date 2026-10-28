@@ -97,9 +97,16 @@ local function build_main()
     return { n = G.UIT.ROOT, config = { align = "cm", padding = 0.1, colour = G.C.CLEAR }, nodes = nodes }
 end
 
--- Called by the injected Options tab. Guarded so a build error degrades to a
--- placeholder instead of breaking the game's Options screen.
-function M.settings_tab()
+-- Where the settings were opened from: "options" (the injected Options tab)
+-- or "mods" (Steamodded's Config button, smods.lua). The sub-screens' Back
+-- returns there (G.FUNCS.blindfold_settings_back, core).
+M.origin = "options"
+
+-- Called by the injected Options tab, and by Steamodded's Config tab with
+-- origin "mods". Guarded so a build error degrades to a placeholder instead
+-- of breaking the screen it sits in.
+function M.settings_tab(origin)
+    M.origin = origin == "mods" and "mods" or "options"
     local ok, root = pcall(build_main)
     if ok and root then return root end
     return { n = G.UIT.ROOT, config = { align = "cm", minh = 2, minw = 4, colour = G.C.CLEAR }, nodes = {
@@ -115,7 +122,7 @@ end
 -- The Announcements sub-screen: a single column of announcement toggles.
 function M.announcements_uibox()
     local content = { n = G.UIT.C, config = { align = "cm", padding = 0.05 }, nodes = controls("announce") }
-    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
+    return create_UIBox_generic_options({ back_func = "blindfold_settings_back", contents = { content } })
 end
 
 -- Voice settings. The voice is a hex id from the speech library's tree
@@ -245,14 +252,14 @@ function M.voice_uibox()
     end
     for _, c in ipairs(extra) do nodes[#nodes + 1] = c end
     local content = { n = G.UIT.C, config = { align = "cm", padding = 0.05 }, nodes = nodes }
-    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
+    return create_UIBox_generic_options({ back_func = "blindfold_settings_back", contents = { content } })
 end
 
 -- The Scoring sub-screen: the scoring toggles plus the per-effect verbosity
 -- cycles (how "+10 chips" reads during the fast scoring animations).
 function M.scoring_uibox()
     local content = { n = G.UIT.C, config = { align = "cm", padding = 0.05 }, nodes = controls("scoring") }
-    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
+    return create_UIBox_generic_options({ back_func = "blindfold_settings_back", contents = { content } })
 end
 
 -- The keybindings sub-screen: a single linear column of rebind buttons (one per
@@ -275,7 +282,7 @@ function M.keybinds_uibox()
         } }
     end
     local content = { n = G.UIT.C, config = { align = "cm", padding = 0.02 }, nodes = rows }
-    return create_UIBox_generic_options({ back_func = "options", contents = { content } })
+    return create_UIBox_generic_options({ back_func = "blindfold_settings_back", contents = { content } })
 end
 
 return M

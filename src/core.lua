@@ -409,6 +409,17 @@ do
             G.FUNCS.overlay_menu{ definition = Menu.voice_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.VOICE" end
         end
+        -- The sub-screens' Back: to Steamodded's Blindfold page (Config tab)
+        -- when the settings were opened from the Mods menu, else to Options.
+        G.FUNCS.blindfold_settings_back = function(e)
+            local open_mod = G.FUNCS["openModUI_Blindfold"]
+            if Menu.origin == "mods" and open_mod and SMODS then
+                SMODS.LAST_SELECTED_MOD_TAB = "config"
+                open_mod(e)
+            else
+                G.FUNCS.options(e)
+            end
+        end
         -- Bundled docs: README.md / changes.md, copied into <mod>/docs by
         -- deploy.ps1 and build_release.ps1, opened in the OS default handler.
         -- MOD_DIR already uses forward slashes (love save dir); encode spaces
