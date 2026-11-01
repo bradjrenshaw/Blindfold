@@ -175,34 +175,33 @@ Start Balatro through Steam and wait for "Blindfold loaded." From there:
 
 Everything is rebindable in Options → Blindfold → Keybindings.
 
-**On macOS, the Ctrl combinations below use Command instead** (Command +
-arrows, Command + X, and so on): macOS reserves Ctrl + arrows for Mission
-Control and switching Spaces. Blindfold also takes Command + M back from the
-game's Minimize menu item, so it reads money. On a Mac keyboard, Backspace is
-the Delete key, Home / End are Fn + Left / Right, and F8 is Fn + F8.
+**On macOS, the Ctrl combinations use Command instead** (Command + arrows,
+Command + X, and so on): macOS reserves Ctrl + arrows for Mission Control and
+switching Spaces. Blindfold also takes Command + M back from the game's
+Minimize menu item, so it reads money.
 
-| Action | Keyboard | Controller |
-| --- | --- | --- |
-| Move (sliders and tab strips adjust with left/right) | Arrow keys | D-pad or left stick |
-| Jump to the start / end of the current row | Home / End | — |
-| Select a card / activate a button (on a joker or consumable: pick up / place) | Enter | A |
-| Pick up / place (reorder jokers, consumables, or hand cards) | Space | LT + A |
-| Play hand | X | X |
-| Discard | C | Y |
-| Sell the focused joker or consumable | S | LB |
-| Use the focused consumable | U | RB |
-| Previous / next tab (menus) | `[` / `]` | left/right on the tab strip |
-| View deck | D | RT + RB |
-| Run info | Tab | Back, or LT + LB |
-| Back / deselect all | Backspace or Shift | B |
-| Pause / game menu | Escape (left native) | Start |
-| Review buffers (switch buffer / browse its lines) | Ctrl + Left/Right, Ctrl + Up/Down | Right stick |
-| Read hands remaining | Ctrl + X | LT + X |
-| Read discards remaining | Ctrl + C | LT + Y |
-| Read score and goal (e.g. "3000 of 80000") | Ctrl + S | LT + B |
-| Read money | Ctrl + M | RT + X |
-| Read joker slots (e.g. "3 of 5 jokers") | Ctrl + J | RT + Y |
-| Debug: dump the current screen's controls to the log | F8 | — |
+| Action | Keyboard (Windows) | Keyboard (macOS) | Controller |
+| --- | --- | --- | --- |
+| Move (sliders and tab strips adjust with left/right) | Arrow keys | Arrow keys | D-pad or left stick |
+| Jump to the start / end of the current row | Home / End | Fn + Left / Fn + Right | — |
+| Select a card / activate a button (on a joker or consumable: pick up / place) | Enter | Return | A |
+| Pick up / place (reorder jokers, consumables, or hand cards) | Space | Space | LT + A |
+| Play hand | X | X | X |
+| Discard | C | C | Y |
+| Sell the focused joker or consumable | S | S | LB |
+| Use the focused consumable | U | U | RB |
+| Previous / next tab (menus) | `[` / `]` | `[` / `]` | left/right on the tab strip |
+| View deck | D | D | RT + RB |
+| Run info | Tab | Tab | Back, or LT + LB |
+| Back / deselect all | Backspace or Shift | Delete or Shift | B |
+| Pause / game menu | Escape (left native) | Escape (left native) | Start |
+| Review buffers (switch buffer / browse its lines) | Ctrl + Left/Right, Ctrl + Up/Down | Command + Left/Right, Command + Up/Down | Right stick |
+| Read hands remaining | Ctrl + X | Command + X | LT + X |
+| Read discards remaining | Ctrl + C | Command + C | LT + Y |
+| Read score and goal (e.g. "3000 of 80000") | Ctrl + S | Command + S | LT + B |
+| Read money | Ctrl + M | Command + M | RT + X |
+| Read joker slots (e.g. "3 of 5 jokers") | Ctrl + J | Command + J | RT + Y |
+| Debug: dump the current screen's controls to the log | F8 | Fn + F8 | — |
 
 ## Languages
 
