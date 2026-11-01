@@ -2,8 +2,8 @@
 # Loadstone's reusable workflow), the Loadstone release manifest that lists
 # them all, and the GitHub release itself, from the commit this runs on.
 #
-# Before running: stamp the version in src/lovely.toml (and commit), and put
-# the release notes in changes-latest.md.
+# Before running: stamp the version in src/lovely.toml and src/Blindfold.json
+# (and commit), and put the release notes in changes-latest.md.
 
 name: Release
 
@@ -39,6 +39,9 @@ jobs:
           [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version must look like v1.2.3 (got $VERSION)." >&2; exit 1; }
           grep -q "^version = \"${VERSION#v}\"" src/lovely.toml || {
             echo "src/lovely.toml is not stamped ${VERSION#v}; stamp and commit it first." >&2; exit 1; }
+          # Steamodded's Mods menu shows this one.
+          grep -q "\"version\": \"${VERSION#v}\"" src/Blindfold.json || {
+            echo "src/Blindfold.json is not stamped ${VERSION#v}; stamp and commit it first." >&2; exit 1; }
           [ -s changes-latest.md ] || { echo "changes-latest.md is empty; write the release notes first." >&2; exit 1; }
           if gh release view "$VERSION" >/dev/null 2>&1; then
             echo "$VERSION is already released." >&2; exit 1
