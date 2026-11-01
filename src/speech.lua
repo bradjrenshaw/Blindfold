@@ -176,8 +176,14 @@ end
 -- The profile every utterance speaks through: the user's voice choice plus
 -- rate/pitch/volume (0..1, 0.5 = the voice's default for rate and pitch).
 -- Leaves without a feature ignore that field.
+-- PLAY_SAMPLES: a synthesizer's speech is rendered and played through
+-- Loadstar's own output, where an interrupt fades instead of clicking (the
+-- OS voices cut dead on every menu move). Screen readers ignore it. macOS
+-- only for now: SAPI through Loadstar's output is untested on Windows.
+local PLAY_SAMPLES = 4      -- SpeechProfileFlags::PlaySamples
 local profile = ffi.new("LsSpeechProfile")
 profile.voice, profile.rate, profile.pitch, profile.volume = 0, 0.5, 0.5, 1.0
+profile.flags = is_osx and PLAY_SAMPLES or 0
 
 -- Load Loadstar from the mod's lib/ folder and open a speech context. Cheap
 -- and silent: the library probes its backends on its own worker, and text
