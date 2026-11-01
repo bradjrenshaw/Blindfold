@@ -36,6 +36,7 @@ return {
         UP = "Up", DOWN = "Down", LEFT = "Left", RIGHT = "Right",
         SPACE = "Space", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "Command", WIN = "Windows",
         UNBOUND = "(unbound)",
     },
 

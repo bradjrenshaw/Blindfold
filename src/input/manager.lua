@@ -14,7 +14,8 @@ local InputAction = require("input.action")
 -- Ctrl+X) binds on the X press with Ctrl folded into the held state; a
 -- modifier pressed AND released alone binds bare (Shift is the default Back
 -- key), mirroring the pad trigger capture.
-local MODIFIER_KEYS = { lctrl = "ctrl", rctrl = "ctrl", lshift = "shift", rshift = "shift", lalt = "alt", ralt = "alt" }
+local MODIFIER_KEYS = { lctrl = "ctrl", rctrl = "ctrl", lshift = "shift", rshift = "shift",
+    lalt = "alt", ralt = "alt", lgui = "gui", rgui = "gui" }
 
 local M = {
     actions = {},
@@ -146,6 +147,7 @@ local function mods_from(ctrl, key)
             ctrl = kb.isDown("lctrl", "rctrl") and true or false,
             shift = kb.isDown("lshift", "rshift") and true or false,
             alt = kb.isDown("lalt", "ralt") and true or false,
+            gui = kb.isDown("lgui", "rgui") and true or false,
         }
     else
         local h = ctrl and ctrl.held_keys or {}
@@ -153,6 +155,7 @@ local function mods_from(ctrl, key)
             ctrl = (h.lctrl or h.rctrl) and true or false,
             shift = (h.lshift or h.rshift) and true or false,
             alt = (h.lalt or h.ralt) and true or false,
+            gui = (h.lgui or h.rgui) and true or false,
         }
     end
     local own = MODIFIER_KEYS[key]
@@ -173,7 +176,7 @@ function M.on_key_down(ctrl, key)
             local cb = M._listen_cb
             M._listen_cb = nil
             local mods = mods_from(ctrl, key)
-            cb(KeyboardBinding.new(key, mods.ctrl, mods.shift, mods.alt))
+            cb(KeyboardBinding.new(key, mods.ctrl, mods.shift, mods.alt, mods.gui))
         end
         return true
     end
@@ -187,6 +190,7 @@ function M.on_key_down(ctrl, key)
         local b = a:matches(key, mods)
         if b then
             local score = (b.ctrl and 1 or 0) + (b.shift and 1 or 0) + (b.alt and 1 or 0)
+                + (b.gui and 1 or 0)
             if not best or score > best_score then best, best_score = a, score end
         end
     end
@@ -423,8 +427,7 @@ function M.conflict(self_key, binding)
     for _, a in ipairs(M.actions) do
         if a.key ~= self_key then
             for _, b in ipairs(a.bindings or {}) do
-                if b.key == binding.key and b.ctrl == binding.ctrl
-                    and b.shift == binding.shift and b.alt == binding.alt then
+                if b:same(binding) then
                     return a
                 end
             end
@@ -524,7 +527,7 @@ function M.save_bindings()
     for _, a in ipairs(M.actions) do
         local binds = {}
         for _, b in ipairs(a.bindings) do
-            binds[#binds + 1] = { key = b.key, ctrl = b.ctrl, shift = b.shift, alt = b.alt }
+            binds[#binds + 1] = { key = b.key, ctrl = b.ctrl, shift = b.shift, alt = b.alt, gui = b.gui }
         end
         map[a.key] = binds
     end
@@ -552,7 +555,7 @@ function M.load_bindings()
                 a.bindings = {}
                 for _, b in ipairs(saved) do
                     if type(b) == "table" and type(b.key) == "string" then
-                        a.bindings[#a.bindings + 1] = KeyboardBinding.new(b.key, b.ctrl, b.shift, b.alt)
+                        a.bindings[#a.bindings + 1] = KeyboardBinding.new(b.key, b.ctrl, b.shift, b.alt, b.gui)
                     end
                 end
             end

@@ -99,7 +99,8 @@ do
             bindings = { Input.KeyboardBinding.new("f8") } }
         BA.input = Input
 
-        -- Buffers: browsable review cursors over game state (Ctrl + arrows).
+        -- Buffers: browsable review cursors over game state (Ctrl + arrows;
+        -- Command + arrows on macOS, see KeyboardBinding.primary).
         local Buffers = ba_require("buffers.manager")
         Buffers.say = speech.say
         Buffers.add(ba_require("buffers.game"))
@@ -130,29 +131,36 @@ do
         Api.install(BA, { say = speech.say, emit = Events.emit, buffers = Buffers })
         local kb = Input.KeyboardBinding
         Input.register{ key = "buffer_next_item", label_key = "INPUT.BUFFER_NEXT_ITEM",
-            handler = function() Buffers.next_item() end, bindings = { kb.new("up", true) } }
+            handler = function() Buffers.next_item() end, bindings = { kb.primary("up") } }
         Input.register{ key = "buffer_prev_item", label_key = "INPUT.BUFFER_PREV_ITEM",
-            handler = function() Buffers.prev_item() end, bindings = { kb.new("down", true) } }
+            handler = function() Buffers.prev_item() end, bindings = { kb.primary("down") } }
         Input.register{ key = "buffer_next", label_key = "INPUT.BUFFER_NEXT",
-            handler = function() Buffers.next_buffer() end, bindings = { kb.new("right", true) } }
+            handler = function() Buffers.next_buffer() end, bindings = { kb.primary("right") } }
         Input.register{ key = "buffer_prev", label_key = "INPUT.BUFFER_PREV",
-            handler = function() Buffers.prev_buffer() end, bindings = { kb.new("left", true) } }
+            handler = function() Buffers.prev_buffer() end, bindings = { kb.primary("left") } }
 
-        -- Status readouts: one-shot spoken values on Ctrl+letter; the default
-        -- pad chords (LT/RT + face buttons) live in the input manager's
-        -- DEFAULT_PAD_ACTIONS under these action keys.
+        -- Status readouts: one-shot spoken values on Ctrl+letter (Command on
+        -- macOS); the default pad chords (LT/RT + face buttons) live in the
+        -- input manager's DEFAULT_PAD_ACTIONS under these action keys.
         local Status = ba_require("status")
         Status.say = speech.say
         Input.register{ key = "info_hands", label_key = "INPUT.INFO_HANDS",
-            handler = Status.hands, bindings = { kb.new("x", true) } }
+            handler = Status.hands, bindings = { kb.primary("x") } }
         Input.register{ key = "info_discards", label_key = "INPUT.INFO_DISCARDS",
-            handler = Status.discards, bindings = { kb.new("c", true) } }
+            handler = Status.discards, bindings = { kb.primary("c") } }
         Input.register{ key = "info_score", label_key = "INPUT.INFO_SCORE",
-            handler = Status.score, bindings = { kb.new("s", true) } }
+            handler = Status.score, bindings = { kb.primary("s") } }
         Input.register{ key = "info_jokers", label_key = "INPUT.INFO_JOKERS",
-            handler = Status.jokers, bindings = { kb.new("j", true) } }
+            handler = Status.jokers, bindings = { kb.primary("j") } }
         Input.register{ key = "info_money", label_key = "INPUT.INFO_MONEY",
-            handler = Status.money, bindings = { kb.new("m", true) } }
+            handler = Status.money, bindings = { kb.primary("m") } }
+        -- On macOS the game's Window > Minimize item claims Command+M, which
+        -- would minimize instead of reading money; clear that shortcut.
+        if kb.primary_modifier() == "gui" then
+            local ok, cleared, why = pcall(ba_require("platform.macos").free_command_m)
+            speech.log("Command+M for the money readout: "
+                .. (ok and (cleared and "freed" or tostring(why)) or ("error " .. tostring(cleared))))
+        end
 
         -- Owned-UI overlay layer (port of Tanglebeep's key-graph framework):
         -- screens we own re-present live game state as a navigable graph; every

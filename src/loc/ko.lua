@@ -29,6 +29,7 @@ return {
         UP = "위", DOWN = "아래", LEFT = "왼쪽", RIGHT = "오른쪽",
         SPACE = "스페이스", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "Command", WIN = "Windows",
         UNBOUND = "(할당 안 됨)",
     },
 

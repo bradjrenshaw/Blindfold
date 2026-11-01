@@ -112,5 +112,59 @@ check(c == nil, "own pad button is not a conflict", c and c.key)
 c = Input.pad_conflict("back", "y")
 check(c == nil, "unmapped pad button is free", c and c.key)
 
+-- 8) Command (LÖVE's gui modifier): captured, matched, and kept apart from
+--    Ctrl and from a bare key.
+captured = nil
+Input.start_listening(function(b) captured = b end)
+held.lgui = true
+Input.on_key_down(ctrl, "lgui")
+Input.on_key_down(ctrl, "x")
+check(captured and captured.key == "x" and captured.gui and not captured.ctrl,
+    "Command+X captures with gui folded in", captured and captured:display())
+held.lgui = false
+Input.on_key_up(ctrl, "lgui")
+
+Input.actions = {}
+Input.by_key = {}
+fired = {}
+Input.register{ key = "bare_x", bindings = { KB.new("x") },
+    handler = function() fired.bare = (fired.bare or 0) + 1 end }
+Input.register{ key = "cmd_x", bindings = { KB.new("x", false, false, false, true) },
+    handler = function() fired.cmd = (fired.cmd or 0) + 1 end }
+held.rgui = true
+Input.on_key_down(ctrl, "x")
+held.rgui = false
+check(fired.cmd == 1 and not fired.bare, "Command+X (either Command) picks the Command action", fired.cmd)
+held.lctrl = true
+local hit = Input.on_key_down(ctrl, "x")
+held.lctrl = false
+check(not hit and fired.cmd == 1 and not fired.bare, "Ctrl+X doesn't match a Command binding", hit)
+c = Input.conflict("bare_x", KB.new("x", false, false, false, true))
+check(c and c.key == "cmd_x", "Command+X conflicts with its holder", c and c.key)
+c = Input.conflict("cmd_x", KB.new("x", true))
+check(c == nil, "Ctrl+X is free next to Command+X", c and c.key)
+
+-- 9) Platform defaults: primary() is Ctrl off macOS, Command on it.
+local p = KB.primary("m")
+check(p.ctrl and not p.gui, "primary is Ctrl off macOS", p:display())
+_G.love.system = { getOS = function() return "OS X" end }
+p = KB.primary("m")
+check(p.gui and not p.ctrl, "primary is Command on macOS", p:display())
+_G.love.system = nil
+
+-- 10) A saved Command binding survives a save/load round trip.
+local files = {}
+_G.love.filesystem = {
+    write = function(name, data) files[name] = data end,
+    read = function(name) return files[name] end,
+}
+Input.save_bindings()
+Input.by_key.cmd_x.bindings = {}
+Input.load_bindings()
+local b = Input.by_key.cmd_x.bindings[1]
+check(b and b.key == "x" and b.gui and not b.ctrl, "Command binding round-trips through the save file",
+    b and b:display())
+_G.love.filesystem = nil
+
 print(failures == 0 and "ALL PASS" or (failures .. " FAILURES"))
 os.exit(failures == 0 and 0 or 1)

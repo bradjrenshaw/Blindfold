@@ -29,6 +29,7 @@ return {
         UP = "Arriba", DOWN = "Abajo", LEFT = "Izquierda", RIGHT = "Derecha",
         SPACE = "Espacio", ESCAPE = "Escape", TAB = "Tabulador", BACKSPACE = "Retroceso",
         CTRL = "Ctrl", SHIFT = "Mayús", ALT = "Alt",
+        CMD = "Comando", WIN = "Windows",
         UNBOUND = "(sin asignar)",
     },
 

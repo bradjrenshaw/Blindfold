@@ -29,6 +29,7 @@ return {
         UP = "Omhoog", DOWN = "Omlaag", LEFT = "Links", RIGHT = "Rechts",
         SPACE = "Spatie", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "Command", WIN = "Windows",
         UNBOUND = "(niet toegewezen)",
     },
 

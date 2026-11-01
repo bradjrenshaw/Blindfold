@@ -29,6 +29,7 @@ return {
         UP = "Вверх", DOWN = "Вниз", LEFT = "Влево", RIGHT = "Вправо",
         SPACE = "Пробел", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "Command", WIN = "Windows",
         UNBOUND = "(не назначено)",
     },
 

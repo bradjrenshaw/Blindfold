@@ -29,6 +29,7 @@ return {
         UP = "上", DOWN = "下", LEFT = "左", RIGHT = "右",
         SPACE = "スペース", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "コマンド", WIN = "Windows",
         UNBOUND = "（未割り当て）",
     },
 

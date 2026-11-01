@@ -29,6 +29,7 @@ return {
         UP = "Atas", DOWN = "Bawah", LEFT = "Kiri", RIGHT = "Kanan",
         SPACE = "Spasi", ESCAPE = "Escape", TAB = "Tab", BACKSPACE = "Backspace",
         CTRL = "Ctrl", SHIFT = "Shift", ALT = "Alt",
+        CMD = "Command", WIN = "Windows",
         UNBOUND = "(belum diatur)",
     },
 
