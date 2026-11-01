@@ -81,7 +81,9 @@ if [ "$installer_only" = 0 ]; then
     if grep -q "^version = \"$numeric\"" "$src/lovely.toml"; then
         echo "   already $numeric"
     else
-        sed -i '' -E "0,/^version = \"[^\"]*\"/s//version = \"$numeric\"/" "$src/lovely.toml"
+        # BSD sed has no 0,/re/ address; 1,/re/ is the first match unless it is
+        # on line 1, which it never is here (the [manifest] header comes first).
+        sed -i '' -E "1,/^version = \"/s/^version = \"[^\"]*\"/version = \"$numeric\"/" "$src/lovely.toml"
         echo "   version = $numeric  (repo file updated - commit it with the release)"
     fi
 
