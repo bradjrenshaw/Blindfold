@@ -351,6 +351,7 @@ return {
         CAT_SCREEN_READERS = "Screen readers",
         CAT_CLIPBOARD    = "Clipboard",
         VOICE_UNAVAILABLE = "unavailable",
+        VOICE_NOVELTY    = "Novelty",
         VOICE            = "Voice",
         VOICE_NAME       = "Voice",
         RATE             = "Rate",

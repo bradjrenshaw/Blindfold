@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "スクリーンリーダー",
         CAT_CLIPBOARD    = "クリップボード",
         VOICE_UNAVAILABLE = "利用不可",
+        VOICE_NOVELTY    = "ノベルティ",
         VOICE            = "音声",
         VOICE_NAME       = "声",
         RATE             = "速度",

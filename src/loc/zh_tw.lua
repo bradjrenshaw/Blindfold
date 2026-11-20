@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "螢幕閱讀器",
         CAT_CLIPBOARD    = "剪貼簿",
         VOICE_UNAVAILABLE = "無法使用",
+        VOICE_NOVELTY    = "趣味語音",
         VOICE            = "語音",
         VOICE_NAME       = "聲音",
         RATE             = "語速",

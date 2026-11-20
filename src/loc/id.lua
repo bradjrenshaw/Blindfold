@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "Pembaca layar",
         CAT_CLIPBOARD    = "Papan klip",
         VOICE_UNAVAILABLE = "tidak tersedia",
+        VOICE_NOVELTY    = "Suara unik",
         VOICE            = "Suara",
         VOICE_NAME       = "Suara",
         RATE             = "Kecepatan",

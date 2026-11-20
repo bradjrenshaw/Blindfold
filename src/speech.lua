@@ -65,6 +65,21 @@ ffi.cdef([[
     uint32_t lv_output(LsSpeech_* ctx, uint32_t queue, const LsSpeechProfile* profile,
                        const char* text, uint32_t flags, uint64_t* utterance);
     uint32_t lv_stop_all(LsSpeech_* ctx);
+
+    typedef struct LsSpeechUiNode {
+        uint64_t id;
+        uint64_t parent;
+        uint64_t voice;
+        uint64_t category;
+        uint32_t kind;
+        uint32_t child_count;
+    } LsSpeechUiNode;
+    uint32_t lv_ui_language(LsSpeech_* ctx, const char* language);
+    uint32_t lv_ui_root(LsSpeech_* ctx, uint64_t* node);
+    uint32_t lv_ui_node(LsSpeech_* ctx, uint64_t node, LsSpeechUiNode* info);
+    uint32_t lv_ui_child(LsSpeech_* ctx, uint64_t node, size_t index, uint64_t* child);
+    uint32_t lv_ui_label(LsSpeech_* ctx, uint64_t node, char* buf, size_t cap, size_t* written);
+    uint32_t lv_ui_key(LsSpeech_* ctx, uint64_t node, char* buf, size_t cap, size_t* written);
 ]])
 
 local OK = 0
@@ -291,6 +306,70 @@ function M.voices()
         end
     end)
     return list
+end
+
+-- The library's menu tree (lv_ui_*): its voices arranged for a picker, as
+-- nested tables. `language` is the game's language: its voices come first and
+-- language names are written in it where the system can. Each node is
+--   { kind = "root"|"auto"|"category"|"language"|"novelty"|"voice",
+--     label =, key =, category = (category key or ""), parent =, children = {},
+--     voice = (hex id for "auto" and "voice" nodes; the root auto is "auto") }
+-- Every group's first child is its auto: that group's best voice. nil until
+-- the first probe has published (or without the library).
+local NODE_KINDS = { [0] = "root", "auto", "category", "language", "novelty", "voice" }
+function M.menu(language)
+    if not M.loaded then return nil end
+    local ok, root = pcall(function()
+        M.lv.lv_ui_language(M.ctx, type(language) == "string" and language or nil)
+        local id = ffi.new("uint64_t[1]")
+        if M.lv.lv_ui_root(M.ctx, id) ~= OK then return nil end
+        local info, child = ffi.new("LsSpeechUiNode"), ffi.new("uint64_t[1]")
+        local category_keys = {}
+        local function read(node_id, parent)
+            if M.lv.lv_ui_node(M.ctx, node_id, info) ~= OK then return nil end
+            local kind = NODE_KINDS[tonumber(info.kind)] or "voice"
+            local cat = info.category
+            local cat_hex = id_to_hex(cat)
+            if cat ~= 0 and category_keys[cat_hex] == nil then
+                category_keys[cat_hex] = string_out("lv_category_key", cat)
+            end
+            local node = {
+                kind = kind, parent = parent, children = {},
+                label = string_out("lv_ui_label", node_id),
+                key = string_out("lv_ui_key", node_id),
+                category = cat ~= 0 and category_keys[cat_hex] or "",
+                voice = (kind == "auto" or kind == "voice") and id_to_hex(info.voice) or nil,
+            }
+            -- Copy the count first: `info` is reused by the recursion below.
+            for i = 0, tonumber(info.child_count) - 1 do
+                if M.lv.lv_ui_child(M.ctx, node_id, i, child) ~= OK then break end
+                local c = read(child[0], node)
+                if c then node.children[#node.children + 1] = c end
+            end
+            return node
+        end
+        return read(id[0], nil)
+    end)
+    if not ok then log("voice menu failed: " .. tostring(root)); return nil end
+    return root
+end
+
+-- The name of the voice a voice id speaks through right now: itself, or for
+-- an auto the voice it picks. "" when nothing in it can speak.
+local NO_FALLBACK = 1       -- SpeechProfileFlags::NoFallback
+local probe = ffi.new("LsSpeechProfile")
+function M.speaks_as(hex)
+    if not M.loaded then return "" end
+    local ok, name = pcall(function()
+        probe.voice, probe.rate, probe.pitch, probe.volume = hex_to_id(hex), 0.5, 0.5, 1.0
+        probe.flags = NO_FALLBACK
+        local voice = ffi.new("uint64_t[1]")
+        if M.lv.lv_resolve(M.ctx, probe, F_SPEAK, voice, nil, nil) ~= OK or voice[0] == 0 then
+            return ""
+        end
+        return string_out("lv_voice_name", voice[0])
+    end)
+    return ok and name or ""
 end
 
 -- Display name for a voice id (hex), absent ones included; "" if unknown.

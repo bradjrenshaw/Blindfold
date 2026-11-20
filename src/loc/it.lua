@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "Lettori di schermo",
         CAT_CLIPBOARD    = "Appunti",
         VOICE_UNAVAILABLE = "non disponibile",
+        VOICE_NOVELTY    = "Voci divertenti",
         VOICE            = "Voce",
         VOICE_NAME       = "Voce",
         RATE             = "Velocità",

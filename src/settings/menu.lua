@@ -6,6 +6,7 @@ local require = ...
 local Settings = require("settings.registry")
 local Message = require("ui.message")
 local Input = require("input.manager")
+local VoiceTree = require("settings.voice_tree")
 
 local M = {}
 
@@ -156,7 +157,8 @@ local function rebuild_voice_screen()
 end
 
 -- Registered once at load (after Settings.load, so saved values win). The
--- voice picker's options are filled in each time the Voice screen opens.
+-- voice is a hex id out of the speech library's tree (or "auto"); the Voice
+-- screen's picker (voice_picker) sets it, not a generic choice control.
 function M.register_voice_settings()
     Settings.register{ key = "speech.voice", type = "choice",
         label_key = "SET.VOICE_NAME", default = "auto", category = "voice",
@@ -179,65 +181,76 @@ end
 -- AVSpeech, ...) pass through as the library names them.
 local CATEGORY_LABELS = { screen_readers = "SET.CAT_SCREEN_READERS", clipboard = "SET.CAT_CLIPBOARD" }
 
--- Refill the voice picker from the library's tree: Auto (naming what it
--- resolves to now), then each category's voices — the game's language first,
--- then alphabetical — labelled with category and language so a long list
--- stays navigable by ear.
-local function refresh_voice_options()
-    local s = Settings.by_key["speech.voice"]
-    if not s then return end
-    local voices = speech.voices()
-    local lang = (G and G.SETTINGS and G.SETTINGS.language or "en"):lower():sub(1, 2)
-    local order, groups = {}, {}
-    for _, v in ipairs(voices) do
-        if not groups[v.category] then
-            groups[v.category] = {}
-            order[#order + 1] = v.category
+-- What the picker shows for one node of the speech library's menu tree.
+local function node_label(n)
+    if n.kind == "auto" then
+        -- Name what the auto picks right now: "Auto (best available): Samantha".
+        local name = speech.speaks_as(n.voice) or ""
+        return loc("SET.BACKEND_AUTO") .. (name ~= "" and (": " .. name) or "")
+    elseif n.kind == "novelty" then
+        return loc("SET.VOICE_NOVELTY")
+    elseif n.kind == "category" and CATEGORY_LABELS[n.key] then
+        return loc(CATEGORY_LABELS[n.key])
+    elseif n.kind == "voice" and n.parent and n.parent.kind == "root" and CATEGORY_LABELS[n.category] then
+        return loc(CATEGORY_LABELS[n.category])   -- a one-voice category (the clipboard)
+    end
+    return n.label
+end
+
+-- The voice picker: the library arranges its voices as a tree (categories,
+-- then languages, then voices, novelty voices in a group of their own) and
+-- the screen shows one cycle per level along the path to the chosen voice,
+-- so no list is longer than one group. Every group opens with its auto;
+-- choosing a group chooses that auto, and the next level appears under it.
+local function voice_picker()
+    local saved = Settings.value("speech.voice") or "auto"
+    local root = speech.menu(G and G.SETTINGS and G.SETTINGS.language)
+    local levels = VoiceTree.levels(root, saved)
+    if #levels == 0 then return {} end   -- no library: nothing to pick from
+    local rows = {}
+    for depth, level in ipairs(levels) do
+        local labels, index = {}, level.index
+        for i, n in ipairs(level.options) do labels[i] = node_label(n) end
+        -- A saved voice that is absent today (reader not running, voice
+        -- removed) is shown as the choice so the picker tells the truth; the
+        -- library speaks through its fallback meanwhile.
+        if not index and saved == "auto" then
+            -- The library has not listed its voices yet (just booted).
+            labels[#labels + 1] = loc("SET.BACKEND_AUTO")
+            index = #labels
+        elseif not index then
+            local name = speech.voice_name(saved)
+            labels[#labels + 1] = (name ~= "" and name or saved) .. " (" .. loc("SET.VOICE_UNAVAILABLE") .. ")"
+            index = #labels
         end
-        local g = groups[v.category]
-        g[#g + 1] = v
+        rows[#rows + 1] = create_option_cycle({
+            -- The top row is "Voice"; each row under it is named for the
+            -- group it lists ("AVSpeech", "English (United States)").
+            label = depth == 1 and loc("SET.VOICE_NAME") or node_label(level.parent),
+            scale = 0.8,
+            options = labels,
+            current_option = index,
+            opt_callback = "blindfold_voice_level",
+            blindfold_level = depth,
+        })
     end
-    local auto = loc("SET.BACKEND_AUTO")
-    local now = speech.resolved()
-    if now and Settings.value("speech.voice") == "auto" then auto = auto .. ": " .. now.name end
-    local options, labels = { "auto" }, { auto }
-    local seen = {}
-    for _, key in ipairs(order) do
-        local g = groups[key]
-        table.sort(g, function(a, b)
-            local al = a.language:lower():sub(1, 2) == lang
-            local bl = b.language:lower():sub(1, 2) == lang
-            if al ~= bl then return al end
-            return a.name < b.name
-        end)
-        local cat = CATEGORY_LABELS[key] and loc(CATEGORY_LABELS[key]) or g[1].category_name
-        for _, v in ipairs(g) do
-            options[#options + 1] = v.id
-            local label = (#order > 1 and (cat .. ": ") or "") .. v.name
-            if v.language ~= "" then label = label .. " (" .. v.language .. ")" end
-            labels[#labels + 1] = label
-            seen[v.id] = true
+    G.FUNCS.blindfold_voice_level = function(a)
+        local level = a and a.cycle_config and levels[a.cycle_config.blindfold_level]
+        local node = level and VoiceTree.descend(level.options[a.to_key])
+        -- No node: the "(unavailable)" entry, which is already the choice.
+        if node and node.voice and node.voice ~= Settings.value("speech.voice") then
+            Settings.on_change("speech.voice", node.voice)   -- applies and rebuilds this screen
         end
     end
-    -- A saved voice that is absent today (reader not running, voice removed)
-    -- stays selectable so the picker shows the truth; the library speaks
-    -- through its fallback meanwhile.
-    local saved = Settings.value("speech.voice")
-    if saved ~= "auto" and not seen[saved] then
-        local name = speech.voice_name(saved)
-        options[#options + 1] = saved
-        labels[#labels + 1] = (name ~= "" and name or saved) .. " (" .. loc("SET.VOICE_UNAVAILABLE") .. ")"
-    end
-    Settings.register{ key = "speech.voice", options = options, label_values = labels }
+    return rows
 end
 
 -- The Voice sub-screen: the voice picker on top, then whatever the voice
 -- now speaking lets the user adjust (rate, pitch, volume). Changing the voice
--- rebuilds the screen (see the picker's apply).
+-- rebuilds the screen (see the setting's apply).
 function M.voice_uibox()
     speech.refresh()   -- a reader started since boot shows up on the next visit
-    refresh_voice_options()
-    local nodes = controls("voice")
+    local nodes = voice_picker()
     local caps = speech.resolved() or {}
     local extra = {}
     for _, a in ipairs(ADJUSTABLES) do

@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "Программы экранного доступа",
         CAT_CLIPBOARD    = "Буфер обмена",
         VOICE_UNAVAILABLE = "недоступен",
+        VOICE_NOVELTY    = "Забавные голоса",
         VOICE            = "Голос",
         VOICE_NAME       = "Голос",
         RATE             = "Скорость",

@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "화면 낭독기",
         CAT_CLIPBOARD    = "클립보드",
         VOICE_UNAVAILABLE = "사용 불가",
+        VOICE_NOVELTY    = "노벨티",
         VOICE            = "음성",
         VOICE_NAME       = "목소리",
         RATE             = "속도",

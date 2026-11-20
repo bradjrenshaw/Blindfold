@@ -320,6 +320,7 @@ return {
         CAT_SCREEN_READERS = "Schermlezers",
         CAT_CLIPBOARD    = "Klembord",
         VOICE_UNAVAILABLE = "niet beschikbaar",
+        VOICE_NOVELTY    = "Grappige stemmen",
         VOICE            = "Stem",
         VOICE_NAME       = "Stem",
         RATE             = "Snelheid",
