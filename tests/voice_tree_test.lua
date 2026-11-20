@@ -23,7 +23,7 @@ end
 local Message = ba_require("ui.message")
 Message.set_resolver(function(key)
     local words = { ["SET.TREE_EXPANDED"] = "expanded", ["SET.TREE_COLLAPSED"] = "collapsed",
-        ["CARD.SELECTED"] = "selected", ["SET.TREE_LEVEL"] = "level {n}" }
+        ["CARD.SELECTED"] = "selected", ["SET.TREE_LEVEL"] = "level {n}", ["TYPES.BUTTON"] = "button" }
     return words[key] or key
 end)
 local VT = ba_require("settings.voice_tree")
@@ -96,34 +96,34 @@ local function key(kind, dir)
     return said or after
 end
 
-check(tick() == "Samantha, selected", "opens on the current choice", "?")
-check(key("move_to_edge", "left") == "Auto", "Home reaches the lines above the choice", "?")
-check(key("move_to_edge", "right") == "Clipboard", "End: the last line", "?")
+check(tick() == "Samantha, button, selected", "opens on the current choice", "?")
+check(key("move_to_edge", "left") == "Auto, button", "Home reaches the lines above the choice", "?")
+check(key("move_to_edge", "right") == "Clipboard, button", "End: the last line", "?")
 for _ = 1, 3 do key("move", "up") end   -- back to Samantha
 check(key("move", "down") == "Novelty, collapsed", "down: the next line", "?")
-check(key("move_to_edge", "right") == "Clipboard", "End from a group: still the last line", "?")
+check(key("move_to_edge", "right") == "Clipboard, button", "End from a group: still the last line", "?")
 check(key("move", "up") == "level 2, French (France), collapsed", "up from the last line", "?")
-check(key("move_to_edge", "left") == "Auto", "Home from a group: still the first line", "?")
+check(key("move_to_edge", "left") == "Auto, button", "Home from a group: still the first line", "?")
 for _ = 1, 7 do key("move", "down") end   -- back to Novelty
 check(focused() == "Novelty", "and back down to Novelty", focused())
 check(key("move", "right") == "expanded", "right on a closed group opens it", "?")
-check(key("move", "right") == "Auto", "right on an open group: its first line", "?")
-check(key("move", "down") == "Bells", "down inside the group", "?")
+check(key("move", "right") == "Auto, button", "right on an open group: its first line", "?")
+check(key("move", "down") == "Bells, button", "down inside the group", "?")
 check(key("move", "left") == "Novelty, expanded", "left from a voice: its group", "?")
 check(key("move", "left") == "collapsed", "left on an open group closes it", "?")
 check(key("move", "left") == "English (United States), expanded", "left on a closed group: the group above", "?")
 local s = key("move", "up")
-check(s == "Auto", "up within a level: just the line", s)
+check(s == "Auto, button", "up within a level: just the line", s)
 s = key("move", "up")
 check(s == "level 1, AVSpeech, expanded", "up across a level says the level first", s)
 s = key("move", "down")
-check(s == "level 2, Auto", "and down across one", s)
+check(s == "level 2, Auto, button", "and down across one", s)
 key("move", "up")
 check(key("move", "left") == "collapsed", "closing a category", "?")
 check(key("move", "left") == nil, "left at the top level: nothing", "?")
-check(key("move", "down") == "Clipboard", "a closed group hides its lines", "?")
+check(key("move", "down") == "Clipboard, button", "a closed group hides its lines", "?")
 check(key("move", "down") == nil, "down at the end: silent", "?")
-check(key("move_to_edge", "left") == "Auto", "Home: the first line", "?")
+check(key("move_to_edge", "left") == "Auto, button", "Home: the first line", "?")
 check(view.text == "Auto", "the screen follows the focused line", view.text)
 
 -- Enter on a group toggles it; Enter on a voice or an auto chooses it.
@@ -137,7 +137,41 @@ key("move", "down"); key("move", "right"); key("move", "right"); key("move", "do
 key("confirm")
 check(picked == "fred", "Enter on a voice chooses it", picked)
 
--- 3) Not the picker's screen: it stands down.
+-- 3) The Voice screen's control reads as a dropdown: label, type, value.
+_G.love = { filesystem = { write = function() end, read = function() return nil end, append = function() end } }
+_G.localize = function() return "ERROR" end
+local function class()
+    local c = {}
+    c.__index = c
+    function c:is(k) return getmetatable(self) == k end
+    return c
+end
+_G.Card, _G.CardArea, _G.UIBox = class(), class(), class()
+_G.G.UIT = { T = 1, O = 2, C = 3, R = 4, ROOT = 5 }
+local en = ba_require("loc.en")
+Message.set_resolver(function(key)
+    local t = en
+    for part in tostring(key):gmatch("[^.]+") do
+        if type(t) ~= "table" then return nil end
+        t = t[part]
+    end
+    return type(t) == "string" and t or nil
+end)
+local Factory = ba_require("ui.factory")
+local button = { UIT = G.UIT.C, children = {}, states = { visible = true },
+    config = { button = "blindfold_voice_pick",
+        blindfold_dropdown = { label = "Voice", value = function() return "Auto (best available): Samantha" end } } }
+local proxy = Factory.create(button)
+s = proxy:get_focus_message()
+s = s and s.resolve and s:resolve() or s
+check(s == "Voice, dropdown, Auto (best available): Samantha", "the Voice control reads as a dropdown", s)
+check(proxy:get_value_message() == nil, "pressing it speaks no value (the picker opens)")
+button.config.blindfold_dropdown = nil
+s = Factory.create(button):get_focus_message()
+s = s and s.resolve and s:resolve() or s
+check(not tostring(s):find("dropdown"), "a plain button is still a button", s)
+
+-- 4) Not the picker's screen: it stands down.
 _G.G.OVERLAY_MENU.blindfold_title_key = "SET.VOICE"
 check(Picker:handler() == "inactive", "inactive on any other screen")
 

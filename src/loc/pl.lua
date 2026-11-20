@@ -17,6 +17,7 @@ return {
         VOUCHER  = "kupon",
         BOOSTER  = "paczka wzmacniająca",
         TEXT_FIELD = "pole tekstowe",
+        DROPDOWN = "lista rozwijana",
     },
     STATUS = { ON = "włączone", OFF = "wyłączone" },
     LABELS = { LOCKED = "zablokowane", EMPTY = "puste", NOT_DISCOVERED = "Nieodkryte" },

@@ -17,6 +17,7 @@ return {
         VOUCHER  = "禮券",
         BOOSTER  = "擴充包",
         TEXT_FIELD = "文字輸入欄",
+        DROPDOWN = "下拉式清單",
     },
     STATUS = { ON = "開", OFF = "關" },
     LABELS = { LOCKED = "已鎖定", EMPTY = "空", NOT_DISCOVERED = "未發現" },

@@ -11,9 +11,9 @@
 --               screen; on a group: open or close it
 --   Back        return without changing anything (the screen's own Back)
 --
--- Lines read "<name>", groups add "collapsed" / "expanded", the current
--- choice adds "selected"; moving up or down across a level boundary says
--- the new level first.
+-- Voices and autos read "<name>, button", with "selected" after the current
+-- choice; groups read "<name>, collapsed" / "expanded"; moving up or down
+-- across a level boundary says the new level first.
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
@@ -77,8 +77,12 @@ function M:build(b)
                 ctx.message:list_item(Message.raw(text))
                 if not leaf then
                     ctx.message:list_item(state_word(st, node))
-                elseif node.voice == st.chosen then
-                    ctx.message:list_item(Message.localized("CARD.SELECTED"))
+                else
+                    -- Something Enter chooses: "Samantha, button, selected".
+                    ctx.message:list_item(Message.localized("TYPES.BUTTON"))
+                    if node.voice == st.chosen then
+                        ctx.message:list_item(Message.localized("CARD.SELECTED"))
+                    end
                 end
             end,
         }

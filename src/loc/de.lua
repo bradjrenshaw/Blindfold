@@ -17,6 +17,7 @@ return {
         VOUCHER  = "Gutschein",
         BOOSTER  = "Booster-Paket",
         TEXT_FIELD = "Textfeld",
+        DROPDOWN = "Auswahlliste",
     },
     STATUS = { ON = "an", OFF = "aus" },
     LABELS = { LOCKED = "gesperrt", EMPTY = "leer", NOT_DISCOVERED = "Nicht entdeckt" },

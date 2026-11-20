@@ -17,6 +17,7 @@ return {
         VOUCHER  = "cupom",
         BOOSTER  = "pacote de reforço",
         TEXT_FIELD = "campo de texto",
+        DROPDOWN = "lista suspensa",
     },
     STATUS = { ON = "ativado", OFF = "desativado" },
     LABELS = { LOCKED = "bloqueado", EMPTY = "vazio", NOT_DISCOVERED = "Não descoberto" },

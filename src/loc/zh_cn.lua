@@ -17,6 +17,7 @@ return {
         VOUCHER  = "优惠券",
         BOOSTER  = "补充包",
         TEXT_FIELD = "文本框",
+        DROPDOWN = "下拉列表",
     },
     STATUS = { ON = "开", OFF = "关" },
     LABELS = { LOCKED = "锁定", EMPTY = "空", NOT_DISCOVERED = "未发现" },

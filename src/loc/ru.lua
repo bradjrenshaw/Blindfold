@@ -17,6 +17,7 @@ return {
         VOUCHER  = "ваучер",
         BOOSTER  = "бустерный набор",
         TEXT_FIELD = "текстовое поле",
+        DROPDOWN = "выпадающий список",
     },
     STATUS = { ON = "включено", OFF = "выключено" },
     LABELS = { LOCKED = "заблокировано", EMPTY = "пусто", NOT_DISCOVERED = "Не обнаружено" },

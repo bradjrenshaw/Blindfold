@@ -65,6 +65,7 @@ function create(node)
         or cfg.id == "select_blind_button" then return P.Blind.new(node) end
     if cfg.button == "cash_out" then return P.CashOut.new(node) end
     if cfg.button == "toggle_button" then return P.Toggle.new(node) end
+    if cfg.button and cfg.blindfold_dropdown then return P.Dropdown.new(node) end
     if cfg.button then return P.Button.new(node) end
 
     return P.Text.new(node)

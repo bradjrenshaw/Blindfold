@@ -17,6 +17,7 @@ return {
         VOUCHER  = "vale",
         BOOSTER  = "paquete potenciador",
         TEXT_FIELD = "campo de texto",
+        DROPDOWN = "lista desplegable",
     },
     STATUS = { ON = "activado", OFF = "desactivado" },
     LABELS = { LOCKED = "bloqueado", EMPTY = "vacío", NOT_DISCOVERED = "No descubierto" },

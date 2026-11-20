@@ -17,6 +17,7 @@ return {
         VOUCHER  = "buono",
         BOOSTER  = "busta di espansione",
         TEXT_FIELD = "campo di testo",
+        DROPDOWN = "menu a tendina",
     },
     STATUS = { ON = "attivo", OFF = "disattivo" },
     LABELS = { LOCKED = "bloccato", EMPTY = "vuoto", NOT_DISCOVERED = "Non scoperto" },

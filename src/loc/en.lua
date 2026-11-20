@@ -22,6 +22,7 @@ return {
         VOUCHER  = "voucher",
         BOOSTER  = "booster pack",
         TEXT_FIELD = "text field",
+        DROPDOWN = "dropdown",
     },
     STATUS = { ON = "on", OFF = "off" },
     LABELS = { LOCKED = "locked", EMPTY = "empty", NOT_DISCOVERED = "Not discovered" },

@@ -17,6 +17,7 @@ return {
         VOUCHER  = "바우처",
         BOOSTER  = "부스터 팩",
         TEXT_FIELD = "텍스트 입력란",
+        DROPDOWN = "드롭다운",
     },
     STATUS = { ON = "켜짐", OFF = "꺼짐" },
     LABELS = { LOCKED = "잠김", EMPTY = "비어 있음", NOT_DISCOVERED = "미발견" },

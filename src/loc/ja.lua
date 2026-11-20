@@ -17,6 +17,7 @@ return {
         VOUCHER  = "バウチャー",
         BOOSTER  = "ブースターパック",
         TEXT_FIELD = "テキスト入力欄",
+        DROPDOWN = "ドロップダウン",
     },
     STATUS = { ON = "オン", OFF = "オフ" },
     LABELS = { LOCKED = "ロック中", EMPTY = "空", NOT_DISCOVERED = "未発見" },

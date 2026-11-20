@@ -17,6 +17,7 @@ return {
         VOUCHER  = "voucher",
         BOOSTER  = "boosterpakket",
         TEXT_FIELD = "tekstveld",
+        DROPDOWN = "keuzelijst",
     },
     STATUS = { ON = "aan", OFF = "uit" },
     LABELS = { LOCKED = "vergrendeld", EMPTY = "leeg", NOT_DISCOVERED = "Niet ontdekt" },

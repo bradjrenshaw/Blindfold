@@ -236,10 +236,18 @@ function M.voice_uibox()
     speech.refresh()   -- a reader started since boot shows up on the next visit
     local saved = Settings.value("speech.voice") or "auto"
     local root = speech.menu(G and G.SETTINGS and G.SETTINGS.language)
+    local name, value = loc("SET.VOICE_NAME"), chosen_label(root, saved)
     local nodes = {
+        -- A dropdown: shown as "Voice: Samantha", read "Voice, dropdown,
+        -- Samantha" (ui/proxies Dropdown); Enter opens the picker.
         { n = G.UIT.R, config = { align = "cm", padding = 0.08 }, nodes = {
-            UIBox_button({ label = { loc("SET.VOICE_NAME") .. ": " .. chosen_label(root, saved) },
-                button = "blindfold_voice_pick", minw = 7, minh = 0.6, scale = 0.45, colour = G.C.BLUE }),
+            { n = G.UIT.C, config = { align = "cm", minw = 7, minh = 0.6, padding = 0.1, r = 0.1,
+                    hover = true, shadow = true, colour = G.C.BLUE, button = "blindfold_voice_pick",
+                    blindfold_dropdown = { label = name, value = value } },
+                nodes = {
+                    { n = G.UIT.T, config = { text = name .. ": " .. value, scale = 0.45,
+                        colour = G.C.UI.TEXT_LIGHT, shadow = true } },
+                } },
         } },
     }
     local caps = speech.resolved() or {}

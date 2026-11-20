@@ -17,6 +17,7 @@ return {
         VOUCHER  = "voucher",
         BOOSTER  = "booster pack",
         TEXT_FIELD = "kolom teks",
+        DROPDOWN = "daftar pilihan",
     },
     STATUS = { ON = "nyala", OFF = "mati" },
     LABELS = { LOCKED = "terkunci", EMPTY = "kosong", NOT_DISCOVERED = "Belum ditemukan" },

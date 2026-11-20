@@ -17,6 +17,7 @@ return {
         VOUCHER  = "coupon",
         BOOSTER  = "booster",
         TEXT_FIELD = "champ de texte",
+        DROPDOWN = "liste déroulante",
     },
     STATUS = { ON = "activé", OFF = "désactivé" },
     LABELS = { LOCKED = "bloqué", EMPTY = "vide", NOT_DISCOVERED = "Non découvert" },

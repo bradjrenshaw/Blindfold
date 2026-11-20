@@ -906,6 +906,26 @@ function ProxyButton:get_label()
     return Message.maybe_raw(self.override_label or Proxy.all_text(self.node))
 end
 
+-- A button that opens a list to choose from (the Voice screen's voice
+-- picker). Its node carries config.blindfold_dropdown = { label =, value = }
+-- (strings, or functions returning them); read "Voice, dropdown, Samantha".
+local ProxyDropdown = class(Proxy)
+ProxyDropdown.type_key = "dropdown"
+ProxyDropdown.new = ctor(ProxyDropdown)
+local function dropdown_field(node, field)
+    local d = node.config and node.config.blindfold_dropdown
+    local v = d and d[field]
+    if type(v) == "function" then
+        local ok, r = pcall(v)
+        v = ok and r or nil
+    end
+    return type(v) == "string" and v ~= "" and v or nil
+end
+function ProxyDropdown:get_label() return Message.maybe_raw(dropdown_field(self.node, "label")) end
+function ProxyDropdown:get_status() return Message.maybe_raw(dropdown_field(self.node, "value")) end
+-- Activating it opens the list; there is no new value to speak.
+function ProxyDropdown:get_value_message() return nil end
+
 local ProxySlider = class(Proxy)
 ProxySlider.type_key = "slider"
 ProxySlider.new = ctor(ProxySlider)
@@ -1630,7 +1650,7 @@ end
 
 return {
     Proxy = Proxy,
-    Button = ProxyButton, Slider = ProxySlider, Cycle = ProxyCycle,
+    Button = ProxyButton, Dropdown = ProxyDropdown, Slider = ProxySlider, Cycle = ProxyCycle,
     Toggle = ProxyToggle, Tab = ProxyTab, Text = ProxyText, TextInput = ProxyTextInput,
     PlayingCard = ProxyPlayingCard, Joker = ProxyJoker, Blind = ProxyBlind,
     CashOut = ProxyCashOut,
