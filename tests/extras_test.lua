@@ -79,7 +79,22 @@ local removed = box(node({}, { node({ button = "mod_removed" }) }))
 removed.REMOVED = true
 local menu = box(node({}, { node({ button = "mod_menu" }) }))
 G.OVERLAY_MENU = menu
-G.I = { UIBOX = { hud, on_card, hidden, removed, menu } }
+-- Last round's Cash Out box: the game removed the round summary it was
+-- anchored to but not the box, which sits below the screen with its button
+-- dead (config.button cleared, still focusable).
+local old_cash = node({ id = "cash_out_button", force_focus = true }, { node({ text = "Cash Out: $7" }) })
+old_cash.UIT = G.UIT.C
+local leftover = box(node({}, { old_cash }))
+leftover.config = { major = { REMOVED = true } }
+leftover.T = { x = 7.5, y = 28.1, w = 7, h = 1.1 }
+-- A live box parked off screen (the shop, slid away during a pack).
+local parked = box(node({}, { node({ button = "mod_parked" }) }))
+parked.T = { x = 2, y = 15, w = 4, h = 3 }
+-- On screen, anchored to something alive: still listed.
+hud.config = { major = {} }
+hud.T = { x = 0, y = 2, w = 4, h = 6 }
+G.ROOM = { T = { w = 20, h = 11.5 } }
+G.I = { UIBOX = { hud, on_card, hidden, removed, menu, leftover, parked } }
 
 local function overlay(b)
     b:start_row("main")
@@ -90,6 +105,13 @@ end
 local b = Graph.new(); overlay(b)
 local list = Extras.unlisted(b)
 check(#list == 1 and list[1] == mod_btn, "only the unlisted mod button", #list)
+-- Each alone is enough: an anchor that is gone, or a place off the screen.
+leftover.T.y = 5
+check(#Extras.unlisted(b) == 1, "a box whose anchor was removed is left out even on screen", #Extras.unlisted(b))
+leftover.config.major = {}
+check(#Extras.unlisted(b) == 2, "the same box, anchored and on screen, would be listed", #Extras.unlisted(b))
+leftover.T.y = 28.1
+check(#Extras.unlisted(b) == 1, "and off the bottom of the screen it is left out", #Extras.unlisted(b))
 
 Extras.append(b)
 local r = b:build()

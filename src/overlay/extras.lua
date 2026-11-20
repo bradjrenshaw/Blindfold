@@ -10,7 +10,8 @@
 -- vanilla buttons the gameplay screens reach through their own keys (play,
 -- discard, sort, run info, options, next round, reroll, skip, cash out...);
 -- buttons on a card's own UIBox (use / sell / buy, reached with U / S /
--- Enter); and the modal overlay menu, which the menu mirror owns.
+-- Enter); the modal overlay menu, which the menu mirror owns; and boxes that
+-- are not on screen at all (stale, below).
 local require = ...
 local Id = require("overlay.id")
 local Message = require("ui.message")
@@ -33,6 +34,21 @@ local function on_card(box)
     return major ~= nil and major.is ~= nil and Card ~= nil and major:is(Card)
 end
 
+-- A box the player cannot see or use, though the registry still holds it:
+-- parked off screen (the shop slid away, the blind select below), or left
+-- behind by the game. Each round's Cash Out button is an anonymous box
+-- anchored to that round's summary; cashing out removes the summary and
+-- never the button's box, which slides off the bottom with its button dead
+-- (config.button cleared), one more every round — and every one of them was
+-- listed as an extra control in the shop.
+local function stale(box)
+    local major = box.config and box.config.major
+    if type(major) == "table" and major.REMOVED then return true end
+    local t, room = box.VT or box.T, G.ROOM and G.ROOM.T
+    if t and room and t.y and t.h and (t.y >= room.h or t.y + t.h <= 0) then return true end
+    return false
+end
+
 -- Controls on screen the builder hasn't listed, in UIBox registration order.
 function M.unlisted(b)
     local Mirror = require("overlays.menu_mirror")
@@ -48,7 +64,8 @@ function M.unlisted(b)
     local out, seen = {}, {}
     for _, box in ipairs((G and G.I and G.I.UIBOX) or {}) do
         if type(box) == "table" and not box.REMOVED and box ~= G.OVERLAY_MENU
-            and not (box.states and box.states.visible == false) and not on_card(box) then
+            and not (box.states and box.states.visible == false) and not on_card(box)
+            and not stale(box) then
             local ok, items = pcall(Mirror.gather, { box })
             for _, n in ipairs(ok and items or {}) do
                 local c = n.config or {}
