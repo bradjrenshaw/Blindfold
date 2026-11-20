@@ -210,6 +210,8 @@ do
         Overlays.register(ba_require("overlays.card_stats"))
         -- Credits: tabbed text walls (tagged at open by the show_credits wrap).
         Overlays.register(ba_require("overlays.credits"))
+        -- The voice picker (a tree view over the speech library's voices).
+        Overlays.register(ba_require("overlays.voice_picker"))
         -- End-of-run screens (game over / win): above the mirror, since both
         -- are overlay menus the mirror would otherwise claim (buttons only —
         -- the run summary rows aren't focusable controls).
@@ -416,6 +418,12 @@ do
         G.FUNCS.blindfold_voice = function()
             G.FUNCS.overlay_menu{ definition = Menu.voice_uibox() }
             if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.VOICE" end
+        end
+        -- The voice picker (a tree view, overlays/voice_picker), opened by the
+        -- Voice screen's Voice button; its Back returns to the Voice screen.
+        G.FUNCS.blindfold_voice_pick = function()
+            G.FUNCS.overlay_menu{ definition = Menu.voice_pick_uibox() }
+            if type(G.OVERLAY_MENU) == "table" then G.OVERLAY_MENU.blindfold_title_key = "SET.VOICE_PICK" end
         end
         -- The sub-screens' Back: to Steamodded's Blindfold page (Config tab)
         -- when the settings were opened from the Mods menu, else to Options.

@@ -311,7 +311,7 @@ end
 -- The library's menu tree (lv_ui_*): its voices arranged for a picker, as
 -- nested tables. `language` is the game's language: its voices come first and
 -- language names are written in it where the system can. Each node is
---   { kind = "root"|"auto"|"category"|"language"|"novelty"|"voice",
+--   { id = (hex, stable), kind = "root"|"auto"|"category"|"language"|"novelty"|"voice",
 --     label =, key =, category = (category key or ""), parent =, children = {},
 --     voice = (hex id for "auto" and "voice" nodes; the root auto is "auto") }
 -- Every group's first child is its auto: that group's best voice. nil until
@@ -334,6 +334,7 @@ function M.menu(language)
                 category_keys[cat_hex] = string_out("lv_category_key", cat)
             end
             local node = {
+                id = id_to_hex(info.id),   -- stable across refreshes and sessions
                 kind = kind, parent = parent, children = {},
                 label = string_out("lv_ui_label", node_id),
                 key = string_out("lv_ui_key", node_id),

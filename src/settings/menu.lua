@@ -7,6 +7,7 @@ local Settings = require("settings.registry")
 local Message = require("ui.message")
 local Input = require("input.manager")
 local VoiceTree = require("settings.voice_tree")
+local Picker = require("overlays.voice_picker")
 
 local M = {}
 
@@ -157,8 +158,8 @@ local function rebuild_voice_screen()
 end
 
 -- Registered once at load (after Settings.load, so saved values win). The
--- voice is a hex id out of the speech library's tree (or "auto"); the Voice
--- screen's picker (voice_picker) sets it, not a generic choice control.
+-- voice is a hex id out of the speech library's tree (or "auto"); the voice
+-- picker (voice_pick_uibox) sets it, not a generic choice control.
 function M.register_voice_settings()
     Settings.register{ key = "speech.voice", type = "choice",
         label_key = "SET.VOICE_NAME", default = "auto", category = "voice",
@@ -197,60 +198,50 @@ local function node_label(n)
     return n.label
 end
 
--- The voice picker: the library arranges its voices as a tree (categories,
--- then languages, then voices, novelty voices in a group of their own) and
--- the screen shows one cycle per level along the path to the chosen voice,
--- so no list is longer than one group. Every group opens with its auto;
--- choosing a group chooses that auto, and the next level appears under it.
-local function voice_picker()
-    local saved = Settings.value("speech.voice") or "auto"
-    local root = speech.menu(G and G.SETTINGS and G.SETTINGS.language)
-    local levels = VoiceTree.levels(root, saved)
-    if #levels == 0 then return {} end   -- no library: nothing to pick from
-    local rows = {}
-    for depth, level in ipairs(levels) do
-        local labels, index = {}, level.index
-        for i, n in ipairs(level.options) do labels[i] = node_label(n) end
-        -- A saved voice that is absent today (reader not running, voice
-        -- removed) is shown as the choice so the picker tells the truth; the
-        -- library speaks through its fallback meanwhile.
-        if not index and saved == "auto" then
-            -- The library has not listed its voices yet (just booted).
-            labels[#labels + 1] = loc("SET.BACKEND_AUTO")
-            index = #labels
-        elseif not index then
-            local name = speech.voice_name(saved)
-            labels[#labels + 1] = (name ~= "" and name or saved) .. " (" .. loc("SET.VOICE_UNAVAILABLE") .. ")"
-            index = #labels
-        end
-        rows[#rows + 1] = create_option_cycle({
-            -- The top row is "Voice"; each row under it is named for the
-            -- group it lists ("AVSpeech", "English (United States)").
-            label = depth == 1 and loc("SET.VOICE_NAME") or node_label(level.parent),
-            scale = 0.8,
-            options = labels,
-            current_option = index,
-            opt_callback = "blindfold_voice_level",
-            blindfold_level = depth,
-        })
-    end
-    G.FUNCS.blindfold_voice_level = function(a)
-        local level = a and a.cycle_config and levels[a.cycle_config.blindfold_level]
-        local node = level and VoiceTree.descend(level.options[a.to_key])
-        -- No node: the "(unavailable)" entry, which is already the choice.
-        if node and node.voice and node.voice ~= Settings.value("speech.voice") then
-            Settings.on_change("speech.voice", node.voice)   -- applies and rebuilds this screen
-        end
-    end
-    return rows
+-- What the Voice button shows for the saved choice: the voice's name, an
+-- auto with what it picks now, or an absent voice marked unavailable (a
+-- reader that is not running, a removed voice — the picker tells the truth
+-- and the library speaks through its fallback meanwhile).
+local function chosen_label(root, saved)
+    local node = VoiceTree.find(root, saved)
+    if node then return node_label(node) end
+    if saved == "auto" then return loc("SET.BACKEND_AUTO") end   -- voices not listed yet
+    local name = speech.voice_name(saved)
+    return (name ~= "" and name or saved) .. " (" .. loc("SET.VOICE_UNAVAILABLE") .. ")"
 end
 
--- The Voice sub-screen: the voice picker on top, then whatever the voice
--- now speaking lets the user adjust (rate, pitch, volume). Changing the voice
--- rebuilds the screen (see the setting's apply).
+-- The voice picker screen (opened by the Voice button): a tree view over
+-- the speech library's menu tree — categories, then languages, then voices,
+-- novelty voices in a group of their own, every group opening with its auto.
+-- overlays/voice_picker.lua drives it; the box shows the focused line.
+function M.voice_pick_uibox()
+    local root = speech.menu(G and G.SETTINGS and G.SETTINGS.language)
+    local view = Picker.open(root, Settings.value("speech.voice") or "auto", node_label,
+        function(voice)
+            Settings.on_change("speech.voice", voice)
+            G.FUNCS.blindfold_voice()   -- back to the Voice screen, in the new voice
+        end)
+    local content = { n = G.UIT.C, config = { align = "cm", padding = 0.1, minw = 8 }, nodes = {
+        { n = G.UIT.R, config = { align = "cm", padding = 0.1 }, nodes = {
+            { n = G.UIT.T, config = { ref_table = view, ref_value = "text", scale = 0.5, colour = G.C.WHITE } },
+        } },
+    } }
+    return create_UIBox_generic_options({ back_func = "blindfold_voice", contents = { content } })
+end
+
+-- The Voice sub-screen: a button naming the chosen voice, which opens the
+-- picker, then whatever the voice now speaking lets the user adjust (rate,
+-- pitch, volume).
 function M.voice_uibox()
     speech.refresh()   -- a reader started since boot shows up on the next visit
-    local nodes = voice_picker()
+    local saved = Settings.value("speech.voice") or "auto"
+    local root = speech.menu(G and G.SETTINGS and G.SETTINGS.language)
+    local nodes = {
+        { n = G.UIT.R, config = { align = "cm", padding = 0.08 }, nodes = {
+            UIBox_button({ label = { loc("SET.VOICE_NAME") .. ": " .. chosen_label(root, saved) },
+                button = "blindfold_voice_pick", minw = 7, minh = 0.6, scale = 0.45, colour = G.C.BLUE }),
+        } },
+    }
     local caps = speech.resolved() or {}
     local extra = {}
     for _, a in ipairs(ADJUSTABLES) do

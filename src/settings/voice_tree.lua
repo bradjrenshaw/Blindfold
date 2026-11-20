@@ -1,17 +1,21 @@
--- settings/voice_tree.lua — the voice picker's logic over the speech
--- library's menu tree (speech.menu): a tree of groups (categories, languages,
--- novelty voices) whose leaves are voices and autos, every group opening with
--- its auto. The Voice screen shows one cycle per level along the path to the
--- chosen voice, so no list is longer than one group.
+-- settings/voice_tree.lua — tree-view logic over the speech library's menu
+-- tree (speech.menu): groups (categories, languages, novelty voices) whose
+-- leaves are voices and autos, every group opening with its auto. The voice
+-- picker (overlays/voice_picker.lua) shows it as a standard tree view: only
+-- the children of expanded groups are listed.
 --
--- Pure tables in, pure tables out (tests/voice_tree_test.lua); the screen
--- itself is settings/menu.lua.
+-- Pure tables in, pure tables out (tests/voice_tree_test.lua).
 local M = {}
+
+-- Something the player can choose: a voice, or a group's auto.
+function M.is_leaf(node)
+    return node.kind == "voice" or node.kind == "auto"
+end
 
 -- The node standing for a voice id (a voice or an auto), or nil.
 function M.find(node, voice)
     if not node then return nil end
-    if node.voice == voice and (node.kind == "voice" or node.kind == "auto") then return node end
+    if node.voice == voice and M.is_leaf(node) then return node end
     for _, c in ipairs(node.children or {}) do
         local hit = M.find(c, voice)
         if hit then return hit end
@@ -19,43 +23,28 @@ function M.find(node, voice)
     return nil
 end
 
--- What choosing `node` selects: itself when it is a voice or an auto, else
--- the auto that opens it (a group's best voice), descending as needed.
-function M.descend(node)
-    while node and node.kind ~= "voice" and node.kind ~= "auto" do
-        node = node.children and node.children[1]
-    end
-    return node
-end
-
--- The picker's rows for the chosen voice, top down. Each level is
---   { parent = node, options = { nodes }, index = which option is chosen }
--- The first level lists the root's children; each further level lists the
--- children of the group chosen above it, down to the chosen voice or auto.
--- A voice the tree does not hold (a reader that is not running, a removed
--- voice) gives one level with nothing chosen (index nil).
-function M.levels(root, voice)
-    if not root then return {} end
-    local chosen = M.find(root, voice)
-    if not chosen then
-        return { { parent = root, options = root.children, index = nil } }
-    end
-    local path = {}
-    local n = chosen
-    while n and n.parent do
-        table.insert(path, 1, n)
+-- Mark every group above `node` expanded, so the node is listed.
+function M.expand_to(node, expanded)
+    local n = node and node.parent
+    while n and n.parent do   -- the root itself is never listed
+        expanded[n] = true
         n = n.parent
     end
-    local levels = {}
-    for _, node in ipairs(path) do
-        local parent = node.parent
-        local index
-        for i, c in ipairs(parent.children) do
-            if c == node then index = i; break end
+end
+
+-- The tree view's lines, top to bottom: { { node =, depth = }, ... }. The
+-- root's children are depth 1; a group's children follow it only while it is
+-- expanded.
+function M.visible(root, expanded)
+    local out = {}
+    local function walk(node, depth)
+        for _, c in ipairs(node.children or {}) do
+            out[#out + 1] = { node = c, depth = depth }
+            if not M.is_leaf(c) and expanded[c] then walk(c, depth + 1) end
         end
-        levels[#levels + 1] = { parent = parent, options = parent.children, index = index }
     end
-    return levels
+    if root then walk(root, 1) end
+    return out
 end
 
 return M
