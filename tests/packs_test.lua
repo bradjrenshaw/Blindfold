@@ -42,6 +42,69 @@ for _ = 1, 20 do v = Packs:handler() end
 check(v == "active", "open pack settles to active", v)
 check(Packs.pick_allowed() == true, "pick allowed while the pack is live", Packs.pick_allowed())
 
+-- The last pick closes the pack: from the pick until it is gone the overlay
+-- stays engaged but quiet, so the card the cursor would land on (the picked
+-- one leaves the area at once) is not read out as if it were another choice.
+local Graph = ba_require("overlay.graph")
+local function pick_first()
+    local b = Graph.new()
+    Packs:build(b)
+    local first = G.pack_cards.cards[1]
+    b:build().nodes[first].vtable.on_click({ message = { fragment = function() end } })
+end
+local used = 0
+local function planet() return { ability = { set = "Planet", consumeable = {} },
+    can_use_consumeable = function() return true end } end
+G.FUNCS = { use_card = function(e)
+    used = used + 1
+    -- What the game does synchronously: the card leaves, the pack slides away.
+    table.remove(G.pack_cards.cards, 1)
+    G.CONTROLLER.locks.use = true
+    G.booster_pack.alignment.offset.py = 0
+end }
+G.CONTROLLER = { locks = {} }
+G.booster_pack = { alignment = { offset = {} } }
+G.pack_cards.cards = { planet(), planet(), planet() }
+G.GAME.pack_choices = 1
+for _ = 1, 20 do v = Packs:handler() end
+check(v == "active", "a one-choice pack, settled", v)
+pick_first()
+check(used == 1, "the pick went through", used)
+v = Packs:handler()
+check(v == "pending", "after the last pick: engaged but quiet", v)
+G.CONTROLLER.locks.use = false        -- the use finished; the pack is on its way out
+check(Packs:handler() == "pending", "still quiet while the pack slides away", "?")
+G.booster_pack = nil                  -- torn down, state not yet restored
+check(Packs:handler() == "pending", "and until the state flips back", "?")
+G.STATE = G.STATES.SHOP
+G.pack_cards.REMOVED = true
+check(Packs:handler() == "inactive", "then it stands down", "?")
+G.pack_cards.REMOVED = nil
+G.STATE = G.STATES.TAROT_PACK
+
+-- A "choose 2" pack: the first pick leaves a choice, so the overlay stays
+-- active and the card the cursor lands on is read; the second pick closes it.
+G.booster_pack = { alignment = { offset = {} } }
+G.pack_cards.cards = { planet(), planet(), planet() }
+G.GAME.pack_choices = 2
+for _ = 1, 20 do v = Packs:handler() end
+pick_first()
+check(Packs:handler() == "active", "a pick with choices left stays active", Packs:handler())
+G.CONTROLLER.locks.use = false
+G.booster_pack.alignment.offset.py = nil   -- the pack came back for the next pick
+G.GAME.pack_choices = 1
+check(Packs:handler() == "active", "and stays active for the second choice", "?")
+pick_first()
+check(Packs:handler() == "pending", "the second (last) pick goes quiet", "?")
+
+-- A last pick that did not close the pack after all (it is back in place,
+-- the use lock released): not quiet forever.
+G.CONTROLLER.locks.use = false
+G.booster_pack.alignment.offset.py = nil
+check(Packs:handler() == "active", "a pack that came back is active again", "?")
+G.pack_cards.cards = { tarot }
+G.GAME.pack_choices = 1
+
 -- The close window: state flipped back to blind select (tag pack), pack area
 -- still on screen. Cede AND refuse picks.
 G.STATE = G.STATES.BLIND_SELECT

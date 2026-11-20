@@ -89,6 +89,27 @@ function M.pick_allowed()
     return in_pack_state() and pack_open()
 end
 
+-- The pick that uses up the pack's last choice closes it. The picked card
+-- leaves the pack area at once, but the area itself stays up (and the state
+-- stays a pack state) for the use animation — around half a second, longer
+-- at slow game speeds — and in that window the cursor's reconcile landed on
+-- the neighbouring card and read it out, as if there were another choice to
+-- make. So a last pick latches `closing`, and the handler stays engaged but
+-- quiet from then until the pack is gone. With choices left (a "choose 2"
+-- pack), reading the card the cursor lands on is exactly right.
+local closing = false
+
+-- The game slides the pack away for the use (offset.py holds where it was)
+-- and, on a last pick, never slides it back. A pack that is back in place
+-- with the use lock released did not close after all: stop being quiet.
+local function still_closing()
+    local locked = G.CONTROLLER and G.CONTROLLER.locks and G.CONTROLLER.locks.use
+    local box = G.booster_pack
+    local parked = type(box) ~= "table" or (box.alignment and box.alignment.offset
+        and box.alignment.offset.py ~= nil)
+    return locked or parked
+end
+
 -- Enter on a pack card: the game's activation (use_card — can_select_card /
 -- can_use_consumeable rewrite every pack button to it), with its gates spoken.
 local function pick_click(card)
@@ -118,7 +139,9 @@ local function pick_click(card)
         local blocked = Play.tut_gate("use_card", card)
         if blocked then say(ctx, blocked); return end
         Play.tut_listen("use_card")
+        local last = not (G.GAME and G.GAME.pack_choices and G.GAME.pack_choices > 1)
         G.FUNCS.use_card({ config = { ref_table = card } })
+        if last then closing = true end
     end
 end
 
@@ -141,6 +164,7 @@ function M:handler()
     if not (G and G.STAGE == G.STAGES.RUN
         and (in_pack_state() or (pack_open() and G.STATE == G.STATES.SHOP))) then
         settled, stable, last_count = false, 0, -1
+        closing = false
         return "inactive"
     end
     -- Repair the reload bounce: with the pack up but G.STATE stuck at SHOP,
@@ -168,6 +192,11 @@ function M:handler()
     -- torn down a few frames before the state flips back. Stay engaged but
     -- quiet, or the reconcile lands on the joker row and reads it out.
     if settled and not pack_open() then return "pending" end
+    -- The last pick was made (see `closing`): quiet until the pack is gone.
+    if closing then
+        if still_closing() then return "pending" end
+        closing = false
+    end
     if not settled then
         local cards = G.pack_cards and G.pack_cards.cards
         local count = cards and #cards or 0
