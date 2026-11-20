@@ -45,11 +45,28 @@ case "${1-}" in
 esac
 [ "$(basename "${1-}")" = "open" ] && use_direct=1
 
+cd "$game_dir" || exit 1
+lovely="$game_dir/liblovely.dylib"
+[ "$use_direct" = "1" ] && set -- "$game_dir/Balatro.app/Contents/MacOS/love"
+
+# On Apple Silicon, run the game natively. Steam is an Intel program, so
+# what it starts runs as Intel too, under Rosetta, even though Balatro ships
+# an Apple Silicon build. The game compiles its Lua as it runs (LuaJIT), and
+# under Rosetta every freshly compiled piece is translated a second time:
+# frames ran several times slower in bursts, and the game's audio crackled.
+# `arch` picks the native build; it is a protected system program, which
+# drops DYLD_* from its own environment, so the injection is handed to the
+# game with -e instead. Both the game and the injector must have a native
+# build (a single-architecture Lovely download may not): otherwise fall
+# through to the launch below, exactly as before.
+has_arm64() { /usr/bin/file "$1" 2>/dev/null | grep -q arm64; }
+if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ] && [ -x /usr/bin/arch ] \
+    && has_arm64 "$1" && has_arm64 "$lovely"; then
+    exec /usr/bin/arch -arm64 -e DYLD_INSERT_LIBRARIES="$lovely" "$@"
+fi
+
 # Every helper process above runs BEFORE the export, so none of them inherit
 # DYLD_INSERT_LIBRARIES (they would be injected too, and an architecture
 # mismatch there aborts the launch before the game ever starts).
-cd "$game_dir" || exit 1
-export DYLD_INSERT_LIBRARIES="$game_dir/liblovely.dylib"
-
-[ "$use_direct" = "1" ] && exec "$game_dir/Balatro.app/Contents/MacOS/love"
+export DYLD_INSERT_LIBRARIES="$lovely"
 exec "$@"
