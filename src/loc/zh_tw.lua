@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "正在開啟文件。",
         OPENING_CHANGES = "正在開啟更新內容。",
         CAT_SCREEN_READERS = "螢幕閱讀器",
+        VO_RATE = "VoiceOver 語速",
         CAT_CLIPBOARD    = "剪貼簿",
         VOICE_UNAVAILABLE = "無法使用",
         VOICE_NOVELTY    = "趣味語音",

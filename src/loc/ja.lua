@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "ドキュメントを開いています。",
         OPENING_CHANGES = "変更履歴を開いています。",
         CAT_SCREEN_READERS = "スクリーンリーダー",
+        VO_RATE = "VoiceOverの速度",
         CAT_CLIPBOARD    = "クリップボード",
         VOICE_UNAVAILABLE = "利用不可",
         VOICE_NOVELTY    = "ノベルティ",

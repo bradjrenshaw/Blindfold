@@ -136,6 +136,9 @@ local ADJUSTABLES = {
     { "rate",   "SET.RATE",   50 },
     { "pitch",  "SET.PITCH",  50 },
     { "volume", "SET.VOLUME", 100 },
+    -- macOS, VoiceOver chosen: how fast VoiceOver speaks, so a line waits
+    -- for the one before it (speech.lua, platform/voiceover.lua).
+    { "vo_rate", "SET.VO_RATE", 75 },
 }
 
 -- What the speech module should speak with, from the saved settings.

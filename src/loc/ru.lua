@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "Открывается документация.",
         OPENING_CHANGES = "Открывается список изменений.",
         CAT_SCREEN_READERS = "Программы экранного доступа",
+        VO_RATE = "Скорость VoiceOver",
         CAT_CLIPBOARD    = "Буфер обмена",
         VOICE_UNAVAILABLE = "недоступен",
         VOICE_NOVELTY    = "Забавные голоса",

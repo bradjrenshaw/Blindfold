@@ -350,6 +350,7 @@ return {
         OPENING_DOCS    = "Opening documentation.",
         OPENING_CHANGES = "Opening changes.",
         CAT_SCREEN_READERS = "Screen readers",
+        VO_RATE = "VoiceOver speed",
         CAT_CLIPBOARD    = "Clipboard",
         VOICE_UNAVAILABLE = "unavailable",
         VOICE_NOVELTY    = "Novelty",

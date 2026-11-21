@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "설명서를 여는 중입니다.",
         OPENING_CHANGES = "변경 사항을 여는 중입니다.",
         CAT_SCREEN_READERS = "화면 낭독기",
+        VO_RATE = "VoiceOver 속도",
         CAT_CLIPBOARD    = "클립보드",
         VOICE_UNAVAILABLE = "사용 불가",
         VOICE_NOVELTY    = "노벨티",
