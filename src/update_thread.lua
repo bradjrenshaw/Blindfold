@@ -9,8 +9,22 @@
 local chan_name, releases_url, commits_url = ...
 local channel = love.thread.getChannel(chan_name)
 
+-- macOS: LÖVE has no TLS there either, so the system curl fetches.
+local function get_with_curl(url)
+    local p = io.popen("/usr/bin/curl -fsSL --max-time 15 -H 'User-Agent: Blindfold' '" .. url .. "' 2>/dev/null")
+    if not p then return "" end
+    local body = p:read("*a") or ""
+    p:close()
+    return body
+end
+
 local ok, err = pcall(function()
     local ffi = require("ffi")
+    if ffi.os == "OSX" then
+        channel:push(get_with_curl(releases_url))
+        channel:push(get_with_curl(commits_url))
+        return
+    end
     if ffi.os ~= "Windows" then
         error("Update checks via WinINet are only supported on Windows")
     end
