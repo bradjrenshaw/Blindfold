@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "Membuka dokumentasi.",
         OPENING_CHANGES = "Membuka perubahan.",
         CAT_SCREEN_READERS = "Pembaca layar",
+        VO_RATE = "Kecepatan VoiceOver",
         CAT_CLIPBOARD    = "Papan klip",
         VOICE_UNAVAILABLE = "tidak tersedia",
         VOICE_NOVELTY    = "Suara unik",

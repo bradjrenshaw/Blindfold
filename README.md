@@ -54,6 +54,20 @@ game.
 5. Make sure Steam is running, then press **Launch game**. You should hear
    **"Blindfold loaded."**
 
+#### Speech on macOS
+
+When VoiceOver is running, Blindfold speaks through it: your VoiceOver voice,
+rate and verbosity apply, and lines show on a braille display. Options →
+Blindfold → Voice lists it under Screen readers, and Auto picks it whenever
+VoiceOver is on (otherwise the system voices speak, as before). Keep
+VoiceOver's Quick Nav off so the arrow keys reach the game.
+
+VoiceOver cuts off whatever it is saying when the next line arrives and
+never reports when it has finished, so Blindfold waits before each line by
+an estimate of how long the previous one takes. If lines cut each other off,
+lower **VoiceOver speed** on the Voice screen; if the pauses between them
+are too long, raise it.
+
 #### Launching on macOS
 
 Lovely injects itself with `DYLD_INSERT_LIBRARIES`, which Steam does not set

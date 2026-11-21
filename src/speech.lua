@@ -204,6 +204,17 @@ profile.flags = is_osx and PLAY_SAMPLES or 0
 -- and silent: the library probes its backends on its own worker, and text
 -- spoken before that finishes is queued until it has.
 function M.init(mod_dir)
+    if is_osx then
+        local okv, vo = pcall(dofile, mod_dir .. "/platform/voiceover.lua")
+        if okv and type(vo) == "table" and vo.available then
+            M.vo = vo
+            log("VoiceOver output ready (VoiceOver " ..
+                (vo.running() and "running" or "not running") .. ").")
+        else
+            log("VoiceOver output unavailable: " ..
+                tostring(okv and (vo and vo.init_error) or vo))
+        end
+    end
     local lib_dir = mod_dir .. "/lib"
     local ok, err = pcall(function()
         if is_win then
@@ -258,12 +269,30 @@ end
 -- Missing fields keep their current value.
 function M.set_profile(cfg)
     if type(cfg) ~= "table" then return end
-    if cfg.voice ~= nil then profile.voice = hex_to_id(cfg.voice) end
+    if cfg.voice ~= nil then
+        M.voice_choice = cfg.voice
+        profile.voice = hex_to_id(cfg.voice)   -- "voiceover" -> 0: Loadstar's auto as the fallback
+    end
     local function unit(v) return math.max(0, math.min(1, v)) end
     if type(cfg.rate) == "number" then profile.rate = unit(cfg.rate) end
     if type(cfg.pitch) == "number" then profile.pitch = unit(cfg.pitch) end
     if type(cfg.volume) == "number" then profile.volume = unit(cfg.volume) end
+    -- VoiceOver speed, 0..1: 8 to 48 characters a second (voiceover.lua queue).
+    if type(cfg.vo_rate) == "number" and M.vo then M.vo.set_cps(8 + unit(cfg.vo_rate) * 40) end
 end
+
+-- VoiceOver (macOS) is not a Loadstar voice: platform/voiceover.lua speaks
+-- through it. Its voice id is the string "voiceover". It speaks when chosen
+-- outright, and for Auto, whenever VoiceOver is on; otherwise Loadstar's own
+-- choice speaks (for "voiceover", Loadstar's auto, as a fallback).
+local VO_ID, VO_NAME = "voiceover", "VoiceOver"
+M.VOICEOVER = VO_ID
+local function vo_running() return M.vo ~= nil and M.vo.running() end
+local function vo_active()
+    local choice = M.voice_choice or "auto"
+    return (choice == "auto" or choice == VO_ID) and vo_running()
+end
+M.vo_active = vo_active
 
 -- Ask the library to re-probe (a screen reader started after boot). The
 -- result lands asynchronously; the Voice screen calls this as it opens.
@@ -317,8 +346,21 @@ end
 -- Every group's first child is its auto: that group's best voice. nil until
 -- the first probe has published (or without the library).
 local NODE_KINDS = { [0] = "root", "auto", "category", "language", "novelty", "voice" }
+local function add_voiceover(root)
+    if not vo_running() then return root end
+    root = root or { id = "root", kind = "root", label = "", key = "", category = "", children = {} }
+    local cat = { id = "voiceover-category", kind = "category", key = "screen_readers",
+        category = "screen_readers", label = "Screen readers", parent = root, children = {} }
+    cat.children[1] = { id = VO_ID, kind = "voice", voice = VO_ID, label = VO_NAME, key = "",
+        category = "screen_readers", parent = cat, children = {} }
+    -- Right after the root's auto, where Loadstar puts screen readers on Windows.
+    local at = (root.children[1] and root.children[1].kind == "auto") and 2 or 1
+    table.insert(root.children, at, cat)
+    return root
+end
+
 function M.menu(language)
-    if not M.loaded then return nil end
+    if not M.loaded then return add_voiceover(nil) end
     local ok, root = pcall(function()
         M.lv.lv_ui_language(M.ctx, type(language) == "string" and language or nil)
         local id = ffi.new("uint64_t[1]")
@@ -351,8 +393,8 @@ function M.menu(language)
         end
         return read(id[0], nil)
     end)
-    if not ok then log("voice menu failed: " .. tostring(root)); return nil end
-    return root
+    if not ok then log("voice menu failed: " .. tostring(root)); return add_voiceover(nil) end
+    return add_voiceover(root)
 end
 
 -- The name of the voice a voice id speaks through right now: itself, or for
@@ -360,6 +402,8 @@ end
 local NO_FALLBACK = 1       -- SpeechProfileFlags::NoFallback
 local probe = ffi.new("LsSpeechProfile")
 function M.speaks_as(hex)
+    if hex == VO_ID then return vo_running() and VO_NAME or "" end
+    if hex == "auto" and vo_running() then return VO_NAME end
     if not M.loaded then return "" end
     local ok, name = pcall(function()
         probe.voice, probe.rate, probe.pitch, probe.volume = hex_to_id(hex), 0.5, 0.5, 1.0
@@ -375,6 +419,7 @@ end
 
 -- Display name for a voice id (hex), absent ones included; "" if unknown.
 function M.voice_name(hex)
+    if hex == VO_ID then return VO_NAME end
     if not M.loaded then return "" end
     local ok, name = pcall(string_out, "lv_voice_name", hex_to_id(hex))
     return ok and name or ""
@@ -384,6 +429,12 @@ end
 -- as { id=hex, name=, fell_back=bool, rate=, pitch=, volume= (adjustable?) },
 -- or nil when nothing can speak.
 function M.resolved()
+    if vo_active() then
+        -- VoiceOver's own voice, rate and pitch apply; Blindfold adjusts none.
+        -- vo_rate: how fast VoiceOver speaks, which the queue needs to know.
+        return { id = VO_ID, name = VO_NAME, fell_back = false,
+            rate = false, pitch = false, volume = false, vo_rate = true }
+    end
     if not M.loaded then return nil end
     local voice, fell, missing = ffi.new("uint64_t[1]"), ffi.new("bool[1]"), ffi.new("uint64_t[1]")
     if M.lv.lv_resolve(M.ctx, profile, F_SPEAK, voice, fell, missing) ~= OK or voice[0] == 0 then
@@ -430,6 +481,7 @@ function M.say(text, interrupt)
     -- Dev server mute (POST /mute): logged and tapped, but not voiced, so a
     -- driver can test without speaking over the user.
     if M.muted then return end
+    if vo_active() then M.vo.say(text, interrupt); return end
     if not M.loaded then return end
     local t0 = timer_now()
     local ok, st = pcall(M.lv.lv_output, M.ctx, QUEUE, profile, text,
@@ -442,10 +494,17 @@ end
 
 -- Cut what is speaking and drop everything queued.
 function M.silence()
+    if M.vo then pcall(M.vo.silence) end
     if not M.loaded then return end
     local t0 = timer_now()
     pcall(M.lv.lv_stop_all, M.ctx)
     log_slow_call(t0, "stop")
+end
+
+-- Once per frame (core.lua's love.update wrapper): VoiceOver gets what this
+-- frame said as one announcement.
+function M.pump()
+    if M.vo then M.vo.pump() end
 end
 
 return M

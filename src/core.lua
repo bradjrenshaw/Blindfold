@@ -64,6 +64,7 @@ if not Host.pump_installed and type(love.update) == "function" then
     local orig_update = love.update
     love.update = function(dt)
         orig_update(dt)
+        if speech.pump then pcall(speech.pump) end
         local dev = Host.dev
         if dev and dev.enabled then pcall(dev.pump) end
     end

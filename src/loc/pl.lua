@@ -319,6 +319,7 @@ return {
         OPENING_DOCS    = "Otwieranie dokumentacji.",
         OPENING_CHANGES = "Otwieranie zmian.",
         CAT_SCREEN_READERS = "Czytniki ekranu",
+        VO_RATE = "Szybkość VoiceOver",
         CAT_CLIPBOARD    = "Schowek",
         VOICE_UNAVAILABLE = "niedostępny",
         VOICE_NOVELTY    = "Zabawne głosy",
